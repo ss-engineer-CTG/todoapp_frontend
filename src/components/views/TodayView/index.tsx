@@ -103,7 +103,6 @@ export default function TodayView() {
                 onEdit={editTask}
                 ref={(el) => {
                   if (el) taskRefs.current[task.id] = el;
-                  return null;
                 }}
               />
             ))
@@ -129,7 +128,6 @@ export default function TodayView() {
                 onEdit={editTask}
                 ref={(el) => {
                   if (el) taskRefs.current[task.id] = el;
-                  return null;
                 }}
                 variant="overdue"
               />
@@ -156,7 +154,6 @@ export default function TodayView() {
                 onEdit={editTask}
                 ref={(el) => {
                   if (el) taskRefs.current[task.id] = el;
-                  return null;
                 }}
                 variant="upcoming"
               />
@@ -193,7 +190,6 @@ export default function TodayView() {
                       onEdit={editTask}
                       ref={(el) => {
                         if (el) taskRefs.current[task.id] = el;
-                        return null;
                       }}
                       variant="compact"
                     />

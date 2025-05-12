@@ -57,7 +57,6 @@ export default function ProjectListView() {
               onEdit={editTask}
               ref={(el) => {
                 if (el) taskRefs.current[project.id] = el;
-                return null;
               }}
               tasks={getFilteredTasks().filter(task => task.projectId === project.projectId && !task.isProject)}
               onDragStart={handleDragStart}

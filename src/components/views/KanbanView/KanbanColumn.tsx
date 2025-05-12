@@ -51,7 +51,6 @@ export default function KanbanColumn({
             onEdit={onEdit}
             ref={(el) => {
               if (el) taskRefs.current[task.id] = el;
-              return null;
             }}
             onDragStart={onDragStart}
             isDragOver={dragOverTaskId === task.id}

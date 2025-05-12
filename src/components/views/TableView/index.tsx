@@ -71,7 +71,6 @@ export default function TableView() {
                 }
                 ref={(el) => {
                   if (el) taskRefs.current[task.id] = el;
-                  return null;
                 }}
                 onDragStart={handleDragStart}
                 isDragOver={dragOverTaskId === task.id}

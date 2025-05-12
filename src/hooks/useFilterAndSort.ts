@@ -151,7 +151,7 @@ export function useFilterAndSort() {
   }
 
   // 親タスクが表示されているかチェック
-  const isParentVisible = (task: Task, taskList: Task[]) => {
+  const isParentVisible = (task: Task, taskList: Task[]): boolean => {
     if (task.level === 0) return true
 
     // 自分より前のタスクで、レベルが1つ小さいものを探す

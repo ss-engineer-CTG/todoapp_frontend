@@ -113,7 +113,6 @@ export default function TimelineView() {
                     onToggleComplete={toggleTaskCompletion}
                     ref={(el) => {
                       if (el) taskRefs.current[task.id] = el;
-                      return null;
                     }}
                     onDragStart={handleDragStart}
                     isDragging={isDragging && dragTask?.id === task.id}
