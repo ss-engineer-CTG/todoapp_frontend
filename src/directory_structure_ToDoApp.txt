@@ -1,0 +1,71 @@
+src/
+├── App.tsx                      # メインアプリケーションコンポーネント
+├── components/                  # UIコンポーネント
+│   ├── layout/                  # レイアウトコンポーネント
+│   │   ├── Header.tsx           # ヘッダー
+│   │   ├── Sidebar.tsx          # サイドバー（プロジェクト一覧、ナビゲーション）
+│   │   └── Footer.tsx           # フッター（ステータスバー）
+│   ├── common/                  # 共通コンポーネント
+│   │   ├── Notification.tsx     # 通知コンポーネント
+│   │   ├── ShortcutKey.tsx      # ショートカットキー表示
+│   │   ├── TaskItem.tsx         # タスク項目（再利用可能）
+│   │   └── ProjectBadge.tsx     # プロジェクトバッジ
+│   ├── dialogs/                 # ダイアログコンポーネント
+│   │   ├── TaskDialog.tsx       # タスク編集ダイアログ
+│   │   ├── ProjectDialog.tsx    # プロジェクト編集ダイアログ
+│   │   ├── NoteDialog.tsx       # メモダイアログ
+│   │   ├── DeleteConfirmDialog.tsx # 削除確認ダイアログ
+│   │   ├── ImportExportDialog.tsx # インポート/エクスポートダイアログ
+│   │   ├── AdvancedSearchDialog.tsx # 高度な検索ダイアログ
+│   │   └── HelpDialog.tsx       # ヘルプダイアログ
+│   ├── forms/                   # フォームコンポーネント
+│   │   ├── TaskForm.tsx         # タスクフォーム
+│   │   └── ProjectForm.tsx      # プロジェクトフォーム
+│   └── views/                   # ビューコンポーネント
+│       ├── TableView/           # テーブルビュー
+│       │   ├── index.tsx        # メインコンポーネント
+│       │   └── TableRow.tsx     # テーブル行コンポーネント
+│       ├── ProjectListView/     # プロジェクトリストビュー
+│       │   ├── index.tsx        # メインコンポーネント
+│       │   └── ProjectCard.tsx  # プロジェクトカードコンポーネント
+│       ├── TimelineView/        # タイムラインビュー
+│       │   ├── index.tsx        # メインコンポーネント
+│       │   └── TimelineItem.tsx # タイムライン項目コンポーネント
+│       ├── TodayView/           # 今日のタスクビュー
+│       │   ├── index.tsx        # メインコンポーネント
+│       │   └── TaskCard.tsx     # タスクカードコンポーネント
+│       └── KanbanView/          # かんばんビュー
+│           ├── index.tsx        # メインコンポーネント
+│           ├── KanbanColumn.tsx # かんばん列コンポーネント
+│           └── KanbanCard.tsx   # かんばんカードコンポーネント
+├── hooks/                       # カスタムフック
+│   ├── useKeyboardShortcuts.ts  # キーボードショートカット処理
+│   ├── useDragAndDrop.ts        # ドラッグ&ドロップ機能
+│   ├── useTasks.ts              # タスクCRUD操作
+│   ├── useProjects.ts           # プロジェクト操作
+│   ├── useFilterAndSort.ts      # フィルタリングとソート
+│   └── useTaskSelection.ts      # タスク選択機能
+├── contexts/                    # Reactコンテキスト
+│   ├── TaskContext.tsx          # タスク状態管理コンテキスト
+│   └── UIContext.tsx            # UI状態管理コンテキスト
+├── services/                    # サービス
+│   ├── database/                # データベース関連
+│   │   ├── types.ts             # インターフェース定義
+│   │   ├── DatabaseService.ts   # 抽象インターフェース
+│   │   └── MockSQLiteService.ts # モック実装
+│   └── storage/                 # ストレージ関連
+│       └── LocalStorageService.ts # ローカルストレージ操作
+├── types/                       # 型定義
+│   ├── Task.ts                  # タスク型定義
+│   ├── Project.ts               # プロジェクト型（必要に応じて）
+│   └── ViewProps.ts             # 各ビューのprops型
+├── utils/                       # ユーティリティ関数
+│   ├── dateUtils.ts             # 日付操作
+│   ├── filterUtils.ts           # フィルタリング関数
+│   ├── sortUtils.ts             # ソート関数
+│   └── notificationUtils.ts     # 通知関連ユーティリティ
+└── constants/                   # 定数
+    ├── colors.ts                # カラーパレット
+    ├── priorities.ts            # 優先度定義
+    ├── keyboardShortcuts.ts     # キーボードショートカット定義
+    └── initialData.ts           # 初期データ
