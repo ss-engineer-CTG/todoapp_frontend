@@ -1,3 +1,4 @@
+// src/components/views/TableView/index.tsx
 "use client"
 
 import { useContext } from "react"
@@ -9,7 +10,8 @@ import { useKeyboardShortcuts } from "../../../hooks/useKeyboardShortcuts"
 import { useDragAndDrop } from "../../../hooks/useDragAndDrop"
 import FilterToolbar from "./FilterToolbar"
 import TableRow from "./TableRow"
-import { Task } from "../../../types/Task"  // Task型をインポート
+import AddTaskButton from "../../common/AddTaskButton"
+import { logInfo } from "../../../utils/logUtils"
 
 export default function TableView() {
   const { tasks } = useContext(TaskContext)
@@ -23,14 +25,29 @@ export default function TableView() {
   const { toggleExpand, toggleTaskCompletion, openNotes, editTask, confirmDeleteTask } = useTasks()
   const { getVisibleTasks } = useFilterAndSort()
   const { handleDragStart, dragOverTaskId } = useDragAndDrop()
+  
+  // キーボードショートカットを有効化
   useKeyboardShortcuts()
   
+  // 表示対象のタスクを取得
   const visibleTasks = getVisibleTasks()
+
+  // コンポーネントマウント時のログ
+  logInfo("TableView がレンダリングされました");
 
   return (
     <div>
-      <FilterToolbar />
+      {/* ツールバーエリア */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex-1">
+          <FilterToolbar />
+        </div>
+        
+        {/* 共通コンポーネントを使用 */}
+        <AddTaskButton className="ml-4 whitespace-nowrap" />
+      </div>
       
+      {/* テーブル本体 */}
       <div className="bg-white rounded shadow">
         <table className="w-full">
           <thead>
@@ -76,6 +93,15 @@ export default function TableView() {
                 isDragOver={dragOverTaskId === task.id}
               />
             ))}
+            
+            {/* テーブルが空の場合のメッセージ */}
+            {visibleTasks.length === 0 && (
+              <tr>
+                <td colSpan={8} className="p-4 text-center text-gray-500">
+                  表示するタスクがありません。新しいタスクを追加してください。
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

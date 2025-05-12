@@ -1,6 +1,7 @@
+// src/components/views/TodayView/index.tsx
 "use client"
 
-import { useState, useContext } from "react"
+import { useContext } from "react"
 import { Clock, CheckCircle2, Calendar } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -10,7 +11,9 @@ import { useFilterAndSort } from "../../../hooks/useFilterAndSort"
 import { useTasks } from "../../../hooks/useTasks"
 import { useKeyboardShortcuts } from "../../../hooks/useKeyboardShortcuts"
 import TaskCard from "./TaskCard"
-import { Task } from "../../../types/Task"  // Task型をインポート
+import AddTaskButton from "../../common/AddTaskButton"
+import { logInfo } from "../../../utils/logUtils"
+import { Task } from "../../../types/Task"
 
 export default function TodayView() {
   const { tasks } = useContext(TaskContext)
@@ -23,6 +26,8 @@ export default function TodayView() {
   
   const { toggleTaskCompletion, openNotes, editTask } = useTasks()
   const { getVisibleTasks } = useFilterAndSort()
+  
+  // キーボードショートカットを有効化
   useKeyboardShortcuts()
   
   const visibleTasks = getVisibleTasks()
@@ -70,9 +75,20 @@ export default function TodayView() {
     })
   }
 
+  // コンポーネントマウント時のログ
+  logInfo("TodayView がレンダリングされました");
+
   return (
     <div className="bg-white rounded shadow p-4">
-      <h2 className="text-xl font-bold mb-4">今日のタスク</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold">今日のタスク</h2>
+        
+        {/* 今日のタスク追加ボタン - 共通コンポーネントを使用 */}
+        <AddTaskButton
+          label="今日のタスク追加"
+          forToday={true}
+        />
+      </div>
 
       <Tabs defaultValue="today" className="w-full">
         <TabsList className="mb-4">

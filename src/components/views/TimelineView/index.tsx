@@ -1,3 +1,4 @@
+// src/components/views/TimelineView/index.tsx
 "use client"
 
 import { useContext, useState } from "react"
@@ -7,10 +8,12 @@ import { useFilterAndSort } from "../../../hooks/useFilterAndSort"
 import { useTasks } from "../../../hooks/useTasks"
 import { useKeyboardShortcuts } from "../../../hooks/useKeyboardShortcuts"
 import { useDragAndDrop } from "../../../hooks/useDragAndDrop"
-import FilterToolbar from "../TableView/FilterToolbar"  // 共通のフィルタリングツールバーを再利用
+import FilterToolbar from "../TableView/FilterToolbar"
 import TimelineItem from "./TimelineItem"
+import AddTaskButton from "../../common/AddTaskButton"
 import { Switch } from "@/components/ui/switch"
-import { Task } from "../../../types/Task"  // Task型をインポート
+import { Task } from "../../../types/Task"
+import { logInfo } from "../../../utils/logUtils"
 
 export default function TimelineView() {
   const { tasks } = useContext(TaskContext)
@@ -24,6 +27,8 @@ export default function TimelineView() {
   const { toggleTaskCompletion } = useTasks()
   const { getVisibleTasks } = useFilterAndSort()
   const { handleDragStart, isDragging, dragTask, dragType } = useDragAndDrop()
+  
+  // キーボードショートカットを有効化
   useKeyboardShortcuts()
   
   const [showCompletedInTimeline, setShowCompletedInTimeline] = useState(false)
@@ -49,18 +54,26 @@ export default function TimelineView() {
   // 現在の日付を取得
   const today = new Date().toISOString().split("T")[0]
 
+  // コンポーネントマウント時のログ
+  logInfo("TimelineView がレンダリングされました");
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <FilterToolbar />
-        
-        <div className="flex items-center gap-2 ml-4">
-          <Switch 
-            checked={showCompletedInTimeline}
-            onCheckedChange={setShowCompletedInTimeline}
-          />
-          <span className="text-sm">完了済みタスクを表示</span>
+        <div className="flex items-center flex-1">
+          <FilterToolbar />
+          
+          <div className="flex items-center gap-2 ml-4">
+            <Switch 
+              checked={showCompletedInTimeline}
+              onCheckedChange={setShowCompletedInTimeline}
+            />
+            <span className="text-sm">完了済みタスクを表示</span>
+          </div>
         </div>
+        
+        {/* タスク追加ボタン - 共通コンポーネントを使用 */}
+        <AddTaskButton className="ml-4 whitespace-nowrap" />
       </div>
       
       <div className="bg-white rounded shadow p-4">

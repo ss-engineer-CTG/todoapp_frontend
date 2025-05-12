@@ -1,3 +1,4 @@
+// src/components/views/KanbanView/index.tsx
 "use client"
 
 import { useState, useContext } from "react"
@@ -8,8 +9,10 @@ import { useTasks } from "../../../hooks/useTasks"
 import { useKeyboardShortcuts } from "../../../hooks/useKeyboardShortcuts"
 import { useDragAndDrop } from "../../../hooks/useDragAndDrop"
 import KanbanColumn from "./KanbanColumn"
-import FilterToolbar from "../TableView/FilterToolbar"  // 共通のフィルタリングツールバーを再利用
-import { Task } from "../../../types/Task"  // Task型をインポート
+import FilterToolbar from "../TableView/FilterToolbar"
+import AddTaskButton from "../../common/AddTaskButton"
+import { Task } from "../../../types/Task"
+import { logInfo } from "../../../utils/logUtils"
 
 export default function KanbanView() {
   const { tasks } = useContext(TaskContext)
@@ -23,6 +26,8 @@ export default function KanbanView() {
   const { toggleTaskCompletion, openNotes, editTask } = useTasks()
   const { getFilteredTasks } = useFilterAndSort()
   const { handleDragStart, dragOverTaskId } = useDragAndDrop()
+  
+  // キーボードショートカットを有効化
   useKeyboardShortcuts()
   
   // プロジェクトの一覧
@@ -45,23 +50,35 @@ export default function KanbanView() {
     (activeProject === null || task.projectId === activeProject)
   )
 
+  // コンポーネントマウント時のログ
+  logInfo("KanbanView がレンダリングされました");
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <FilterToolbar />
-        
-        <select 
-          className="border rounded p-1 ml-4"
-          value={activeProject || ""}
-          onChange={(e) => setActiveProject(Number(e.target.value) || null)}
-        >
-          <option value="">すべてのプロジェクト</option>
-          {projects.map(project => (
-            <option key={project.projectId} value={project.projectId}>
-              {project.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center flex-1">
+          <FilterToolbar />
+          
+          <select 
+            className="border rounded p-1 ml-4"
+            value={activeProject || ""}
+            onChange={(e) => setActiveProject(Number(e.target.value) || null)}
+          >
+            <option value="">すべてのプロジェクト</option>
+            {projects.map(project => (
+              <option key={project.projectId} value={project.projectId}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* タスク追加ボタン - 共通コンポーネントを使用 */}
+        <AddTaskButton 
+          className="ml-4 whitespace-nowrap"
+          projectId={activeProject || undefined}
+          level={1}
+        />
       </div>
       
       <div className="bg-white rounded shadow p-4">

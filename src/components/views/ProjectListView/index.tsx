@@ -1,3 +1,4 @@
+// src/components/views/ProjectListView/index.tsx
 "use client"
 
 import { useContext } from "react"
@@ -8,8 +9,9 @@ import { useTasks } from "../../../hooks/useTasks"
 import { useKeyboardShortcuts } from "../../../hooks/useKeyboardShortcuts"
 import { useDragAndDrop } from "../../../hooks/useDragAndDrop"
 import ProjectCard from "./ProjectCard"
-import FilterToolbar from "../TableView/FilterToolbar"  // 共通のフィルタリングツールバーを再利用
-import { Task } from "../../../types/Task"  // Task型をインポート
+import FilterToolbar from "../TableView/FilterToolbar"
+import AddTaskButton from "../../common/AddTaskButton"
+import { logInfo } from "../../../utils/logUtils"
 
 export default function ProjectListView() {
   const { tasks } = useContext(TaskContext)
@@ -23,6 +25,8 @@ export default function ProjectListView() {
   const { toggleExpand, toggleTaskCompletion, openNotes, editTask } = useTasks()
   const { getFilteredTasks } = useFilterAndSort()
   const { handleDragStart, dragOverTaskId } = useDragAndDrop()
+  
+  // キーボードショートカットを有効化
   useKeyboardShortcuts()
   
   const projects = getFilteredTasks().filter((task) => task.isProject)
@@ -36,9 +40,23 @@ export default function ProjectListView() {
     return Math.round((completedTasks.length / projectTasks.length) * 100)
   }
 
+  // コンポーネントマウント時のログ
+  logInfo("ProjectListView がレンダリングされました");
+
   return (
     <div>
-      <FilterToolbar />
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex-1">
+          <FilterToolbar />
+        </div>
+        
+        {/* タスク追加ボタン - 共通コンポーネントを使用 */}
+        <AddTaskButton 
+          className="ml-4 whitespace-nowrap"
+          level={1}
+          projectId={selectedTaskId && tasks.find(t => t.id === selectedTaskId && t.isProject)?.projectId}
+        />
+      </div>
       
       <div className="bg-white rounded shadow p-4">
         <h2 className="text-xl font-bold mb-4">プロジェクト</h2>
@@ -63,6 +81,13 @@ export default function ProjectListView() {
               dragOverTaskId={dragOverTaskId}
             />
           ))}
+          
+          {/* プロジェクトが空の場合のメッセージ */}
+          {projects.length === 0 && (
+            <div className="p-4 text-center text-gray-500">
+              プロジェクトが見つかりません。新しいプロジェクトを作成してください。
+            </div>
+          )}
         </div>
       </div>
     </div>
