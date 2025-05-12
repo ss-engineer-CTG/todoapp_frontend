@@ -1,6 +1,7 @@
 import { useContext } from "react"
 import { TaskContext } from "../contexts/TaskContext"
 import { UIContext } from "../contexts/UIContext"
+import { Task } from "../types/Task"
 
 export function useFilterAndSort() {
   const { tasks } = useContext(TaskContext)

@@ -49,7 +49,10 @@ export default function KanbanColumn({
             onToggleComplete={onToggleComplete}
             onOpenNotes={onOpenNotes}
             onEdit={onEdit}
-            ref={(el) => (taskRefs.current[task.id] = el)}
+            ref={(el) => {
+              if (el) taskRefs.current[task.id] = el;
+              return null;
+            }}
             onDragStart={onDragStart}
             isDragOver={dragOverTaskId === task.id}
           />

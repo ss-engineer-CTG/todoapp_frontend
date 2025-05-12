@@ -1,7 +1,7 @@
 import { useEffect, useContext } from "react"
 import { UIContext } from "../contexts/UIContext"
 import { useTasks } from "./useTasks"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "@/hooks/use-toast"  // 修正: @/components/ui/use-toast → @/hooks/use-toast
 
 export function useKeyboardShortcuts() {
   const { 
@@ -20,8 +20,7 @@ export function useKeyboardShortcuts() {
     createNewProject, 
     pasteTask, 
     saveAllData, 
-    openImportExport, 
-    clipboard 
+    openImportExport
   } = useTasks()
 
   useEffect(() => {
@@ -41,7 +40,7 @@ export function useKeyboardShortcuts() {
       }
 
       // Ctrl+V: クリップボードからペースト
-      if (e.key === "v" && e.ctrlKey && clipboard && selectedTaskId) {
+      if (e.key === "v" && e.ctrlKey && selectedTaskId) {
         e.preventDefault()
         pasteTask()
         
@@ -120,7 +119,6 @@ export function useKeyboardShortcuts() {
       document.removeEventListener("keydown", handleGlobalKeyDown)
     }
   }, [
-    clipboard, 
     isTaskDialogOpen, 
     isNoteDialogOpen, 
     isProjectDialogOpen, 

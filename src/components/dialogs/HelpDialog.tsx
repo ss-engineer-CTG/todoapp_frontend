@@ -128,7 +128,7 @@ export default function HelpDialog() {
               <h3 className="text-lg font-medium mb-2">ヒントとコツ</h3>
               <div className="text-sm space-y-2">
                 <p>
-                  <strong>タスクの整理:</strong> プロジェクト > タスク > サブタスクの
+                  <strong>タスクの整理:</strong> プロジェクト {'>'} タスク {'>'} サブタスクの
                   階層構造を使用して作業を整理しましょう。
                 </p>
                 <p>

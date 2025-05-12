@@ -1,7 +1,7 @@
 import { useContext } from "react"
 import { TaskContext } from "../contexts/TaskContext"
 import { UIContext } from "../contexts/UIContext"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "@/hooks/use-toast"  // 修正: @/components/ui/use-toast → @/hooks/use-toast
 import { getRandomColor } from "../utils/colorUtils"
 import { Task } from "../types/Task"
 

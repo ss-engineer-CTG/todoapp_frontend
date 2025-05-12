@@ -9,6 +9,7 @@ import { useKeyboardShortcuts } from "../../../hooks/useKeyboardShortcuts"
 import { useDragAndDrop } from "../../../hooks/useDragAndDrop"
 import KanbanColumn from "./KanbanColumn"
 import FilterToolbar from "../TableView/FilterToolbar"  // 共通のフィルタリングツールバーを再利用
+import { Task } from "../../../types/Task"  // Task型をインポート
 
 export default function KanbanView() {
   const { tasks } = useContext(TaskContext)

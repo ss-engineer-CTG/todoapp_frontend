@@ -10,6 +10,7 @@ import { useFilterAndSort } from "../../../hooks/useFilterAndSort"
 import { useTasks } from "../../../hooks/useTasks"
 import { useKeyboardShortcuts } from "../../../hooks/useKeyboardShortcuts"
 import TaskCard from "./TaskCard"
+import { Task } from "../../../types/Task"  // Task型をインポート
 
 export default function TodayView() {
   const { tasks } = useContext(TaskContext)
@@ -63,8 +64,8 @@ export default function TodayView() {
   const sortByPriority = (taskList: Task[]) => {
     const priorityOrder = { high: 3, medium: 2, low: 1, undefined: 0 }
     return [...taskList].sort((a, b) => {
-      const aPriority = a.priority ? priorityOrder[a.priority] : 0
-      const bPriority = b.priority ? priorityOrder[b.priority] : 0
+      const aPriority = a.priority ? priorityOrder[a.priority as keyof typeof priorityOrder] : 0
+      const bPriority = b.priority ? priorityOrder[b.priority as keyof typeof priorityOrder] : 0
       return bPriority - aPriority
     })
   }
@@ -100,7 +101,10 @@ export default function TodayView() {
                 onToggleComplete={toggleTaskCompletion}
                 onOpenNotes={openNotes}
                 onEdit={editTask}
-                ref={(el) => (taskRefs.current[task.id] = el)}
+                ref={(el) => {
+                  if (el) taskRefs.current[task.id] = el;
+                  return null;
+                }}
               />
             ))
           )}
@@ -123,7 +127,10 @@ export default function TodayView() {
                 onToggleComplete={toggleTaskCompletion}
                 onOpenNotes={openNotes}
                 onEdit={editTask}
-                ref={(el) => (taskRefs.current[task.id] = el)}
+                ref={(el) => {
+                  if (el) taskRefs.current[task.id] = el;
+                  return null;
+                }}
                 variant="overdue"
               />
             ))
@@ -147,7 +154,10 @@ export default function TodayView() {
                 onToggleComplete={toggleTaskCompletion}
                 onOpenNotes={openNotes}
                 onEdit={editTask}
-                ref={(el) => (taskRefs.current[task.id] = el)}
+                ref={(el) => {
+                  if (el) taskRefs.current[task.id] = el;
+                  return null;
+                }}
                 variant="upcoming"
               />
             ))
@@ -181,7 +191,10 @@ export default function TodayView() {
                       onToggleComplete={toggleTaskCompletion}
                       onOpenNotes={openNotes}
                       onEdit={editTask}
-                      ref={(el) => (taskRefs.current[task.id] = el)}
+                      ref={(el) => {
+                        if (el) taskRefs.current[task.id] = el;
+                        return null;
+                      }}
                       variant="compact"
                     />
                   ))}

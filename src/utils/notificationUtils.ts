@@ -1,4 +1,4 @@
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "@/hooks/use-toast"  // 修正: @/components/ui/use-toast → @/hooks/use-toast
 
 // 成功通知を表示
 export function showSuccessToast(title: string, description?: string) {

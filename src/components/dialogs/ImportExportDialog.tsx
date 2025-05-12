@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UIContext } from "../../contexts/UIContext"
 import { useTasks } from "../../hooks/useTasks"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "@/hooks/use-toast"  // 修正: @/components/ui/use-toast → @/hooks/use-toast
 
 export default function ImportExportDialog() {
   const { isImportExportOpen, setIsImportExportOpen } = useContext(UIContext)

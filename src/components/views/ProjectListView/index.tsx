@@ -9,6 +9,7 @@ import { useKeyboardShortcuts } from "../../../hooks/useKeyboardShortcuts"
 import { useDragAndDrop } from "../../../hooks/useDragAndDrop"
 import ProjectCard from "./ProjectCard"
 import FilterToolbar from "../TableView/FilterToolbar"  // 共通のフィルタリングツールバーを再利用
+import { Task } from "../../../types/Task"  // Task型をインポート
 
 export default function ProjectListView() {
   const { tasks } = useContext(TaskContext)
@@ -54,7 +55,10 @@ export default function ProjectListView() {
               onToggleComplete={toggleTaskCompletion}
               onOpenNotes={openNotes}
               onEdit={editTask}
-              ref={(el) => (taskRefs.current[project.id] = el)}
+              ref={(el) => {
+                if (el) taskRefs.current[project.id] = el;
+                return null;
+              }}
               tasks={getFilteredTasks().filter(task => task.projectId === project.projectId && !task.isProject)}
               onDragStart={handleDragStart}
               dragOverTaskId={dragOverTaskId}

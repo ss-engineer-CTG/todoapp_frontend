@@ -10,6 +10,7 @@ import { useDragAndDrop } from "../../../hooks/useDragAndDrop"
 import FilterToolbar from "../TableView/FilterToolbar"  // 共通のフィルタリングツールバーを再利用
 import TimelineItem from "./TimelineItem"
 import { Switch } from "@/components/ui/switch"
+import { Task } from "../../../types/Task"  // Task型をインポート
 
 export default function TimelineView() {
   const { tasks } = useContext(TaskContext)
@@ -110,7 +111,10 @@ export default function TimelineView() {
                     onSelect={() => setSelectedTaskId(task.id)}
                     onKeyDown={onKeyDown}
                     onToggleComplete={toggleTaskCompletion}
-                    ref={(el) => (taskRefs.current[task.id] = el)}
+                    ref={(el) => {
+                      if (el) taskRefs.current[task.id] = el;
+                      return null;
+                    }}
                     onDragStart={handleDragStart}
                     isDragging={isDragging && dragTask?.id === task.id}
                     dragType={dragType}

@@ -9,6 +9,7 @@ import { useKeyboardShortcuts } from "../../../hooks/useKeyboardShortcuts"
 import { useDragAndDrop } from "../../../hooks/useDragAndDrop"
 import FilterToolbar from "./FilterToolbar"
 import TableRow from "./TableRow"
+import { Task } from "../../../types/Task"  // Task型をインポート
 
 export default function TableView() {
   const { tasks } = useContext(TaskContext)
@@ -68,7 +69,10 @@ export default function TableView() {
                     )
                   })
                 }
-                ref={(el) => (taskRefs.current[task.id] = el)}
+                ref={(el) => {
+                  if (el) taskRefs.current[task.id] = el;
+                  return null;
+                }}
                 onDragStart={handleDragStart}
                 isDragOver={dragOverTaskId === task.id}
               />
