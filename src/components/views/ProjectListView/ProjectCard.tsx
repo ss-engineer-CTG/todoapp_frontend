@@ -38,6 +38,9 @@ const ProjectCard = forwardRef<HTMLDivElement, ProjectCardProps>(
     onDragStart,
     dragOverTaskId
   }, ref) => {
+    // タスク参照用のローカル参照オブジェクト
+    const localTaskRefs = React.useRef<{[key: number]: HTMLElement | null}>({});
+    
     return (
       <div 
         className="border rounded p-3 hover:shadow-md transition-shadow"
@@ -129,7 +132,7 @@ const ProjectCard = forwardRef<HTMLDivElement, ProjectCardProps>(
                       onKeyDown={onKeyDown}
                       onDragStart={onDragStart}
                       isDragOver={dragOverTaskId === task.id}
-                      taskRef={(el) => (ref as any).current[task.id] = el}
+                      taskRef={(el) => (localTaskRefs.current[task.id] = el)}
                     />
                     
                     {task.expanded && hasChildren && (
@@ -159,7 +162,7 @@ const ProjectCard = forwardRef<HTMLDivElement, ProjectCardProps>(
                               onKeyDown={onKeyDown}
                               onDragStart={onDragStart}
                               isDragOver={dragOverTaskId === subTask.id}
-                              taskRef={(el) => (ref as any).current[subTask.id] = el}
+                              taskRef={(el) => (localTaskRefs.current[subTask.id] = el)}
                             />
                           ))}
                       </div>
