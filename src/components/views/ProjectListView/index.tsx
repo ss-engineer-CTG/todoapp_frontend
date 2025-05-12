@@ -54,7 +54,7 @@ export default function ProjectListView() {
         <AddTaskButton 
           className="ml-4 whitespace-nowrap"
           level={1}
-          projectId={selectedTaskId && tasks.find(t => t.id === selectedTaskId && t.isProject)?.projectId}
+          projectId={selectedTaskId && tasks.find(t => t.id === selectedTaskId && t.isProject)?.projectId || undefined}
         />
       </div>
       

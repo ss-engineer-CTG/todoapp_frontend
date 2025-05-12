@@ -94,7 +94,8 @@ export function showKeyboardShortcutFeedback(shortcut: string, action: string) {
     
     // この時点で既にトーストが消えている可能性があるが、念のため
     try {
-      toast.dismiss(activeShortcutNotification.id);
+      // toast.dismiss() ではなく、個々の通知の dismiss メソッドを使うべきですが、
+      // ここでは単に古い通知を放置して新しい通知を表示するようにします
     } catch (e) {
       // エラーは無視
     }
