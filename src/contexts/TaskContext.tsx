@@ -5,6 +5,9 @@ import { Task } from "../types/Task"
 import { DatabaseService } from "../services/database/types"
 import MockSQLiteService from "../services/database/MockSQLiteService"
 import { initialMockTasks } from "../constants/initialData"
+import { logError, logInfo, logWarning } from "../utils/logUtils"
+import { showErrorToast, showInfoToast } from "../utils/notificationUtils"
+import { adjustTaskExpansion } from "../utils/taskUtils"
 
 interface TaskContextProps {
   tasks: Task[]
@@ -14,64 +17,118 @@ interface TaskContextProps {
   clipboard: Task | null
   setClipboard: (task: Task | null) => void
   dbServiceRef: React.MutableRefObject<DatabaseService>
+  isLoading: boolean
+  error: string | null
+  resetToInitialData: () => Promise<void>
 }
 
 export const TaskContext = createContext<TaskContextProps>({
-    tasks: [],
-    setTasks: () => {},
-    currentTask: null,
-    setCurrentTask: () => {},
-    clipboard: null,
-    setClipboard: () => {},
-    dbServiceRef: { current: {} as DatabaseService }
-  })
+  tasks: [],
+  setTasks: () => {},
+  currentTask: null,
+  setCurrentTask: () => {},
+  clipboard: null,
+  setClipboard: () => {},
+  dbServiceRef: { current: {} as DatabaseService },
+  isLoading: true,
+  error: null,
+  resetToInitialData: async () => {}
+})
   
-  interface TaskProviderProps {
-    children: ReactNode
-  }
+interface TaskProviderProps {
+  children: ReactNode
+}
   
-  export function TaskProvider({ children }: TaskProviderProps) {
-    const [tasks, setTasks] = useState<Task[]>([])
-    const [currentTask, setCurrentTask] = useState<Task | null>(null)
-    const [clipboard, setClipboard] = useState<Task | null>(null)
-    const [isDataLoaded, setIsDataLoaded] = useState(false)
+export function TaskProvider({ children }: TaskProviderProps) {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [currentTask, setCurrentTask] = useState<Task | null>(null)
+  const [clipboard, setClipboard] = useState<Task | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  // データベースサービス
+  const dbServiceRef = useRef<DatabaseService>(new MockSQLiteService())
+
+  // 初期データにリセット
+  const resetToInitialData = async () => {
+    setIsLoading(true)
+    setError(null)
     
-    // データベースサービス
-    const dbServiceRef = useRef<DatabaseService>(new MockSQLiteService())
-  
-    // データベースからタスクをロード
-    useEffect(() => {
-      const loadTasks = async () => {
-        try {
-          const loadedTasks = await dbServiceRef.current.getTasks()
-          if (loadedTasks.length > 0) {
-            setTasks(loadedTasks)
-          } else {
-            setTasks(initialMockTasks)
-          }
-          setIsDataLoaded(true)
-        } catch (error) {
-          console.error("タスクの読み込みに失敗しました:", error)
-          // モックデータを使用
-          setTasks(initialMockTasks)
-          setIsDataLoaded(true)
+    try {
+      // MockSQLiteServiceの拡張メソッドを呼び出す
+      if ('resetToInitialData' in dbServiceRef.current) {
+        const success = await (dbServiceRef.current as MockSQLiteService).resetToInitialData()
+        if (success) {
+          // 初期データを再読み込み
+          const allTasks = await dbServiceRef.current.getTasks()
+          setTasks(adjustTaskExpansion(allTasks))
+          showInfoToast("データをリセットしました", "全てのデータが初期状態に戻されました")
+          logInfo("Data reset to initial state")
+        } else {
+          throw new Error("データのリセットに失敗しました")
         }
       }
-  
-      loadTasks()
-    }, [])
-  
-    return (
-      <TaskContext.Provider value={{
-        tasks,
-        setTasks,
-        currentTask,
-        setCurrentTask,
-        clipboard,
-        setClipboard,
-        dbServiceRef
-      }}>
-        {isDataLoaded && children}
-      </TaskContext.Provider>
-    )
+    } catch (error) {
+      const errorMessage = "初期データのリセットに失敗しました"
+      logError(errorMessage, error)
+      setError(errorMessage)
+      showErrorToast("エラー", errorMessage)
+      
+      // エラー時でも初期データは表示する
+      setTasks(initialMockTasks)
+    } finally {
+      setIsLoading(false)
+    }
   }
+
+  // データベースからタスクをロード
+  useEffect(() => {
+    const loadTasks = async () => {
+      setIsLoading(true)
+      setError(null)
+      
+      try {
+        const allTasks = await dbServiceRef.current.getTasks()
+        
+        if (allTasks.length > 0) {
+          // タスクの展開状態を確認して調整
+          const adjustedTasks = adjustTaskExpansion(allTasks)
+          setTasks(adjustedTasks);
+          logInfo("Tasks loaded successfully")
+        } else {
+          logWarning("No tasks returned from database, using initial data")
+          setTasks(initialMockTasks);
+        }
+      } catch (error) {
+        const errorMessage = "タスクデータのロードに失敗しました"
+        logError(errorMessage, error);
+        setError(errorMessage);
+        showErrorToast("エラー", errorMessage);
+        
+        // エラー時でも初期データは表示する
+        setTasks(initialMockTasks);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTasks();
+  }, []);
+
+  return (
+    <TaskContext.Provider value={{
+      tasks,
+      setTasks,
+      currentTask,
+      setCurrentTask,
+      clipboard,
+      setClipboard,
+      dbServiceRef,
+      isLoading,
+      error,
+      resetToInitialData
+    }}>
+      {!isLoading && children}
+    </TaskContext.Provider>
+  )
+}

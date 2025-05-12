@@ -1,6 +1,6 @@
 import { Task } from "../types/Task"
 
-// モックデータの初期値
+// モックデータの初期値 - 全てのプロジェクトと親タスクは展開状態に設定
 export const initialMockTasks: Task[] = [
   {
     id: 1,
@@ -12,12 +12,13 @@ export const initialMockTasks: Task[] = [
     completed: false,
     assignee: "山田太郎",
     notes: "メインプロジェクトのメモ",
-    expanded: true,
+    expanded: true, // 必ず展開
     projectId: 1,
     projectName: "プロジェクトA",
     priority: "high",
     tags: ["重要", "開発"],
     color: "#4a6da7",
+    order: 1
   },
   {
     id: 2,
@@ -30,7 +31,7 @@ export const initialMockTasks: Task[] = [
     completionDate: "2025-05-20",
     assignee: "佐藤花子",
     notes: "初期調査完了",
-    expanded: true,
+    expanded: true, // 必ず展開
     projectId: 1,
     projectName: "プロジェクトA",
     priority: "medium",
@@ -48,7 +49,7 @@ export const initialMockTasks: Task[] = [
     completionDate: "2025-05-15",
     assignee: "佐藤花子",
     notes: "市場分析完了",
-    expanded: false,
+    expanded: true, // 展開状態を明示
     projectId: 1,
     projectName: "プロジェクトA",
     priority: "low",
@@ -65,7 +66,7 @@ export const initialMockTasks: Task[] = [
     completed: false,
     assignee: "鈴木一郎",
     notes: "開発進行中",
-    expanded: true,
+    expanded: true, // 必ず展開
     projectId: 1,
     projectName: "プロジェクトA",
     priority: "high",
@@ -82,7 +83,7 @@ export const initialMockTasks: Task[] = [
     completed: false,
     assignee: "高橋めぐみ",
     notes: "デザインモックアップ進行中",
-    expanded: false,
+    expanded: true, // 展開状態を明示
     projectId: 1,
     projectName: "プロジェクトA",
     priority: "medium",
@@ -99,11 +100,12 @@ export const initialMockTasks: Task[] = [
     completed: false,
     assignee: "山田太郎",
     notes: "サブプロジェクト",
-    expanded: false,
+    expanded: true, // 必ず展開
     projectId: 2,
     projectName: "プロジェクトB",
     priority: "medium",
     tags: ["定例"],
     color: "#6a8759",
+    order: 2
   },
 ]

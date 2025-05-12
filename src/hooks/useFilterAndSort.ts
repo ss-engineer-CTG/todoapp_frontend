@@ -2,6 +2,8 @@ import { useContext } from "react"
 import { TaskContext } from "../contexts/TaskContext"
 import { UIContext } from "../contexts/UIContext"
 import { Task } from "../types/Task"
+import { isTaskVisible, sortTasksWithConsistency } from "../utils/taskUtils"
+import { logDebug } from "../utils/logUtils"
 
 export function useFilterAndSort() {
   const { tasks } = useContext(TaskContext)
@@ -29,146 +31,109 @@ export function useFilterAndSort() {
 
   // フィルタリングされたタスクを取得
   const getFilteredTasks = () => {
-    return tasks
-      .filter((task) => {
-        // ステータスによるフィルタリング
-        if (filterStatus === "active" && task.completed) return false
-        if (filterStatus === "completed" && !task.completed) return false
+    if (!tasks || tasks.length === 0) {
+      logDebug("No tasks available for filtering")
+      return []
+    }
 
-        // タグによるフィルタリング
-        if (filterTags.length > 0) {
-          if (!task.tags || !task.tags.some(tag => filterTags.includes(tag))) {
-            return false
-          }
-        }
+    // 最初にタスクの一貫性を保った並べ替えを適用
+    const sortedTasks = sortTasksWithConsistency([...tasks])
 
-        // 優先度によるフィルタリング
-        if (filterPriority !== "all" && task.priority !== filterPriority) {
-          return false
-        }
-
-        // 検索クエリによるフィルタリング
-        if (
-          searchQuery &&
-          !task.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          !task.assignee.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          !task.notes.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          !(task.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
-        ) {
-          return false
-        }
-
-        // 高度な検索条件によるフィルタリング
-        if (
-          advancedSearchCriteria.name &&
-          !task.name.toLowerCase().includes(advancedSearchCriteria.name.toLowerCase())
-        ) {
-          return false
-        }
-        if (
-          advancedSearchCriteria.assignee &&
-          !task.assignee.toLowerCase().includes(advancedSearchCriteria.assignee.toLowerCase())
-        ) {
-          return false
-        }
-        if (advancedSearchCriteria.startDateFrom && task.startDate < advancedSearchCriteria.startDateFrom) {
-          return false
-        }
-        if (advancedSearchCriteria.startDateTo && task.startDate > advancedSearchCriteria.startDateTo) {
-          return false
-        }
-        if (advancedSearchCriteria.dueDateFrom && task.dueDate < advancedSearchCriteria.dueDateFrom) {
-          return false
-        }
-        if (advancedSearchCriteria.dueDateTo && task.dueDate > advancedSearchCriteria.dueDateTo) {
-          return false
-        }
-        if (
-          advancedSearchCriteria.tags &&
-          (!task.tags ||
-            !task.tags.some(tag =>
-              tag.toLowerCase().includes(advancedSearchCriteria.tags.toLowerCase())
-            ))
-        ) {
-          return false
-        }
-        if (
-          advancedSearchCriteria.priority &&
-          (!task.priority ||
-            !task.priority.includes(advancedSearchCriteria.priority))
-        ) {
-          return false
-        }
-
+    return sortedTasks.filter((task) => {
+      // プロジェクトはステータスフィルタの影響を受けない
+      if (task.isProject) {
         return true
-      })
-      .sort((a, b) => {
-        // ソート
-        let comparison = 0
+      }
+      
+      // ステータスによるフィルタリング
+      if (filterStatus === "active" && task.completed) return false
+      if (filterStatus === "completed" && !task.completed) return false
 
-        switch (sortBy) {
-          case "name":
-            comparison = a.name.localeCompare(b.name)
-            break
-          case "dueDate":
-            comparison = a.dueDate.localeCompare(b.dueDate)
-            break
-          case "startDate":
-            comparison = a.startDate.localeCompare(b.startDate)
-            break
-          case "assignee":
-            comparison = a.assignee.localeCompare(b.assignee)
-            break
-          case "priority": {
-            const priorityOrder = { high: 3, medium: 2, low: 1, undefined: 0 }
-            const aPriority = a.priority ? priorityOrder[a.priority] : 0
-            const bPriority = b.priority ? priorityOrder[b.priority] : 0
-            comparison = (bPriority - aPriority)
-            break
-          }
+      // タグによるフィルタリング
+      if (filterTags.length > 0) {
+        if (!task.tags || !task.tags.some(tag => filterTags.includes(tag))) {
+          return false
         }
+      }
 
-        // 同じ値の場合は順序フィールドを使用
-        if (comparison === 0 && a.order !== undefined && b.order !== undefined) {
-          comparison = a.order - b.order
+      // 優先度によるフィルタリング
+      if (filterPriority !== "all" && task.priority !== filterPriority) {
+        return false
+      }
+
+      // 検索クエリによるフィルタリング
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        const searchFields = [
+          task.name.toLowerCase(),
+          task.assignee.toLowerCase(),
+          task.notes.toLowerCase(),
+          ...(task.tags?.map(tag => tag.toLowerCase()) || [])
+        ]
+        if (!searchFields.some(field => field.includes(query))) {
+          return false
         }
+      }
 
-        return sortDirection === "asc" ? comparison : -comparison
-      })
+      // 高度な検索条件によるフィルタリング
+      if (advancedSearchCriteria.name &&
+          !task.name.toLowerCase().includes(advancedSearchCriteria.name.toLowerCase())) {
+        return false
+      }
+      
+      if (advancedSearchCriteria.assignee &&
+          !task.assignee.toLowerCase().includes(advancedSearchCriteria.assignee.toLowerCase())) {
+        return false
+      }
+      
+      if (advancedSearchCriteria.startDateFrom && task.startDate < advancedSearchCriteria.startDateFrom) {
+        return false
+      }
+      
+      if (advancedSearchCriteria.startDateTo && task.startDate > advancedSearchCriteria.startDateTo) {
+        return false
+      }
+      
+      if (advancedSearchCriteria.dueDateFrom && task.dueDate < advancedSearchCriteria.dueDateFrom) {
+        return false
+      }
+      
+      if (advancedSearchCriteria.dueDateTo && task.dueDate > advancedSearchCriteria.dueDateTo) {
+        return false
+      }
+      
+      if (advancedSearchCriteria.tags) {
+        const tagQuery = advancedSearchCriteria.tags.toLowerCase()
+        if (!task.tags || !task.tags.some(tag => tag.toLowerCase().includes(tagQuery))) {
+          return false
+        }
+      }
+      
+      if (advancedSearchCriteria.priority &&
+          (!task.priority || task.priority !== advancedSearchCriteria.priority)) {
+        return false
+      }
+
+      return true
+    })
   }
 
   // 表示されるタスクのリストを取得
   const getVisibleTasks = () => {
     const filteredTasks = getFilteredTasks()
+    
+    if (filteredTasks.length === 0) {
+      return []
+    }
+    
+    // 表示条件（親タスクが展開されているか）を確認
     return filteredTasks.filter((task) => {
-      // レベル0のタスクは常に表示
-      if (task.level === 0) return true
+      // レベル0のタスクやプロジェクトは常に表示
+      if (task.level === 0 || task.isProject) return true
 
       // 親タスクが展開されているかチェック
-      const parentVisible = isParentVisible(task, filteredTasks)
-      return parentVisible
+      return isTaskVisible(task, filteredTasks)
     })
-  }
-
-  // 親タスクが表示されているかチェック
-  const isParentVisible = (task: Task, taskList: Task[]): boolean => {
-    if (task.level === 0) return true
-
-    // 自分より前のタスクで、レベルが1つ小さいものを探す
-    const taskIndex = taskList.findIndex((t) => t.id === task.id)
-    for (let i = taskIndex - 1; i >= 0; i--) {
-      const potentialParent = taskList[i]
-      if (potentialParent.level === task.level - 1) {
-        // この親が展開されていなければ、子は表示されない
-        if (!potentialParent.expanded) return false
-        // この親が表示されるなら、子も表示される可能性がある
-        return isParentVisible(potentialParent, taskList)
-      }
-      // 自分と同じかより低いレベルのタスクが見つかったら、親はない
-      if (potentialParent.level <= task.level) return false
-    }
-
-    return false
   }
 
   // ソート方向の切り替え
