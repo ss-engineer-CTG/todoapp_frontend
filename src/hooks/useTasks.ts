@@ -448,18 +448,23 @@ export function useTasks() {
     }
 
     try {
-      setTasks([...tasks, newProject])
-      setSelectedTaskId(newId)
-      setCurrentTask(newProject)
-      setIsProjectDialogOpen(true)
-      logInfo(`新しいプロジェクトを作成しました (ID=${newId}, プロジェクトID=${projectId})`);
+      // 追加: 先に状態を更新してからダイアログを開く
+      setTasks([...tasks, newProject]);
+      setSelectedTaskId(newId);
+      setCurrentTask(newProject);
+      
+      // 少し遅延を入れてUIの更新を確実にする
+      setTimeout(() => {
+        setIsProjectDialogOpen(true);
+        logInfo(`新しいプロジェクトを作成しました (ID=${newId}, プロジェクトID=${projectId})`);
+      }, 50);
     } catch (error) {
       logError(`プロジェクト作成中にエラーが発生しました: ${error}`);
       showErrorToast("作成エラー", "プロジェクトの作成中にエラーが発生しました");
     }
   }
 
-  // タスクを編集
+  // タスクを編集する関数
   const editTask = (taskId: number) => {
     const task = tasks.find((t) => t.id === taskId)
     if (!task) {
@@ -467,13 +472,18 @@ export function useTasks() {
       return;
     }
 
-    setCurrentTask(task)
-    if (task.isProject) {
-      setIsProjectDialogOpen(true)
-    } else {
-      setIsTaskDialogOpen(true)
-    }
-    logInfo(`タスク "${task.name}" の編集を開始しました`);
+    // 重要: currentTask を先に設定してからダイアログを開く
+    setCurrentTask(task);
+    
+    // 少し遅延を入れてUIの更新を確実にする
+    setTimeout(() => {
+      if (task.isProject) {
+        setIsProjectDialogOpen(true);
+      } else {
+        setIsTaskDialogOpen(true);
+      }
+      logInfo(`タスク "${task.name}" の編集を開始しました`);
+    }, 50);
   }
 
   // タスク詳細を保存
