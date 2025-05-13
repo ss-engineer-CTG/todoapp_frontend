@@ -57,7 +57,14 @@ const ProjectCard = forwardRef<HTMLDivElement, ProjectCardProps>(
             className={`flex items-center p-2 rounded ${
               isHighlighted ? "bg-yellow-100" : ""
             } hover:bg-gray-100`}
-            ref={(el) => (localTaskRefs.current[task.id] = el)}
+            ref={(el) => {
+              // 修正: 明示的にvoidを返す（代入式の結果を返さない）
+              if (el) {
+                localTaskRefs.current[task.id] = el;
+              } else {
+                delete localTaskRefs.current[task.id];
+              }
+            }}
             data-task-id={task.id}
             onMouseDown={(e) => onDragStart(e, task, "reorder")}
           >

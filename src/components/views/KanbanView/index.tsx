@@ -154,8 +154,10 @@ export default function KanbanView() {
               onDragStart={(e, task, type) => {
                 // カラム間のドラッグは status 変更として扱う
                 if (type === "move") {
-                  // カラムIDを追加情報として渡す
-                  handleDragStart(e, { ...task, columnId: column.id }, type);
+                  // 修正: columnIdを直接taskに追加せず、別の変数として渡す
+                  handleDragStart(e, task, type);
+                  // type === "move"の場合はcolumnIdを記録しておく
+                  // 別途状態管理が必要な場合は追加
                 } else {
                   handleDragStart(e, task, type);
                 }

@@ -1,21 +1,34 @@
+// src/hooks/useDragAndDrop.ts
 import { useState, useEffect, useContext } from "react"
 import { TaskContext } from "../contexts/TaskContext"
-import { toast } from "@/hooks/use-toast"  // 修正: @/components/ui/use-toast → @/hooks/use-toast
 import { useTasks } from "./useTasks"
 import { Task } from "../types/Task"
 import { logDebug, logError } from "../utils/logUtils"
 import { showSuccessToast, showErrorToast } from "../utils/notificationUtils"
+import { clipDateToRange } from "../utils/timelineUtils"
+import { formatDate } from "../utils/dateUtils"
 
-export function useDragAndDrop(daysPerPixel: number = 0.04) {
+// スナップのしきい値（px）
+const SNAP_THRESHOLD = 8;
+
+/**
+ * 改善されたドラッグ＆ドロップ操作のためのカスタムフック
+ */
+export function useDragAndDrop(defaultDaysPerPixel: number = 0.04) {
   const { tasks } = useContext(TaskContext)
   const { updateTask } = useTasks()
   
+  // ドラッグ状態
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartX, setDragStartX] = useState(0)
   const [dragStartY, setDragStartY] = useState(0)
   const [dragTask, setDragTask] = useState<Task | null>(null)
   const [dragType, setDragType] = useState<"start" | "end" | "move" | "reorder" | null>(null)
   const [dragOverTaskId, setDragOverTaskId] = useState<number | null>(null)
+  
+  // 現在使用中の日付あたりのピクセル数
+  const [daysPerPixel, setDaysPerPixel] = useState(defaultDaysPerPixel)
+  
   // ドラッグ中のプレビュー情報
   const [dragPreview, setDragPreview] = useState<{
     taskId: number;
@@ -23,7 +36,9 @@ export function useDragAndDrop(daysPerPixel: number = 0.04) {
     daysDelta: number;
   } | null>(null)
 
-  // ドラッグ操作の開始
+  /**
+   * ドラッグ操作の開始
+   */
   const handleDragStart = (
     e: React.MouseEvent<HTMLDivElement>, 
     task: Task, 
@@ -39,7 +54,7 @@ export function useDragAndDrop(daysPerPixel: number = 0.04) {
     
     // カスタムスケールがあれば使用
     if (customDaysPerPixel) {
-      daysPerPixel = customDaysPerPixel;
+      setDaysPerPixel(customDaysPerPixel);
     }
 
     logDebug(`ドラッグ開始: タスク="${task.name}", タイプ=${type}, スケール=${daysPerPixel}`)
@@ -55,14 +70,20 @@ export function useDragAndDrop(daysPerPixel: number = 0.04) {
     }
   }
 
-  // ドラッグ中の移動
+  /**
+   * ドラッグ中の移動処理
+   */
   const handleDragMove = (e: MouseEvent) => {
     if (!isDragging || !dragTask) return
 
     if (dragType === "start" || dragType === "end" || dragType === "move") {
       const deltaX = e.clientX - dragStartX
-      // より正確な日数を計算
-      const daysDelta = Math.round(deltaX * daysPerPixel)
+      
+      // グリッドにスナップする処理
+      const snapDelta = snapToGrid(deltaX);
+      
+      // より正確な日数を計算（小数点以下を丸める）
+      const daysDelta = Math.round(snapDelta * daysPerPixel)
       
       // プレビュー情報を更新
       setDragPreview({
@@ -93,7 +114,9 @@ export function useDragAndDrop(daysPerPixel: number = 0.04) {
     }
   }
 
-  // ドラッグ操作の終了
+  /**
+   * ドラッグ操作の終了
+   */
   const handleDragEnd = (e: MouseEvent) => {
     if (!isDragging || !dragTask) {
       cleanupDrag()
@@ -102,19 +125,25 @@ export function useDragAndDrop(daysPerPixel: number = 0.04) {
 
     if (dragType === "start" || dragType === "end" || dragType === "move") {
       const deltaX = e.clientX - dragStartX
-      // 正確な日数を計算
-      const daysDelta = Math.round(deltaX * daysPerPixel)
+      
+      // スナップ処理
+      const snapDelta = snapToGrid(deltaX);
+      
+      // 正確な日数を計算（小数点以下を丸める）
+      const daysDelta = Math.round(snapDelta * daysPerPixel)
 
       if (daysDelta !== 0) {
         let updatedTask = { ...dragTask }
         
         try {
+          const today = formatDate(new Date());
+          
           if (dragType === "start" || dragType === "move") {
             // 日付を更新する前に有効性をチェック
             const startDate = new Date(dragTask.startDate)
             startDate.setDate(startDate.getDate() + daysDelta)
             // ISO形式のYYYY-MM-DD部分のみを使用
-            const newStartDate = startDate.toISOString().substring(0, 10)
+            const newStartDate = formatDate(startDate)
             
             // 終了日より後にならないことを確認（startタイプの場合）
             if (dragType === "start" && newStartDate > updatedTask.dueDate) {
@@ -127,7 +156,7 @@ export function useDragAndDrop(daysPerPixel: number = 0.04) {
           if (dragType === "end" || dragType === "move") {
             const dueDate = new Date(dragTask.dueDate)
             dueDate.setDate(dueDate.getDate() + daysDelta)
-            const newDueDate = dueDate.toISOString().substring(0, 10)
+            const newDueDate = formatDate(dueDate)
             
             // 開始日より前にならないことを確認（endタイプの場合）
             if (dragType === "end" && newDueDate < updatedTask.startDate) {
@@ -140,27 +169,53 @@ export function useDragAndDrop(daysPerPixel: number = 0.04) {
           // タスクを更新
           updateTask(updatedTask)
           
-          showSuccessToast(
-            "タスク日程を更新しました",
-            `${daysDelta > 0 ? `${daysDelta}日後` : `${Math.abs(daysDelta)}日前`}に移動しました`
-          )
+          // 操作の種類に応じたメッセージを表示
+          let message = "";
+          if (dragType === "start") {
+            message = `開始日を${daysDelta > 0 ? `${daysDelta}日後` : `${Math.abs(daysDelta)}日前`}に変更しました`;
+          } else if (dragType === "end") {
+            message = `終了日を${daysDelta > 0 ? `${daysDelta}日後` : `${Math.abs(daysDelta)}日前`}に変更しました`;
+          } else {
+            message = `日程を${daysDelta > 0 ? `${daysDelta}日後` : `${Math.abs(daysDelta)}日前`}に移動しました`;
+          }
           
-          logDebug(`タスク "${dragTask.name}" の日程を ${daysDelta}日 移動しました`)
+          showSuccessToast("タスク日程を更新しました", message);
+          logDebug(`タスク "${dragTask.name}" の日程を ${daysDelta}日 移動しました`);
         } catch (error) {
-          logError(`日程更新中にエラーが発生しました: ${error}`)
-          showErrorToast("日程更新エラー", (error as Error).message)
+          logError(`日程更新中にエラーが発生しました: ${error}`);
+          showErrorToast("日程更新エラー", (error as Error).message);
         }
       }
     } else if (dragType === "reorder" && dragOverTaskId !== null) {
-      // タスクの順序を変更 - このロジックは実装する必要があります
-      // ここでは簡略化のためスキップします
-      logDebug(`タスク "${dragTask.name}" の順序を変更しました（ターゲット: ${dragOverTaskId}）`)
+      // TODO: タスクの順序を変更する実装（必要に応じて）
+      logDebug(`タスク "${dragTask.name}" の順序を変更しました（ターゲット: ${dragOverTaskId}）`);
     }
 
-    cleanupDrag()
+    cleanupDrag();
   }
 
-  // ドラッグ状態のクリーンアップ
+  /**
+   * 指定された位置をグリッドにスナップする
+   */
+  const snapToGrid = (position: number): number => {
+    // 日境界へのスナップ
+    const dayWidth = 1 / daysPerPixel; // ピクセルあたりの日数の逆数で、1日あたりのピクセル数
+    
+    // 最も近い日付境界を計算
+    const dayIndex = Math.round(position / dayWidth);
+    const nearestBoundary = dayIndex * dayWidth;
+    
+    // スナップするかどうかを判断
+    if (Math.abs(position - nearestBoundary) < SNAP_THRESHOLD) {
+      return nearestBoundary;
+    }
+    
+    return position;
+  };
+
+  /**
+   * ドラッグ状態のクリーンアップ
+   */
   const cleanupDrag = () => {
     setIsDragging(false)
     setDragTask(null)

@@ -1,32 +1,33 @@
-"use client"
-
-import React, { forwardRef, useRef, useEffect, useState } from "react"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Task } from "../../../types/Task"
-
-interface Month {
-  id: string
-  name: string
-  daysInMonth: number
-}
+// src/components/views/TimelineView/TimelineItem.tsx
+import React, { forwardRef, useRef, useEffect, useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Task } from "../../../types/Task";
+import { calculateDaysBetween } from "../../../utils/timelineUtils";
+import { formatDateDisplay } from "../../../utils/timelineUtils";
+import { TaskStatusInfo } from "../../../hooks/useTaskStatus";
+import TaskDetailPopover from "./TaskDetailPopover";
 
 interface TimelineItemProps {
-  task: Task
-  month: Month
-  isSelected: boolean
-  onSelect: () => void
-  onKeyDown: (e: React.KeyboardEvent<HTMLElement>, taskId: number) => void
-  onToggleComplete: (id: number) => void
-  onDragStart: (e: React.MouseEvent<HTMLDivElement>, task: Task, type: "start" | "end" | "move", daysPerPixel?: number) => void
-  isDragging: boolean
-  dragType: "start" | "end" | "move" | "reorder" | null
+  task: Task;
+  startDate: string;
+  dayWidth: number;
+  isSelected: boolean;
+  statusInfo: TaskStatusInfo;
+  onSelect: () => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLElement>, taskId: number) => void;
+  onToggleComplete: (id: number) => void;
+  onDragStart: (e: React.MouseEvent<HTMLDivElement>, task: Task, type: "start" | "end" | "move", daysPerPixel?: number) => void;
+  isDragging: boolean;
+  dragType: "start" | "end" | "move" | "reorder" | null;
 }
 
 const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(
   ({ 
     task,
-    month,
+    startDate,
+    dayWidth,
     isSelected,
+    statusInfo,
     onSelect,
     onKeyDown,
     onToggleComplete,
@@ -34,139 +35,146 @@ const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(
     isDragging,
     dragType
   }, ref) => {
-    // 月のカレンダー幅を取得（実際のDOM要素から）
-    const monthGridRef = useRef<HTMLDivElement>(null);
-    const [monthWidth, setMonthWidth] = useState(0);
+    // タスクの開始位置と幅を計算
+    const taskStartDate = new Date(task.startDate);
+    const rangeStartDate = new Date(startDate);
     
-    useEffect(() => {
-      const updateWidth = () => {
-        if (monthGridRef.current) {
-          setMonthWidth(monthGridRef.current.offsetWidth);
-        }
-      };
-      
-      // 初期化時とリサイズ時に幅を更新
-      updateWidth();
-      window.addEventListener('resize', updateWidth);
-      
-      return () => {
-        window.removeEventListener('resize', updateWidth);
-      };
-    }, []);
+    // 開始日からの日数
+    const startDiff = Math.max(0, Math.floor(
+      (taskStartDate.getTime() - rangeStartDate.getTime()) / (1000 * 60 * 60 * 24)
+    ));
     
-    // 日ごとの幅を計算（カレンダー幅 / 月の日数）
-    const dayWidth = monthWidth / month.daysInMonth;
-    // 日付あたりのピクセル数の逆数（1ピクセルあたりの日数）
+    // タスクの期間（日数）
+    const duration = calculateDaysBetween(task.startDate, task.dueDate);
+    
+    // ピクセル単位の位置と幅
+    const startPosition = startDiff * dayWidth;
+    const width = duration * dayWidth;
+    
+    // ドラッグ操作時の日数あたりのピクセル数の逆数
     const daysPerPixel = dayWidth ? 1 / dayWidth : 0.04;
     
-    // 優先度に基づく色の設定
-    const getTaskColor = () => {
-      if (task.completed) return 'bg-green-200'
-      
-      switch (task.priority) {
-        case 'high': return 'bg-red-200'
-        case 'medium': return 'bg-yellow-200'
-        case 'low': return 'bg-blue-200'
-        default: return 'bg-blue-200'
-      }
-    }
+    // 背景色とボーダー色の設定
+    const { backgroundColor, borderColor } = statusInfo;
     
-    // より正確な日付位置計算
-    const getPositionFromDate = (dateStr: string): number => {
-      const dateObj = new Date(dateStr);
-      // 月が一致しない場合は境界値を返す
-      if (dateStr.substring(0, 7) !== month.id) {
-        return dateStr < month.id ? 0 : 100;
-      }
-      
-      const day = dateObj.getDate();
-      return ((day - 1) / month.daysInMonth) * 100;
+    // ドラッグ操作に合わせたスタイルを動的に生成
+    const getContainerStyle = () => {
+      return {
+        left: `${startPosition}px`,
+        width: `${width}px`,
+        backgroundColor,
+        borderColor,
+        opacity: isDragging ? 0.7 : 1,
+        transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+        zIndex: isSelected ? 20 : (isDragging ? 30 : 10),
+      };
     };
-    
-    // 開始日と終了日の位置をパーセンテージで計算
-    const startPosition = getPositionFromDate(task.startDate);
-    const endPosition = getPositionFromDate(task.dueDate);
-    const width = Math.max(endPosition - startPosition, 3); // 最小幅を確保
 
     return (
-      <div className="flex mt-1">
-        <div className="w-40 truncate pr-2 flex items-center">
+      <div className="flex items-center h-14 mt-1 relative">
+        {/* タスク名とチェックボックス（左側固定部分） */}
+        <div className="flex items-center w-52 pr-2 flex-shrink-0 sticky left-0 bg-white z-10 border-r border-gray-200">
           <Checkbox
             checked={task.completed}
             onCheckedChange={() => onToggleComplete(task.id)}
             className="mr-2"
           />
-          <span className={task.completed ? "line-through text-gray-400" : ""}>
-            {task.name}
-            {task.tags && task.tags.length > 0 && (
-              <span className="ml-1 text-xs text-gray-500">
-                ({task.tags.join(', ')})
-              </span>
+          <div className="flex flex-col truncate">
+            <span className={`text-sm ${task.completed ? "line-through text-gray-400" : "font-medium"}`}>
+              {task.name}
+            </span>
+            {task.assignee && (
+              <span className="text-xs text-gray-500 truncate">{task.assignee}</span>
             )}
-          </span>
-        </div>
-        <div
-          ref={monthGridRef}
-          className="flex-1 grid relative border-l border-gray-200"
-          style={{ gridTemplateColumns: `repeat(${month.daysInMonth}, minmax(25px, 1fr))` }}
-        >
-          {/* 現在の日付を示すマーカー */}
-          {month.id === new Date().toISOString().substring(0, 7) && (
-            <div
-              className="absolute top-0 bottom-0 w-px bg-red-500 z-10"
-              style={{
-                left: `${((new Date().getDate() - 1) / month.daysInMonth) * 100}%`
-              }}
-            ></div>
-          )}
-          
-          <div
-            ref={ref}
-            className={`absolute h-6 rounded ${getTaskColor()} ${
-              isSelected ? "ring-2 ring-blue-500" : ""
-            } ${isDragging ? "opacity-70" : ""} cursor-grab transition-all duration-100`}
-            style={{
-              left: `${startPosition}%`,
-              width: `${width}%`,
-              top: "4px",
-            }}
-            onClick={onSelect}
-            tabIndex={0}
-            onKeyDown={(e) => onKeyDown(e, task.id)}
-            onMouseDown={(e) => onDragStart(e, task, "move", daysPerPixel)}
-            data-task-id={task.id}
-          >
-            <div className="text-xs px-2 truncate flex justify-between items-center h-full">
-              <div className="flex items-center gap-1">
-                <span>{task.name}</span>
-                {task.assignee && (
-                  <span className="text-gray-600 text-xs">({task.assignee})</span>
-                )}
-              </div>
-              <div className="flex space-x-1">
-                <div
-                  className="cursor-w-resize w-1 h-4 bg-gray-400 opacity-50 hover:opacity-100 rounded"
-                  onMouseDown={(e) => {
-                    e.stopPropagation()
-                    onDragStart(e, task, "start", daysPerPixel)
-                  }}
-                />
-                <div
-                  className="cursor-e-resize w-1 h-4 bg-gray-400 opacity-50 hover:opacity-100 rounded"
-                  onMouseDown={(e) => {
-                    e.stopPropagation()
-                    onDragStart(e, task, "end", daysPerPixel)
-                  }}
-                />
-              </div>
-            </div>
           </div>
         </div>
+        
+        {/* タスクバー */}
+        <div
+          ref={ref}
+          className={`absolute h-10 rounded-md border transition-all duration-150 shadow-sm cursor-grab
+            group hover:shadow-md ${isSelected ? "ring-2 ring-blue-500" : ""}`}
+          style={getContainerStyle()}
+          onClick={onSelect}
+          tabIndex={0}
+          onKeyDown={(e) => onKeyDown(e, task.id)}
+          onMouseDown={(e) => !task.completed && onDragStart(e, task, "move", daysPerPixel)}
+          data-task-id={task.id}
+        >
+          {/* タスク詳細ポップオーバー */}
+          <TaskDetailPopover task={task} statusInfo={statusInfo} />
+          
+          <div className="px-2 py-1 h-full flex justify-between items-center">
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium truncate" style={{ color: statusInfo.color }}>
+                {task.name}
+              </span>
+              <div className="flex items-center text-xs">
+                <span className="truncate">
+                  {formatDateDisplay(task.startDate, 'short')} - {formatDateDisplay(task.dueDate, 'short')}
+                </span>
+                <span className="ml-1 text-xs opacity-75">({duration}日)</span>
+              </div>
+            </div>
+            
+            {/* タスク操作ハンドル */}
+            {!task.completed && (
+              <div className="flex space-x-1 ml-1">
+                <div
+                  className="cursor-w-resize w-4 h-full opacity-30 hover:opacity-100 hover:bg-white hover:bg-opacity-30 rounded-l absolute left-0 top-0"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    onDragStart(e, task, "start", daysPerPixel);
+                  }}
+                />
+                <div
+                  className="cursor-e-resize w-4 h-full opacity-30 hover:opacity-100 hover:bg-white hover:bg-opacity-30 rounded-r absolute right-0 top-0"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    onDragStart(e, task, "end", daysPerPixel);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+          
+          {/* タスクタグ（あれば表示） */}
+          {task.tags && task.tags.length > 0 && (
+            <div className="absolute -bottom-1 left-1 flex gap-1 max-w-full overflow-hidden">
+              {task.tags.slice(0, 2).map((tag) => (
+                <div 
+                  key={tag} 
+                  className="px-1 text-[10px] bg-white bg-opacity-90 rounded border shadow-sm"
+                  style={{ borderColor }}
+                >
+                  {tag}
+                </div>
+              ))}
+              {task.tags.length > 2 && (
+                <div className="px-1 text-[10px] bg-white bg-opacity-90 rounded border shadow-sm">
+                  +{task.tags.length - 2}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* 優先度表示 */}
+          {task.priority && !task.completed && (
+            <div 
+              className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border shadow-sm"
+              style={{ 
+                backgroundColor: task.priority === 'high' ? '#ef4444' : 
+                                 task.priority === 'medium' ? '#f59e0b' : '#10b981',
+                borderColor: 'white' 
+              }}
+            />
+          )}
+        </div>
       </div>
-    )
+    );
   }
-)
+);
 
-TimelineItem.displayName = "TimelineItem"
+TimelineItem.displayName = "TimelineItem";
 
-export default TimelineItem
+export default TimelineItem;
