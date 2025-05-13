@@ -32,6 +32,21 @@ const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
     onDragStart,
     isDragOver
   }, ref) => {
+    // ドラッグ用のイベントハンドラ
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+      e.dataTransfer.setData("text/task-id", task.id.toString());
+      e.dataTransfer.effectAllowed = "move";
+      
+      // マウスカーソルの位置を調整
+      const div = e.currentTarget;
+      const rect = div.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      e.dataTransfer.setDragImage(div, x, y);
+      
+      onDragStart(e as any, task, "move");
+    };
+    
     return (
       <Card 
         className={`${
@@ -44,7 +59,8 @@ const KanbanCard = forwardRef<HTMLDivElement, KanbanCardProps>(
         tabIndex={0}
         onKeyDown={(e) => onKeyDown(e, task.id)}
         onClick={onSelect}
-        onMouseDown={(e) => onDragStart(e, task, "reorder")}
+        draggable
+        onDragStart={handleDragStart}
       >
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center">

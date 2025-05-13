@@ -4,7 +4,17 @@ import { UIContext } from "../contexts/UIContext"
 import { toast } from "@/hooks/use-toast"
 import { getRandomColor } from "../utils/colorUtils"
 import { Task } from "../types/Task"
-import { generateNewTaskId, calculateNewTaskOrder } from "../utils/taskOperationUtils"
+import { 
+  generateNewTaskId, 
+  calculateNewTaskOrder,
+  getChildTaskInfo,
+  getSiblingTaskInfo
+} from "../utils/taskOperationUtils"
+import { 
+  getDirectChildTasks,
+  getTaskWithDescendants,
+  calculateTaskInsertPosition 
+} from "../utils/taskUtils"
 import { logError, logInfo, logWarning } from "../utils/logUtils"
 import { showSuccessToast, showErrorToast, showInfoToast } from "../utils/notificationUtils"
 
@@ -31,15 +41,17 @@ export function useTasks() {
     selectedTaskId
   } = useContext(UIContext)
 
-  // 新しいタスクを追加
-  const addNewTask = (level: number, projectId: number, projectName: string, afterIndex: number): number => {
-    // 追加対象のインデックスをバリデーション
-    if (afterIndex < 0 || afterIndex >= tasks.length) {
-      logWarning(`不正なインデックス ${afterIndex} が指定されました。最後に追加します。`);
-      afterIndex = tasks.length - 1;
-    }
+  // 新しいタスクを追加 - 改善版
+  const addNewTask = (
+    level: number,
+    parentId: number | null, 
+    projectId: number, 
+    projectName: string
+  ): number => {
+    // 挿入位置を計算
+    const afterIndex = calculateTaskInsertPosition(tasks, parentId, level);
     
-    // プロジェクトIDの存在確認
+    // プロジェクトの存在確認
     const projectExists = tasks.some(t => t.isProject && t.projectId === projectId);
     if (!projectExists) {
       logWarning(`指定されたプロジェクトID ${projectId} が存在しません。`);
@@ -76,7 +88,8 @@ export function useTasks() {
       projectName,
       priority: "medium",
       tags: [],
-      order: calculateNewTaskOrder(tasks, level, projectId, afterIndex),
+      parentId, // 明示的に親IDを設定
+      order: calculateNewTaskOrder(tasks, level, projectId, afterIndex, parentId),
     };
 
     // タスクリストを更新
@@ -95,12 +108,36 @@ export function useTasks() {
     return newId;
   };
 
+  // タスク追加の簡略化インターフェイス（子タスク）
+  const addChildTask = (parentTaskId: number): number => {
+    try {
+      const info = getChildTaskInfo(tasks, parentTaskId);
+      return addNewTask(info.level, info.parentId, info.projectId, info.projectName);
+    } catch (error) {
+      logError(`子タスク追加に失敗しました: ${error}`);
+      showErrorToast("エラー", "子タスクの追加に失敗しました");
+      return 0;
+    }
+  };
+
+  // タスク追加の簡略化インターフェイス（兄弟タスク）
+  const addSiblingTask = (siblingTaskId: number): number => {
+    try {
+      const info = getSiblingTaskInfo(tasks, siblingTaskId);
+      return addNewTask(info.level, info.parentId, info.projectId, info.projectName);
+    } catch (error) {
+      logError(`兄弟タスク追加に失敗しました: ${error}`);
+      showErrorToast("エラー", "兄弟タスクの追加に失敗しました");
+      return 0;
+    }
+  };
+
   // 今日のタスクとして追加するための補助関数
   const addTodayTask = (projectId: number, projectName: string): number => {
     const today = new Date().toISOString().split("T")[0];
     
     // タスクを追加
-    const taskId = addNewTask(1, projectId, projectName, tasks.length - 1);
+    const taskId = addNewTask(1, null, projectId, projectName);
     
     if (taskId) {
       // 追加したタスクを探して日付を更新
@@ -128,7 +165,7 @@ export function useTasks() {
     setIsDeleteConfirmOpen(true)
   }
 
-  // タスクとその子タスクを削除
+  // タスクとその子孫タスクを削除
   const deleteTask = (taskId: number) => {
     const taskIndex = tasks.findIndex((t) => t.id === taskId)
     if (taskIndex === -1) {
@@ -136,29 +173,22 @@ export function useTasks() {
       return;
     }
 
-    const task = tasks[taskIndex]
-    const taskLevel = task.level
-
-    // 削除する子タスクを見つける
-    const tasksToDelete = [taskId]
-
-    // 子タスクを見つけるために後続のタスクをチェック
-    for (let i = taskIndex + 1; i < tasks.length; i++) {
-      if (tasks[i].level <= taskLevel) break
-      tasksToDelete.push(tasks[i].id)
-    }
+    const task = tasks[taskIndex];
+    
+    // 削除対象のタスクを取得（自身と子孫すべて）
+    const tasksToDelete = getTaskWithDescendants(task, tasks).map(t => t.id);
 
     try {
       // データベースからタスクを削除
       tasksToDelete.forEach(id => {
-        dbServiceRef.current.deleteTask(id)
-      })
+        dbServiceRef.current.deleteTask(id);
+      });
 
       // 状態を更新
-      setTasks(tasks.filter((task) => !tasksToDelete.includes(task.id)))
+      setTasks(tasks.filter((task) => !tasksToDelete.includes(task.id)));
       
       if (selectedTaskId && tasksToDelete.includes(selectedTaskId)) {
-        setSelectedTaskId(null)
+        setSelectedTaskId(null);
       }
 
       showSuccessToast("タスクを削除しました", `${tasksToDelete.length}個のタスクを削除しました`);
@@ -182,8 +212,14 @@ export function useTasks() {
       ...taskToCopy, 
       id: newId, 
       name: `${taskToCopy.name} (コピー)`,
-      order: calculateNewTaskOrder(tasks, taskToCopy.level, taskToCopy.projectId, tasks.findIndex(t => t.id === taskId))
-    }
+      order: calculateNewTaskOrder(
+        tasks, 
+        taskToCopy.level, 
+        taskToCopy.projectId, 
+        tasks.findIndex(t => t.id === taskId),
+        taskToCopy.parentId
+      )
+    };
 
     try {
       const taskIndex = tasks.findIndex((t) => t.id === taskId)
@@ -199,6 +235,69 @@ export function useTasks() {
       logInfo(`タスク "${taskToCopy.name}" をコピーしました (ID=${newId})`);
     } catch (error) {
       logError(`タスクコピー中にエラーが発生しました: ${error}`);
+      showErrorToast("コピーエラー", "タスクのコピー中にエラーが発生しました");
+    }
+  }
+
+  // タスクをコピー（子タスクも含めて）
+  const copyTaskWithChildren = (taskId: number) => {
+    const taskToCopy = tasks.find((t) => t.id === taskId);
+    if (!taskToCopy) {
+      logWarning(`コピーするタスク ID=${taskId} が見つかりません。`);
+      return;
+    }
+
+    try {
+      // 元のタスクとその子孫を取得
+      const sourceWithDescendants = getTaskWithDescendants(taskToCopy, tasks);
+      
+      // 新しいIDを割り当てるためのマップ
+      const idMap = new Map<number, number>();
+      
+      // 最初のタスク（親）のIDを生成
+      const newRootId = generateNewTaskId(tasks);
+      idMap.set(taskToCopy.id, newRootId);
+      
+      // すべての子タスクの新しいIDを生成
+      for (let i = 1; i < sourceWithDescendants.length; i++) {
+        const task = sourceWithDescendants[i];
+        idMap.set(task.id, generateNewTaskId(tasks) + i);
+      }
+      
+      // 新しいタスクを作成
+      const newTasks = sourceWithDescendants.map(task => {
+        const newId = idMap.get(task.id)!;
+        const newParentId = task.parentId !== null && task.parentId !== undefined 
+          ? idMap.get(task.parentId) || null 
+          : null;
+          
+        return {
+          ...task,
+          id: newId,
+          name: task === taskToCopy ? `${task.name} (コピー)` : task.name,
+          parentId: newParentId
+        };
+      });
+      
+      // タスクリストにコピーしたタスクを追加
+      const taskIndex = tasks.findIndex((t) => t.id === taskId);
+      const updatedTasks = [...tasks];
+      updatedTasks.splice(taskIndex + 1, 0, ...newTasks);
+      setTasks(updatedTasks);
+      setSelectedTaskId(newRootId);
+      
+      // データベースに保存
+      newTasks.forEach(task => {
+        dbServiceRef.current.saveTask(task);
+      });
+      
+      showSuccessToast(
+        "タスクをコピーしました", 
+        `"${taskToCopy.name}"とその子タスク (計${newTasks.length}個) をコピーしました`
+      );
+      logInfo(`タスク "${taskToCopy.name}" とその子タスク (計${newTasks.length}個) をコピーしました`);
+    } catch (error) {
+      logError(`タスクとその子タスクのコピー中にエラーが発生しました: ${error}`);
       showErrorToast("コピーエラー", "タスクのコピー中にエラーが発生しました");
     }
   }
@@ -252,8 +351,19 @@ export function useTasks() {
         return;
       }
 
-      const selectedTask = tasks[selectedTaskIndex]
+      const selectedTask = tasks[selectedTaskIndex];
       const newId = generateNewTaskId(tasks);
+      
+      // 親IDを設定
+      let parentId = null;
+      if (clipboard.level > selectedTask.level) {
+        // 選択タスクが親になる場合
+        parentId = selectedTaskId;
+      } else {
+        // 兄弟タスクになる場合は親を共有
+        parentId = selectedTask.parentId;
+      }
+      
       const newTask = {
         ...clipboard,
         id: newId,
@@ -261,8 +371,15 @@ export function useTasks() {
         // 選択されたタスクと同じプロジェクトに所属させる
         projectId: selectedTask.projectId,
         projectName: selectedTask.projectName,
-        order: calculateNewTaskOrder(tasks, clipboard.level, selectedTask.projectId, selectedTaskIndex)
-      }
+        parentId,
+        order: calculateNewTaskOrder(
+          tasks, 
+          clipboard.level, 
+          selectedTask.projectId, 
+          selectedTaskIndex,
+          parentId
+        )
+      };
 
       const updatedTasks = [...tasks]
       updatedTasks.splice(selectedTaskIndex + 1, 0, newTask)
@@ -444,7 +561,8 @@ export function useTasks() {
       projectName: "新しいプロジェクト",
       priority: "medium",
       tags: [],
-      color: getRandomColor()
+      color: getRandomColor(),
+      parentId: null // プロジェクトは親を持たない
     }
 
     try {
@@ -623,10 +741,13 @@ export function useTasks() {
 
   return {
     addNewTask,
+    addChildTask,
+    addSiblingTask,
     addTodayTask,
     confirmDeleteTask,
     deleteTask,
     copyTask,
+    copyTaskWithChildren,
     copyTaskToClipboard,
     cutTask,
     pasteTask,

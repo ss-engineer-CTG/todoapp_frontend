@@ -7,6 +7,7 @@ import { useTaskSelection } from "./useTaskSelection";
 import { showKeyboardShortcutFeedback } from "../utils/notificationUtils";
 import { KEYBOARD_SHORTCUTS } from "../constants/keyboardShortcuts";
 import { logDebug, logInfo, logWarning } from "../utils/logUtils";
+import { getSiblingTaskInfo, getChildTaskInfo } from "../utils/taskOperationUtils";
 
 // フォーカス要素かどうかを判定する (検索ボックスなど)
 const isFormElement = (element: Element | null): boolean => {
@@ -38,10 +39,12 @@ export function useKeyboardShortcuts() {
     pasteTask,
     saveAllData, 
     openImportExport,
-    addNewTask,
+    addSiblingTask,
+    addChildTask,
     confirmDeleteTask,
     openNotes,
     copyTask,
+    copyTaskWithChildren,
     copyTaskToClipboard,
     cutTask,
     editTask,
@@ -57,35 +60,38 @@ export function useKeyboardShortcuts() {
     focusSelectedTask
   } = useTaskSelection();
 
-  // タスク追加処理 (Enter)
+  // タスク追加処理 (Enter) - 兄弟タスクを追加
   const handleAddTask = useCallback(() => {
     if (!selectedTaskId) return false;
     
-    const selectedTask = tasks.find(t => t.id === selectedTaskId);
-    if (!selectedTask) return false;
-    
-    const taskIndex = tasks.findIndex(t => t.id === selectedTaskId);
-    
-    // 同じレベルのタスクを追加
-    addNewTask(selectedTask.level, selectedTask.projectId, selectedTask.projectName, taskIndex);
-    showKeyboardShortcutFeedback("Enter", "新規タスク追加");
-    return true;
-  }, [selectedTaskId, tasks, addNewTask]);
+    try {
+      addSiblingTask(selectedTaskId);
+      showKeyboardShortcutFeedback("Enter", "新規タスク追加");
+      return true;
+    } catch (error) {
+      logWarning(`タスク追加中にエラーが発生しました: ${error}`);
+      return false;
+    }
+  }, [selectedTaskId, addSiblingTask]);
 
-  // 子タスク追加処理 (Tab)
+  // 子タスク追加処理 (Tab) - 子タスクを追加
   const handleAddChildTask = useCallback(() => {
     if (!selectedTaskId) return false;
     
-    const selectedTask = tasks.find(t => t.id === selectedTaskId);
-    if (!selectedTask || selectedTask.isProject) return false;
-    
-    const taskIndex = tasks.findIndex(t => t.id === selectedTaskId);
-    
-    // 子タスク（レベル+1）を追加
-    addNewTask(selectedTask.level + 1, selectedTask.projectId, selectedTask.projectName, taskIndex);
-    showKeyboardShortcutFeedback("Tab", "新規子タスク追加");
-    return true;
-  }, [selectedTaskId, tasks, addNewTask]);
+    try {
+      const selectedTask = tasks.find(t => t.id === selectedTaskId);
+      if (!selectedTask || selectedTask.isProject) {
+        return false;
+      }
+      
+      addChildTask(selectedTaskId);
+      showKeyboardShortcutFeedback("Tab", "新規子タスク追加");
+      return true;
+    } catch (error) {
+      logWarning(`子タスク追加中にエラーが発生しました: ${error}`);
+      return false;
+    }
+  }, [selectedTaskId, tasks, addChildTask]);
 
   // キーボードショートカットハンドラ
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -104,7 +110,7 @@ export function useKeyboardShortcuts() {
     }
 
     // ショートカットキーの処理
-    // 1. Enter: 新規タスク追加
+    // 1. Enter: 新規タスク追加 (兄弟タスク)
     if (e.key === "Enter" && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       if (handleAddTask()) {
         e.preventDefault();
@@ -136,11 +142,11 @@ export function useKeyboardShortcuts() {
       return;
     }
 
-    // 5. Ctrl+Shift+C: タスクコピー
+    // 5. Ctrl+Shift+C: タスクコピー (子タスクも含む)
     if (e.key === "c" && e.ctrlKey && e.shiftKey && selectedTaskId) {
       e.preventDefault();
-      copyTask(selectedTaskId);
-      showKeyboardShortcutFeedback("Ctrl+Shift+C", "タスクコピー");
+      copyTaskWithChildren(selectedTaskId);
+      showKeyboardShortcutFeedback("Ctrl+Shift+C", "タスクをサブタスクごとコピー");
       return;
     }
 
@@ -333,7 +339,7 @@ export function useKeyboardShortcuts() {
     isTaskDialogOpen, isNoteDialogOpen, isProjectDialogOpen, isDeleteConfirmOpen, isImportExportOpen,
     selectedTaskId, tasks, setSelectedTaskId,
     handleAddTask, handleAddChildTask,
-    confirmDeleteTask, openNotes, copyTask, copyTaskToClipboard, cutTask, 
+    confirmDeleteTask, openNotes, copyTask, copyTaskWithChildren, copyTaskToClipboard, cutTask, 
     pasteTask, editTask, toggleTaskCompletion, increasePriority, decreasePriority,
     navigateToAdjacentTask, navigateToParentTask, navigateToChildTask, focusSelectedTask,
     createNewProject, saveAllData, openImportExport,

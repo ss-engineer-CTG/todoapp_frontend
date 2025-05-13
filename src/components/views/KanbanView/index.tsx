@@ -1,7 +1,7 @@
 // src/components/views/KanbanView/index.tsx
 "use client"
 
-import { useState, useContext } from "react"
+import { useState, useContext, useEffect } from "react"
 import { TaskContext } from "../../../contexts/TaskContext"
 import { UIContext } from "../../../contexts/UIContext"
 import { useFilterAndSort } from "../../../hooks/useFilterAndSort"
@@ -23,7 +23,7 @@ export default function KanbanView() {
     taskRefs,
   } = useContext(UIContext)
   
-  const { toggleTaskCompletion, openNotes, editTask } = useTasks()
+  const { toggleTaskCompletion, openNotes, editTask, updateTask } = useTasks()
   const { getFilteredTasks } = useFilterAndSort()
   const { handleDragStart, dragOverTaskId } = useDragAndDrop()
   
@@ -49,9 +49,63 @@ export default function KanbanView() {
     !task.isProject && 
     (activeProject === null || task.projectId === activeProject)
   )
+  
+  // タスクのステータス変更処理（かんばん列間のドラッグ）
+  const handleTaskStatusChange = (taskId: number, status: "backlog" | "inProgress" | "completed") => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const today = new Date().toISOString().split('T')[0];
+    let updatedTask: Task;
+    
+    switch(status) {
+      case "backlog":
+        // 未着手: 開始日を未来に設定、完了フラグをオフ
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 1);
+        updatedTask = {
+          ...task,
+          startDate: futureDate.toISOString().split('T')[0],
+          completed: false,
+          completionDate: undefined
+        };
+        break;
+        
+      case "inProgress":
+        // 進行中: 開始日を今日以前、終了日を今日以降、完了フラグをオフ
+        updatedTask = {
+          ...task,
+          startDate: today,
+          completed: false,
+          completionDate: undefined
+        };
+        // 終了日が過去の場合は今日に設定
+        if (task.dueDate < today) {
+          updatedTask.dueDate = today;
+        }
+        break;
+        
+      case "completed":
+        // 完了: 完了フラグをオン、終了日を今日に設定
+        updatedTask = {
+          ...task,
+          completed: true,
+          completionDate: today
+        };
+        break;
+        
+      default:
+        return;
+    }
+    
+    // タスクを更新
+    updateTask(updatedTask);
+  };
 
   // コンポーネントマウント時のログ
-  logInfo("KanbanView がレンダリングされました");
+  useEffect(() => {
+    logInfo("KanbanView がレンダリングされました");
+  }, []);
 
   return (
     <div>
@@ -97,8 +151,19 @@ export default function KanbanView() {
               onOpenNotes={openNotes}
               onEdit={editTask}
               taskRefs={taskRefs}
-              onDragStart={handleDragStart}
+              onDragStart={(e, task, type) => {
+                // カラム間のドラッグは status 変更として扱う
+                if (type === "move") {
+                  // カラムIDを追加情報として渡す
+                  handleDragStart(e, { ...task, columnId: column.id }, type);
+                } else {
+                  handleDragStart(e, task, type);
+                }
+              }}
               dragOverTaskId={dragOverTaskId}
+              onDropToColumn={(taskId) => {
+                handleTaskStatusChange(taskId, column.id as any);
+              }}
             />
           ))}
         </div>

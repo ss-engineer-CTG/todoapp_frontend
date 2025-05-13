@@ -1,12 +1,14 @@
 "use client"
 
-import React, { forwardRef } from "react"
+import React, { forwardRef, useContext } from "react"
 import { ChevronDown, ChevronRight, Edit, FileText } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
 import { Task } from "../../../types/Task"
-import TaskItem from "../../common/TaskItem"
+import { TaskContext } from "../../../contexts/TaskContext"
+import { getDirectChildTasks } from "../../../utils/taskUtils"
+import { TaskLevelIndicator } from "../../common/TaskHierarchyUtility"
 
 interface ProjectCardProps {
   project: Task
@@ -38,8 +40,112 @@ const ProjectCard = forwardRef<HTMLDivElement, ProjectCardProps>(
     onDragStart,
     dragOverTaskId
   }, ref) => {
+    const { tasks: allTasks } = useContext(TaskContext)
+    
     // タスク参照用のローカル参照オブジェクト
     const localTaskRefs = React.useRef<{[key: number]: HTMLElement | null}>({});
+    
+    // 階層的にタスクを表示する再帰関数
+    const renderTask = (task: Task, depth: number = 0) => {
+      const childTasks = getDirectChildTasks(task, allTasks);
+      const hasChildren = childTasks.length > 0;
+      const isHighlighted = dragOverTaskId === task.id;
+      
+      return (
+        <div key={task.id} className="mb-2">
+          <div 
+            className={`flex items-center p-2 rounded ${
+              isHighlighted ? "bg-yellow-100" : ""
+            } hover:bg-gray-100`}
+            ref={(el) => (localTaskRefs.current[task.id] = el)}
+            data-task-id={task.id}
+            onMouseDown={(e) => onDragStart(e, task, "reorder")}
+          >
+            {/* 展開/折りたたみボタン */}
+            {hasChildren && (
+              <button
+                className="mr-2 text-gray-500"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleExpand(task.id);
+                }}
+              >
+                {task.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </button>
+            )}
+            
+            {/* インデント表示 */}
+            <div style={{ marginLeft: hasChildren ? 0 : 20 }}>
+              <TaskLevelIndicator level={depth} />
+            </div>
+            
+            {/* チェックボックス */}
+            <Checkbox
+              checked={task.completed}
+              onCheckedChange={() => onToggleComplete(task.id)}
+              className="mr-2"
+            />
+            
+            {/* タスク名 */}
+            <div className={`flex-grow ${task.completed ? "line-through text-gray-400" : ""}`}>
+              {task.name}
+              
+              {/* タグ */}
+              {task.tags && task.tags.length > 0 && (
+                <div className="flex gap-1 mt-1">
+                  {task.tags.map(tag => (
+                    <Badge key={tag} variant="outline" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* 日付と担当者 */}
+            <div className="text-xs text-gray-500 mr-2">
+              {task.startDate} 〜 {task.dueDate}
+              <div>{task.assignee}</div>
+            </div>
+            
+            {/* メモとアクションボタン */}
+            <div className="flex items-center">
+              {task.notes && (
+                <button
+                  className="text-gray-400 hover:text-gray-600 mr-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenNotes(task.id);
+                  }}
+                >
+                  <FileText size={14} />
+                </button>
+              )}
+              
+              <button
+                className="text-blue-500 hover:text-blue-700"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(task.id);
+                }}
+              >
+                <Edit size={14} />
+              </button>
+            </div>
+          </div>
+          
+          {/* 子タスクを展開表示 */}
+          {task.expanded && childTasks.length > 0 && (
+            <div className="ml-8 pl-2 border-l border-gray-200">
+              {childTasks.map(childTask => renderTask(childTask, depth + 1))}
+            </div>
+          )}
+        </div>
+      );
+    };
+    
+    // プロジェクト直下のタスク（parentId = null）を取得
+    const rootTasks = tasks.filter(t => t.parentId === null);
     
     return (
       <div 
@@ -102,74 +208,14 @@ const ProjectCard = forwardRef<HTMLDivElement, ProjectCardProps>(
         </div>
 
         {project.expanded && (
-          <div className="mt-4 pl-4 border-l-2 border-gray-200 space-y-2">
-            {tasks
-              .filter((task) => task.level === 1)
-              .map((task) => {
-                // このタスクに子タスクがあるかチェック
-                const hasChildren = tasks.some((childTask) => {
-                  const taskIndex = tasks.indexOf(task)
-                  const childIndex = tasks.indexOf(childTask)
-                  return (
-                    childTask.level === task.level + 1 &&
-                    childIndex > taskIndex &&
-                    !tasks.slice(taskIndex + 1, childIndex).some((t) => t.level <= task.level)
-                  )
-                })
-                
-                return (
-                  <div key={task.id}>
-                    <TaskItem
-                      task={task}
-                      depth={0}
-                      isSelected={task.id === task.id}
-                      hasChildren={hasChildren}
-                      onSelect={() => onSelect()}
-                      onToggleExpand={onToggleExpand}
-                      onToggleComplete={onToggleComplete}
-                      onEdit={onEdit}
-                      onOpenNotes={onOpenNotes}
-                      onKeyDown={onKeyDown}
-                      onDragStart={onDragStart}
-                      isDragOver={dragOverTaskId === task.id}
-                      taskRef={(el) => (localTaskRefs.current[task.id] = el)}
-                    />
-                    
-                    {task.expanded && hasChildren && (
-                      <div className="ml-6 space-y-2 mt-2">
-                        {tasks
-                          .filter((subTask) => {
-                            const taskIndex = tasks.indexOf(task)
-                            const subTaskIndex = tasks.indexOf(subTask)
-                            return (
-                              subTask.level === task.level + 1 &&
-                              subTaskIndex > taskIndex &&
-                              !tasks.slice(taskIndex + 1, subTaskIndex).some((t) => t.level <= task.level)
-                            )
-                          })
-                          .map((subTask) => (
-                            <TaskItem
-                              key={subTask.id}
-                              task={subTask}
-                              depth={1}
-                              isSelected={subTask.id === task.id}
-                              hasChildren={false}
-                              onSelect={() => onSelect()}
-                              onToggleExpand={onToggleExpand}
-                              onToggleComplete={onToggleComplete}
-                              onEdit={onEdit}
-                              onOpenNotes={onOpenNotes}
-                              onKeyDown={onKeyDown}
-                              onDragStart={onDragStart}
-                              isDragOver={dragOverTaskId === subTask.id}
-                              taskRef={(el) => (localTaskRefs.current[subTask.id] = el)}
-                            />
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+          <div className="mt-4">
+            {rootTasks.length > 0 ? (
+              rootTasks.map(task => renderTask(task))
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                このプロジェクトにはまだタスクがありません。
+              </div>
+            )}
           </div>
         )}
       </div>

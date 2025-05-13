@@ -16,6 +16,7 @@ interface KanbanColumnProps {
   taskRefs: React.MutableRefObject<{ [key: number]: HTMLElement | null }>
   onDragStart: (e: React.MouseEvent<HTMLDivElement>, task: Task, type: "start" | "end" | "move" | "reorder") => void
   dragOverTaskId: number | null
+  onDropToColumn: (taskId: number) => void
 }
 
 export default function KanbanColumn({
@@ -30,9 +31,28 @@ export default function KanbanColumn({
   taskRefs,
   onDragStart,
   dragOverTaskId,
+  onDropToColumn
 }: KanbanColumnProps) {
+  // ドラッグアンドドロップイベントハンドラ
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); // ドロップを許可
+    e.dataTransfer.dropEffect = "move";
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData("text/task-id");
+    if (taskId) {
+      onDropToColumn(parseInt(taskId, 10));
+    }
+  };
+  
   return (
-    <div className="bg-gray-50 rounded p-3">
+    <div 
+      className="bg-gray-50 rounded p-3" 
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <div className="flex justify-between items-center mb-3">
         <h3 className="font-medium text-gray-700">{title}</h3>
         <Badge>{tasks.length}</Badge>

@@ -8,6 +8,7 @@ import { initialMockTasks } from "../constants/initialData"
 import { logError, logInfo, logWarning } from "../utils/logUtils"
 import { showErrorToast, showInfoToast } from "../utils/notificationUtils"
 import { adjustTaskExpansion } from "../utils/taskUtils"
+import { needsMigration, performDataMigration } from "../utils/migrationUtils"
 
 interface TaskContextProps {
   tasks: Task[]
@@ -60,8 +61,16 @@ export function TaskProvider({ children }: TaskProviderProps) {
         const success = await (dbServiceRef.current as MockSQLiteService).resetToInitialData()
         if (success) {
           // 初期データを再読み込み
-          const allTasks = await dbServiceRef.current.getTasks()
-          setTasks(adjustTaskExpansion(allTasks))
+          const loadedTasks = await dbServiceRef.current.getTasks()
+          
+          // 親ID参照を追加するために移行処理を実行
+          const migratedTasks = await performDataMigration(
+            loadedTasks,
+            async (task) => await dbServiceRef.current.saveProject(task),
+            async (task) => await dbServiceRef.current.saveTask(task)
+          )
+          
+          setTasks(adjustTaskExpansion(migratedTasks))
           showInfoToast("データをリセットしました", "全てのデータが初期状態に戻されました")
           logInfo("Data reset to initial state")
         } else {
@@ -88,25 +97,51 @@ export function TaskProvider({ children }: TaskProviderProps) {
       setError(null)
       
       try {
-        const allTasks = await dbServiceRef.current.getTasks()
+        const loadedTasks = await dbServiceRef.current.getTasks()
         
-        if (allTasks.length > 0) {
+        if (loadedTasks.length > 0) {
+          let tasksToUse = loadedTasks;
+          
+          // 親ID参照の移行が必要か確認
+          if (needsMigration(loadedTasks)) {
+            logInfo("既存のタスクデータを新しい構造に移行します...");
+            
+            tasksToUse = await performDataMigration(
+              loadedTasks,
+              async (task) => await dbServiceRef.current.saveProject(task),
+              async (task) => await dbServiceRef.current.saveTask(task)
+            );
+            
+            logInfo("タスクデータの移行が完了しました");
+          }
+          
           // タスクの展開状態を確認して調整
-          const adjustedTasks = adjustTaskExpansion(allTasks)
+          const adjustedTasks = adjustTaskExpansion(tasksToUse);
           setTasks(adjustedTasks);
-          logInfo("Tasks loaded successfully")
+          logInfo("Tasks loaded successfully");
         } else {
-          logWarning("No tasks returned from database, using initial data")
-          setTasks(initialMockTasks);
+          logWarning("No tasks returned from database, using initial data");
+          // 初期データを使用して親ID参照を追加
+          const migratedInitialData = await performDataMigration(
+            initialMockTasks,
+            async (task) => await dbServiceRef.current.saveProject(task),
+            async (task) => await dbServiceRef.current.saveTask(task)
+          );
+          setTasks(migratedInitialData);
         }
       } catch (error) {
-        const errorMessage = "タスクデータのロードに失敗しました"
+        const errorMessage = "タスクデータのロードに失敗しました";
         logError(errorMessage, error);
         setError(errorMessage);
         showErrorToast("エラー", errorMessage);
         
         // エラー時でも初期データは表示する
-        setTasks(initialMockTasks);
+        const migratedInitialData = await performDataMigration(
+          initialMockTasks,
+          async (task) => await dbServiceRef.current.saveProject(task),
+          async (task) => await dbServiceRef.current.saveTask(task)
+        );
+        setTasks(migratedInitialData);
       } finally {
         setIsLoading(false);
       }

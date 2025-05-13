@@ -5,7 +5,6 @@ import { Button, ButtonProps } from "@/components/ui/button";
 import { TaskContext } from "../../contexts/TaskContext";
 import { UIContext } from "../../contexts/UIContext";
 import { useTasks } from "../../hooks/useTasks";
-import { getNewTaskInfo } from "../../utils/taskOperationUtils";
 import { logDebug } from "../../utils/logUtils";
 
 interface AddTaskButtonProps extends ButtonProps {
@@ -16,6 +15,7 @@ interface AddTaskButtonProps extends ButtonProps {
   forToday?: boolean; // 今日のタスクとして追加するかどうか
   projectId?: number; // 特定のプロジェクトに追加する場合に指定
   level?: number; // 特定のレベルで追加する場合に指定
+  parentId?: number | null; // 親タスクを指定する場合
 }
 
 export default function AddTaskButton({
@@ -25,6 +25,7 @@ export default function AddTaskButton({
   forToday = false,
   projectId,
   level,
+  parentId,
   ...props
 }: AddTaskButtonProps) {
   const { tasks } = useContext(TaskContext);
@@ -32,32 +33,44 @@ export default function AddTaskButton({
   const { addNewTask } = useTasks();
 
   const handleAddTask = () => {
-    // タスク追加情報を取得
-    let { projectId: pId, projectName, level: lvl, afterIndex } = getNewTaskInfo(tasks, selectedTaskId);
-    
-    // 引数で渡された値があればそれを優先
-    if (projectId !== undefined) {
-      const project = tasks.find(t => t.projectId === projectId && t.isProject);
-      if (project) {
-        pId = project.projectId;
-        projectName = project.name;
+    try {
+      // 新しいタスクを追加
+      if (projectId !== undefined) {
+        // プロジェクトIDが指定されている場合
+        const project = tasks.find(t => t.projectId === projectId && t.isProject);
+        if (project) {
+          // 引数で渡された値を使用
+          const actualLevel = level !== undefined ? level : 1;
+          const actualParentId = parentId !== undefined ? parentId : null;
+          
+          logDebug(`タスク追加: projectId=${projectId}, level=${actualLevel}, parentId=${actualParentId}`);
+          addNewTask(actualLevel, actualParentId, projectId, project.name);
+        } else {
+          logDebug("指定されたプロジェクトが見つかりません");
+        }
+      } else if (selectedTaskId) {
+        // 選択タスクがある場合は親タスクとして追加
+        const selectedTask = tasks.find(t => t.id === selectedTaskId);
+        if (selectedTask) {
+          if (selectedTask.isProject) {
+            // プロジェクトの下に追加
+            addNewTask(1, null, selectedTask.projectId, selectedTask.name);
+          } else {
+            // タスクの下に子タスクとして追加
+            addNewTask(selectedTask.level + 1, selectedTaskId, selectedTask.projectId, selectedTask.projectName);
+          }
+        }
+      } else {
+        // デフォルト: 最初のプロジェクト直下に追加
+        const firstProject = tasks.find(t => t.isProject);
+        if (firstProject) {
+          addNewTask(1, null, firstProject.projectId, firstProject.name);
+        } else {
+          logDebug("プロジェクトが見つかりません");
+        }
       }
-    }
-
-    if (level !== undefined) {
-      lvl = level;
-    }
-
-    logDebug(`タスク追加: projectId=${pId}, level=${lvl}, afterIndex=${afterIndex}`);
-    
-    // タスク追加
-    const newTaskId = addNewTask(lvl, pId, projectName, afterIndex);
-    
-    // 今日のタスクとして追加する場合は日付を設定
-    if (forToday && newTaskId) {
-      // 日付更新処理は理想的には useTasks フック内で実装すべき
-      // この例ではイベントを発行するか、コールバックを渡す方式が良い
-      logDebug("今日のタスクとして追加されました");
+    } catch (error) {
+      logDebug(`タスク追加エラー: ${error}`);
     }
   };
 

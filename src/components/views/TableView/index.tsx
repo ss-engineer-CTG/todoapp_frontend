@@ -1,13 +1,14 @@
 // src/components/views/TableView/index.tsx
 "use client"
 
-import { useContext } from "react"
+import { useContext, useEffect } from "react"
 import { TaskContext } from "../../../contexts/TaskContext"
 import { UIContext } from "../../../contexts/UIContext"
 import { useFilterAndSort } from "../../../hooks/useFilterAndSort"
 import { useTasks } from "../../../hooks/useTasks"
 import { useKeyboardShortcuts } from "../../../hooks/useKeyboardShortcuts"
 import { useDragAndDrop } from "../../../hooks/useDragAndDrop"
+import { getDirectChildTasks } from "../../../utils/taskUtils"
 import FilterToolbar from "./FilterToolbar"
 import TableRow from "./TableRow"
 import AddTaskButton from "../../common/AddTaskButton"
@@ -33,7 +34,9 @@ export default function TableView() {
   const visibleTasks = getVisibleTasks()
 
   // コンポーネントマウント時のログ
-  logInfo("TableView がレンダリングされました");
+  useEffect(() => {
+    logInfo("TableView がレンダリングされました");
+  }, []);
 
   return (
     <div>
@@ -75,17 +78,7 @@ export default function TableView() {
                 onOpenNotes={openNotes}
                 onEdit={editTask}
                 onDelete={confirmDeleteTask}
-                hasChildren={
-                  visibleTasks.some((childTask) => {
-                    const taskIndex = visibleTasks.indexOf(task)
-                    const childIndex = visibleTasks.indexOf(childTask)
-                    return (
-                      childTask.level === task.level + 1 &&
-                      childIndex > taskIndex &&
-                      !visibleTasks.slice(taskIndex + 1, childIndex).some((t) => t.level <= task.level)
-                    )
-                  })
-                }
+                hasChildren={getDirectChildTasks(task, tasks).length > 0}
                 ref={(el) => {
                   if (el) taskRefs.current[task.id] = el;
                 }}

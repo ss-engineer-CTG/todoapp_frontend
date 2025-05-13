@@ -1,6 +1,6 @@
 "use client"
 
-import React, { forwardRef } from "react"
+import React, { forwardRef, useRef, useEffect, useState } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Task } from "../../../types/Task"
 
@@ -17,7 +17,7 @@ interface TimelineItemProps {
   onSelect: () => void
   onKeyDown: (e: React.KeyboardEvent<HTMLElement>, taskId: number) => void
   onToggleComplete: (id: number) => void
-  onDragStart: (e: React.MouseEvent<HTMLDivElement>, task: Task, type: "start" | "end" | "move") => void
+  onDragStart: (e: React.MouseEvent<HTMLDivElement>, task: Task, type: "start" | "end" | "move", daysPerPixel?: number) => void
   isDragging: boolean
   dragType: "start" | "end" | "move" | "reorder" | null
 }
@@ -34,15 +34,31 @@ const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(
     isDragging,
     dragType
   }, ref) => {
-    // 月内でのタスクの開始日と終了日を計算
-    const startDay = task.startDate.substring(0, 7) === month.id 
-      ? Number.parseInt(task.startDate.split("-")[2]) 
-      : 1
-
-    const endDay = task.dueDate.substring(0, 7) === month.id
-      ? Number.parseInt(task.dueDate.split("-")[2])
-      : month.daysInMonth
-
+    // 月のカレンダー幅を取得（実際のDOM要素から）
+    const monthGridRef = useRef<HTMLDivElement>(null);
+    const [monthWidth, setMonthWidth] = useState(0);
+    
+    useEffect(() => {
+      const updateWidth = () => {
+        if (monthGridRef.current) {
+          setMonthWidth(monthGridRef.current.offsetWidth);
+        }
+      };
+      
+      // 初期化時とリサイズ時に幅を更新
+      updateWidth();
+      window.addEventListener('resize', updateWidth);
+      
+      return () => {
+        window.removeEventListener('resize', updateWidth);
+      };
+    }, []);
+    
+    // 日ごとの幅を計算（カレンダー幅 / 月の日数）
+    const dayWidth = monthWidth / month.daysInMonth;
+    // 日付あたりのピクセル数の逆数（1ピクセルあたりの日数）
+    const daysPerPixel = dayWidth ? 1 / dayWidth : 0.04;
+    
     // 優先度に基づく色の設定
     const getTaskColor = () => {
       if (task.completed) return 'bg-green-200'
@@ -54,6 +70,23 @@ const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(
         default: return 'bg-blue-200'
       }
     }
+    
+    // より正確な日付位置計算
+    const getPositionFromDate = (dateStr: string): number => {
+      const dateObj = new Date(dateStr);
+      // 月が一致しない場合は境界値を返す
+      if (dateStr.substring(0, 7) !== month.id) {
+        return dateStr < month.id ? 0 : 100;
+      }
+      
+      const day = dateObj.getDate();
+      return ((day - 1) / month.daysInMonth) * 100;
+    };
+    
+    // 開始日と終了日の位置をパーセンテージで計算
+    const startPosition = getPositionFromDate(task.startDate);
+    const endPosition = getPositionFromDate(task.dueDate);
+    const width = Math.max(endPosition - startPosition, 3); // 最小幅を確保
 
     return (
       <div className="flex mt-1">
@@ -73,23 +106,34 @@ const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(
           </span>
         </div>
         <div
+          ref={monthGridRef}
           className="flex-1 grid relative border-l border-gray-200"
           style={{ gridTemplateColumns: `repeat(${month.daysInMonth}, minmax(25px, 1fr))` }}
         >
+          {/* 現在の日付を示すマーカー */}
+          {month.id === new Date().toISOString().substring(0, 7) && (
+            <div
+              className="absolute top-0 bottom-0 w-px bg-red-500 z-10"
+              style={{
+                left: `${((new Date().getDate() - 1) / month.daysInMonth) * 100}%`
+              }}
+            ></div>
+          )}
+          
           <div
             ref={ref}
             className={`absolute h-6 rounded ${getTaskColor()} ${
               isSelected ? "ring-2 ring-blue-500" : ""
-            } ${isDragging ? "opacity-70" : ""} cursor-grab`}
+            } ${isDragging ? "opacity-70" : ""} cursor-grab transition-all duration-100`}
             style={{
-              left: `${((startDay - 1) / month.daysInMonth) * 100}%`,
-              width: `${((endDay - startDay + 1) / month.daysInMonth) * 100}%`,
+              left: `${startPosition}%`,
+              width: `${width}%`,
               top: "4px",
             }}
             onClick={onSelect}
             tabIndex={0}
             onKeyDown={(e) => onKeyDown(e, task.id)}
-            onMouseDown={(e) => onDragStart(e, task, "move")}
+            onMouseDown={(e) => onDragStart(e, task, "move", daysPerPixel)}
             data-task-id={task.id}
           >
             <div className="text-xs px-2 truncate flex justify-between items-center h-full">
@@ -104,14 +148,14 @@ const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(
                   className="cursor-w-resize w-1 h-4 bg-gray-400 opacity-50 hover:opacity-100 rounded"
                   onMouseDown={(e) => {
                     e.stopPropagation()
-                    onDragStart(e, task, "start")
+                    onDragStart(e, task, "start", daysPerPixel)
                   }}
                 />
                 <div
                   className="cursor-e-resize w-1 h-4 bg-gray-400 opacity-50 hover:opacity-100 rounded"
                   onMouseDown={(e) => {
                     e.stopPropagation()
-                    onDragStart(e, task, "end")
+                    onDragStart(e, task, "end", daysPerPixel)
                   }}
                 />
               </div>

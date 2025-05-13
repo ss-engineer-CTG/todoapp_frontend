@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Edit, FileText, Trash2 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Task } from "../../../types/Task"
+import { TaskLevelIndicator } from "../../common/TaskHierarchyUtility"
 
 interface TableRowProps {
   task: Task
@@ -63,7 +64,10 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
         </td>
         <td className="p-3">
           <div className="flex items-center">
-            <div style={{ paddingLeft: `${task.level * 20}px` }} className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {/* 階層レベルを視覚的に表示 */}
+              <TaskLevelIndicator level={task.level} />
+              
               {!task.isProject && (
                 <Checkbox
                   checked={task.completed}

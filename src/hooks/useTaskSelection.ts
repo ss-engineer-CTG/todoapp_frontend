@@ -2,6 +2,8 @@ import { useContext } from "react"
 import { TaskContext } from "../contexts/TaskContext"
 import { UIContext } from "../contexts/UIContext"
 import { useFilterAndSort } from "./useFilterAndSort"
+import { getParentTask, getDirectChildTasks } from "../utils/taskUtils"
+import { logInfo } from "../utils/logUtils"
 
 export function useTaskSelection() {
   const { tasks } = useContext(TaskContext)
@@ -11,68 +13,92 @@ export function useTaskSelection() {
   // 選択されたタスクへフォーカスを移動
   const focusSelectedTask = () => {
     if (selectedTaskId && taskRefs.current[selectedTaskId]) {
-      taskRefs.current[selectedTaskId]?.focus()
+      const element = taskRefs.current[selectedTaskId];
       
-      // 視覚的なフィードバック（フラッシュエフェクト）
-      const element = taskRefs.current[selectedTaskId]
       if (element) {
-        element.classList.add('bg-blue-200')
+        // スクロール位置を調整して要素を表示
+        const rect = element.getBoundingClientRect();
+        const isInView = (
+          rect.top >= 0 &&
+          rect.left >= 0 &&
+          rect.bottom <= window.innerHeight &&
+          rect.right <= window.innerWidth
+        );
+        
+        if (!isInView) {
+          // スムーズスクロールで要素を表示
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
+        // フォーカスとビジュアルフィードバック
+        element.focus();
+        
+        // 視覚的なフィードバック（フラッシュエフェクト）
+        element.classList.add('bg-blue-200');
         setTimeout(() => {
-          element.classList.remove('bg-blue-200')
-        }, 300)
+          element.classList.remove('bg-blue-200');
+        }, 300);
       }
     }
   }
 
-  // 上下の隣接するタスクに移動
+  // 上下の隣接するタスクに移動 - 表示されているタスクのみ
   const navigateToAdjacentTask = (taskId: number, direction: "up" | "down") => {
-    const visibleTasks = getVisibleTasks()
-    const currentIndex = visibleTasks.findIndex((t) => t.id === taskId)
+    const visibleTasks = getVisibleTasks();
+    const currentIndex = visibleTasks.findIndex((t) => t.id === taskId);
 
-    if (currentIndex === -1) return
+    if (currentIndex === -1) return;
 
     const targetIndex =
-      direction === "up" ? Math.max(0, currentIndex - 1) : Math.min(visibleTasks.length - 1, currentIndex + 1)
+      direction === "up" 
+        ? Math.max(0, currentIndex - 1) 
+        : Math.min(visibleTasks.length - 1, currentIndex + 1);
 
     if (targetIndex !== currentIndex) {
-      setSelectedTaskId(visibleTasks[targetIndex].id)
+      const targetTask = visibleTasks[targetIndex];
+      setSelectedTaskId(targetTask.id);
+      logInfo(`${direction === "up" ? "上" : "下"}のタスクに移動しました: ${targetTask.name}`);
     }
   }
 
-  // 親タスクへ移動
+  // 親タスクへ移動 - 明示的な親参照を使用
   const navigateToParentTask = (taskId: number) => {
-    const task = tasks.find((t) => t.id === taskId)
-    if (!task || task.level === 0) return
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task || task.level === 0) return;
 
-    // 現在のタスクより前にあって、レベルが1つ小さいタスクを探す
-    const taskIndex = tasks.findIndex((t) => t.id === taskId)
-    for (let i = taskIndex - 1; i >= 0; i--) {
-      if (tasks[i].level === task.level - 1) {
-        setSelectedTaskId(tasks[i].id)
-        return
-      }
+    // 親タスクを取得
+    const parent = getParentTask(task, tasks);
+    if (parent) {
+      setSelectedTaskId(parent.id);
+      logInfo(`親タスクに移動しました: ${parent.name}`);
+      return;
     }
+    
+    logInfo("親タスクが見つかりません");
   }
 
-  // 子タスクへ移動
+  // 子タスクへ移動 - 明示的な親子関係を使用
   const navigateToChildTask = (taskId: number) => {
-    const task = tasks.find((t) => t.id === taskId)
-    if (!task) return
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
 
-    // このタスクの直後に、レベルが1つ大きいタスクを探す
-    const taskIndex = tasks.findIndex((t) => t.id === taskId)
-    if (taskIndex < tasks.length - 1 && tasks[taskIndex + 1].level === task.level + 1) {
-      setSelectedTaskId(tasks[taskIndex + 1].id)
+    // 子タスクを直接検索
+    const childTasks = getDirectChildTasks(task, tasks);
+    if (childTasks.length > 0) {
+      // 最初の子タスクを選択
+      setSelectedTaskId(childTasks[0].id);
+      logInfo(`子タスクに移動しました: ${childTasks[0].name}`);
+    } else {
+      logInfo("子タスクがありません");
     }
   }
 
   // このタスクに子タスクがあるかチェック
   const hasChildTasks = (taskId: number) => {
-    const task = tasks.find((t) => t.id === taskId)
-    if (!task) return false
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return false;
 
-    const taskIndex = tasks.findIndex((t) => t.id === taskId)
-    return taskIndex < tasks.length - 1 && tasks[taskIndex + 1].level > task.level
+    return getDirectChildTasks(task, tasks).length > 0;
   }
 
   return {

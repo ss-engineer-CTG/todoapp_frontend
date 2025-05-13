@@ -1,7 +1,7 @@
 // src/components/views/TimelineView/index.tsx
 "use client"
 
-import { useContext, useState } from "react"
+import { useContext, useState, useEffect } from "react"
 import { TaskContext } from "../../../contexts/TaskContext"
 import { UIContext } from "../../../contexts/UIContext"
 import { useFilterAndSort } from "../../../hooks/useFilterAndSort"
@@ -26,7 +26,7 @@ export default function TimelineView() {
   
   const { toggleTaskCompletion } = useTasks()
   const { getVisibleTasks } = useFilterAndSort()
-  const { handleDragStart, isDragging, dragTask, dragType } = useDragAndDrop()
+  const { handleDragStart, isDragging, dragTask, dragType, dragPreview } = useDragAndDrop()
   
   // キーボードショートカットを有効化
   useKeyboardShortcuts()
@@ -34,28 +34,103 @@ export default function TimelineView() {
   const [showCompletedInTimeline, setShowCompletedInTimeline] = useState(false)
   
   const visibleTasks = showCompletedInTimeline 
-    ? getVisibleTasks() 
-    : getVisibleTasks().filter(t => !t.completed)
+    ? getVisibleTasks().filter(t => !t.isProject) 
+    : getVisibleTasks().filter(t => !t.isProject && !t.completed);
 
-  // タスクがある全ての月を取得
-  const allDates = visibleTasks.flatMap((task) => [task.startDate, task.dueDate])
-  const months = [...new Set(allDates.map((date) => date.substring(0, 7)))].sort().map((month) => {
-    const [year, monthNum] = month.split("-")
-    return {
-      id: month,
-      name: new Date(Number.parseInt(year), Number.parseInt(monthNum) - 1, 1).toLocaleString("ja-JP", {
-        year: "numeric",
-        month: "long",
-      }),
-      daysInMonth: new Date(Number.parseInt(year), Number.parseInt(monthNum), 0).getDate()
+  // 表示期間を決定（少なくとも現在月から3ヶ月分）
+  const determineMonthsToShow = () => {
+    const today = new Date();
+    const startMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endMonth = new Date(today.getFullYear(), today.getMonth() + 2, 1);
+    
+    // タスクの日付範囲も考慮
+    const allDates = visibleTasks.flatMap((task) => [task.startDate, task.dueDate]);
+    
+    if (allDates.length > 0) {
+      const earliestDate = new Date(Math.min(...allDates.map(d => new Date(d).getTime())));
+      const latestDate = new Date(Math.max(...allDates.map(d => new Date(d).getTime())));
+      
+      // 開始月を早い方に設定
+      if (earliestDate < startMonth) {
+        startMonth.setMonth(earliestDate.getMonth());
+        startMonth.setFullYear(earliestDate.getFullYear());
+      }
+      
+      // 終了月を遅い方に設定
+      if (latestDate > endMonth) {
+        endMonth.setMonth(latestDate.getMonth());
+        endMonth.setFullYear(latestDate.getFullYear());
+      }
     }
-  })
+    
+    return generateMonthRange(startMonth, endMonth);
+  };
+  
+  // 月範囲を生成
+  const generateMonthRange = (startMonth: Date, endMonth: Date) => {
+    const months = [];
+    const current = new Date(startMonth);
+    
+    while (current <= endMonth) {
+      const year = current.getFullYear();
+      const month = current.getMonth() + 1;
+      const monthId = `${year}-${String(month).padStart(2, '0')}`;
+      
+      months.push({
+        id: monthId,
+        name: current.toLocaleString("ja-JP", {
+          year: "numeric",
+          month: "long",
+        }),
+        daysInMonth: new Date(year, month, 0).getDate()
+      });
+      
+      current.setMonth(current.getMonth() + 1);
+    }
+    
+    return months;
+  };
+
+  // 月の配列を計算
+  const months = determineMonthsToShow();
 
   // 現在の日付を取得
-  const today = new Date().toISOString().split("T")[0]
+  const today = new Date().toISOString().split("T")[0];
 
   // コンポーネントマウント時のログ
-  logInfo("TimelineView がレンダリングされました");
+  useEffect(() => {
+    logInfo("TimelineView がレンダリングされました");
+  }, []);
+
+  // ドラッグプレビューを表示
+  const renderDragPreview = () => {
+    if (!dragPreview || !dragTask) return null;
+    
+    const task = tasks.find(t => t.id === dragPreview.taskId);
+    if (!task) return null;
+    
+    let previewStartDate = new Date(task.startDate);
+    let previewEndDate = new Date(task.dueDate);
+    
+    if (dragPreview.type === "start" || dragPreview.type === "move") {
+      previewStartDate.setDate(previewStartDate.getDate() + dragPreview.daysDelta);
+    }
+    
+    if (dragPreview.type === "end" || dragPreview.type === "move") {
+      previewEndDate.setDate(previewEndDate.getDate() + dragPreview.daysDelta);
+    }
+    
+    return (
+      <div className="fixed bottom-4 right-4 bg-white shadow-lg p-3 rounded-lg z-50 border border-blue-300">
+        <div className="text-sm font-medium mb-1">ドラッグプレビュー</div>
+        <div className="text-xs">
+          <div>開始日: {previewStartDate.toISOString().substring(0, 10)}</div>
+          <div>終了日: {previewEndDate.toISOString().substring(0, 10)}</div>
+          <div>期間: {Math.round((previewEndDate.getTime() - previewStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1}日</div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -67,8 +142,9 @@ export default function TimelineView() {
             <Switch 
               checked={showCompletedInTimeline}
               onCheckedChange={setShowCompletedInTimeline}
+              id="show-completed"
             />
-            <span className="text-sm">完了済みタスクを表示</span>
+            <label htmlFor="show-completed" className="text-sm cursor-pointer">完了済みタスクを表示</label>
           </div>
         </div>
         
@@ -100,7 +176,11 @@ export default function TimelineView() {
                     return (
                       <div 
                         key={i} 
-                        className={`h-8 text-center text-xs border-r ${isToday ? 'bg-blue-100 font-bold' : 'border-gray-200'}`}
+                        className={`h-8 text-center text-xs border-r ${
+                          isToday ? 'bg-blue-100 font-bold' : (
+                            (i + 1) % 7 === 0 || (i + 1) % 7 === 1 ? 'bg-gray-50' : 'border-gray-200'
+                          )
+                        }`}
                       >
                         {i + 1}
                       </div>
@@ -113,7 +193,7 @@ export default function TimelineView() {
                 .filter((task) => {
                   const taskStartMonth = task.startDate.substring(0, 7)
                   const taskEndMonth = task.dueDate.substring(0, 7)
-                  return taskStartMonth <= month.id && taskEndMonth >= month.id && !task.isProject
+                  return taskStartMonth <= month.id && taskEndMonth >= month.id
                 })
                 .map((task) => (
                   <TimelineItem
@@ -136,6 +216,9 @@ export default function TimelineView() {
           ))}
         </div>
       </div>
+      
+      {/* ドラッグプレビュー表示 */}
+      {dragPreview && renderDragPreview()}
     </div>
   )
 }

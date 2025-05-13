@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useContext, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -11,6 +11,8 @@ import { CalendarDays, X } from "lucide-react"
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { Task } from "../../types/Task"
+import { TaskContext } from "../../contexts/TaskContext"
+import { getTaskPath } from "../common/TaskHierarchyUtility"
 
 interface TaskFormProps {
   task: Task
@@ -21,6 +23,7 @@ interface TaskFormProps {
 }
 
 export default function TaskForm({ task, onSave, onCancel, projects, availableTags }: TaskFormProps) {
+  const { tasks } = useContext(TaskContext)
   const [formData, setFormData] = useState<Task>(task)
   const [startDate, setStartDate] = useState<Date | undefined>(
     formData.startDate ? new Date(formData.startDate) : undefined,
@@ -29,6 +32,24 @@ export default function TaskForm({ task, onSave, onCancel, projects, availableTa
     formData.dueDate ? new Date(formData.dueDate) : undefined,
   )
   const [newTag, setNewTag] = useState("")
+
+  // 現在のプロジェクト内の選択可能な親タスク
+  const availableParentTasks = useMemo(() => {
+    // プロジェクト直下のタスクの場合、parentId は null
+    if (formData.level <= 1) return [];
+    
+    // 同じプロジェクト内のタスクから選択可能な親を抽出
+    return tasks.filter(t => 
+      // 同じプロジェクトに属する
+      t.projectId === formData.projectId && 
+      // プロジェクト自体は選択肢に含めない
+      !t.isProject && 
+      // 自分自身は選択肢に含めない
+      t.id !== formData.id &&
+      // レベルが自分より1つ低いタスクのみ
+      t.level === formData.level - 1
+    );
+  }, [tasks, formData.projectId, formData.level, formData.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -53,11 +74,37 @@ export default function TaskForm({ task, onSave, onCancel, projects, availableTa
     const projectId = Number.parseInt(e.target.value)
     const project = projects.find((p) => p.projectId === projectId)
     if (project) {
+      // プロジェクト変更時は親を解除（プロジェクト直下に移動）
       setFormData({
         ...formData,
         projectId,
         projectName: project.name,
+        parentId: null,
+        level: 1
       })
+    }
+  }
+  
+  const handleParentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const parentId = e.target.value ? Number.parseInt(e.target.value) : null
+    
+    if (parentId === null) {
+      // 親なし = プロジェクト直下
+      setFormData({
+        ...formData,
+        parentId: null,
+        level: 1
+      })
+    } else {
+      const parentTask = tasks.find(t => t.id === parentId)
+      if (parentTask) {
+        // 親タスクのレベル + 1
+        setFormData({
+          ...formData,
+          parentId,
+          level: parentTask.level + 1
+        })
+      }
     }
   }
   
@@ -87,6 +134,22 @@ export default function TaskForm({ task, onSave, onCancel, projects, availableTa
     e.preventDefault()
     onSave(formData)
   }
+
+  // 親タスクのパス表示
+  const renderParentPath = () => {
+    if (!formData.parentId) return null;
+    
+    const parentTask = tasks.find(t => t.id === formData.parentId);
+    if (!parentTask) return null;
+    
+    const path = getTaskPath(parentTask, tasks);
+    
+    return (
+      <div className="text-xs text-gray-500 mt-1">
+        パス: {path.map(t => t.name).join(" > ")}
+      </div>
+    );
+  };
 
   return (
     <form onSubmit={handleSubmit}>
@@ -124,6 +187,32 @@ export default function TaskForm({ task, onSave, onCancel, projects, availableTa
             ))}
           </select>
         </div>
+
+        {/* 親タスク選択 - レベル1より深い場合のみ表示 */}
+        {formData.level > 1 && (
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="parent" className="text-right">
+              親タスク
+            </label>
+            <div className="col-span-3">
+              <select
+                id="parent"
+                name="parent"
+                value={formData.parentId || ""}
+                onChange={handleParentChange}
+                className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="">プロジェクト直下</option>
+                {availableParentTasks.map((parentTask) => (
+                  <option key={parentTask.id} value={parentTask.id}>
+                    {parentTask.name}
+                  </option>
+                ))}
+              </select>
+              {renderParentPath()}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-4 items-center gap-4">
           <label htmlFor="assignee" className="text-right">
