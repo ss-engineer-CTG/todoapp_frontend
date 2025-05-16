@@ -1,127 +1,92 @@
-// src/hooks/useTaskStatus.ts
-import { useMemo } from "react";
-import { Task } from "../types/Task";
+import { useMemo } from 'react';
+import { isAfter, isBefore, isSameDay } from 'date-fns';
+import { Task, TaskStatus } from '../models/task';
 
-// タスクのステータス種別
-export type TaskStatus = 'delayed' | 'active' | 'future' | 'completed';
+interface StatusColors {
+  background: string;
+  border: string;
+  text: string;
+}
 
-// タスクのステータス情報
-export interface TaskStatusInfo {
+interface UseTaskStatusResult {
   status: TaskStatus;
-  color: string;
-  backgroundColor: string;
-  borderColor: string;
-  label: string;
+  statusColors: StatusColors;
 }
 
 /**
- * タスクのステータスを判定し、関連する表示情報を提供するカスタムフック
+ * カスタムフック: タスクのステータスを計算
+ * 
+ * タスクの開始日・終了日・完了状態から現在のステータスとカラーを計算
  */
-export function useTaskStatus() {
-  /**
-   * タスクのステータスを判定
-   * @param task タスク
-   * @param today 今日の日付（YYYY-MM-DD形式）
-   * @returns タスクのステータス
-   */
-  const getTaskStatus = (task: Task, today: string): TaskStatus => {
-    // 完了済み
+export const useTaskStatus = (task: Task): UseTaskStatusResult => {
+  return useMemo(() => {
+    const today = new Date();
+    
+    // ステータスを判定
+    let status: TaskStatus;
+    
+    // 完了タスク
     if (task.completed) {
-      return 'completed';
+      status = 'completed';
+    }
+    // 遅延タスク（終了日が過ぎているが未完了）
+    else if (isAfter(today, task.endDate)) {
+      status = 'delayed';
+    }
+    // 進行中タスク（今日が開始日と終了日の間）
+    else if (
+      (isAfter(today, task.startDate) || isSameDay(today, task.startDate)) &&
+      (isBefore(today, task.endDate) || isSameDay(today, task.endDate))
+    ) {
+      status = 'active';
+    }
+    // 未来タスク（開始日がまだ来ていない）
+    else {
+      status = 'future';
     }
     
-    // 遅延（期限切れ）
-    if (today > task.dueDate) {
-      return 'delayed';
-    }
+    // ステータスに応じたカラーを設定
+    let statusColors: StatusColors;
     
-    // 進行中（現在日付が開始～終了の間）
-    if (today >= task.startDate && today <= task.dueDate) {
-      return 'active';
-    }
-    
-    // 未来タスク
-    return 'future';
-  };
-
-  /**
-   * タスクのステータスに基づく色情報を取得
-   * @param status タスクのステータス
-   * @returns 色情報
-   */
-  const getStatusColors = (status: TaskStatus): { bg: string, border: string, text: string } => {
     switch (status) {
       case 'delayed':
-        return {
-          bg: '#FECACA', // 薄い赤
-          border: '#EF4444', // 赤
-          text: '#B91C1C', // 濃い赤
+        statusColors = {
+          background: '#fecaca', // bg-red-200
+          border: '#ef4444',     // border-red-500
+          text: '#b91c1c'        // text-red-800
         };
+        break;
       case 'active':
-        return {
-          bg: '#BFDBFE', // 薄い青
-          border: '#3B82F6', // 青
-          text: '#1E40AF', // 濃い青
+        statusColors = {
+          background: '#bfdbfe', // bg-blue-200
+          border: '#3b82f6',     // border-blue-500
+          text: '#1e40af'        // text-blue-800
         };
+        break;
       case 'future':
-        return {
-          bg: '#A7F3D0', // 薄い緑
-          border: '#10B981', // 緑
-          text: '#047857', // 濃い緑
+        statusColors = {
+          background: '#a7f3d0', // bg-green-200
+          border: '#10b981',     // border-green-500
+          text: '#047857'        // text-green-800
         };
+        break;
       case 'completed':
-        return {
-          bg: '#E5E7EB', // 薄い灰色
-          border: '#9CA3AF', // 灰色
-          text: '#4B5563', // 濃い灰色
+        statusColors = {
+          background: '#e5e7eb', // bg-gray-200
+          border: '#9ca3af',     // border-gray-400
+          text: '#4b5563'        // text-gray-600
         };
+        break;
       default:
-        return {
-          bg: '#E5E7EB',
-          border: '#9CA3AF',
-          text: '#4B5563',
+        statusColors = {
+          background: '#f3f4f6', // bg-gray-100
+          border: '#d1d5db',     // border-gray-300
+          text: '#374151'        // text-gray-700
         };
     }
-  };
-
-  /**
-   * タスクのステータスに応じたラベルを取得
-   * @param status タスクのステータス
-   * @returns ステータスラベル
-   */
-  const getStatusLabel = (status: TaskStatus): string => {
-    switch (status) {
-      case 'delayed': return '遅延';
-      case 'active': return '進行中';
-      case 'future': return '未来';
-      case 'completed': return '完了';
-      default: return '不明';
-    }
-  };
-
-  /**
-   * タスクの詳細なステータス情報を取得
-   * @param task タスク
-   * @param today 今日の日付（YYYY-MM-DD形式）
-   * @returns タスクのステータス情報
-   */
-  const getTaskStatusInfo = (task: Task, today: string): TaskStatusInfo => {
-    const status = getTaskStatus(task, today);
-    const { bg, border, text } = getStatusColors(status);
     
-    return {
-      status,
-      color: text,
-      backgroundColor: bg,
-      borderColor: border,
-      label: getStatusLabel(status)
-    };
-  };
+    return { status, statusColors };
+  }, [task.startDate, task.endDate, task.completed]);
+};
 
-  return {
-    getTaskStatus,
-    getStatusColors,
-    getStatusLabel,
-    getTaskStatusInfo
-  };
-}
+export default useTaskStatus;
