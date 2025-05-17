@@ -18,16 +18,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
-    // Electron に組み込む場合のために最適化を調整
     target: 'esnext',
     minify: 'esbuild',
   },
-  // 開発時に CORS エラーが発生する場合のプロキシ設定
-  // proxy: {
-  //   '/api': {
-  //     target: 'http://localhost:8000',
-  //     changeOrigin: true,
-  //     rewrite: (path) => path.replace(/^\/api/, '')
-  //   }
-  // }
 });
