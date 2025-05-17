@@ -16,8 +16,8 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function partial<T extends (...args: any[]) => any>(
   fn: T,
-  ...args: Parameters<T> extends [...infer U, ...infer V] ? U : never
-): (...args: Parameters<T> extends [...infer U, ...infer V] ? V : never) => ReturnType<T> {
+  ...args: Parameters<T> extends [...infer U, ...any[]] ? U : never
+): (...args: Parameters<T> extends [...any[], ...infer V] ? V : never) => ReturnType<T> {
   return (...restArgs: any[]) => fn(...args, ...restArgs);
 }
 

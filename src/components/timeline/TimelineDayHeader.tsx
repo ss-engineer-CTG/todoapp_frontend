@@ -1,5 +1,5 @@
 import React from 'react';
-import { format, addDays, isSameDay, isWeekend, differenceInDays, startOfMonth, isSameMonth } from 'date-fns';
+import { format, addDays, isSameDay, isWeekend, startOfMonth, isSameMonth } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 interface TimelineDayHeaderProps {
@@ -9,6 +9,9 @@ interface TimelineDayHeaderProps {
   todayIndicator?: boolean;
   highlightWeekends?: boolean;
 }
+
+// 定数を別途宣言
+const LABEL_WIDTH = 200;
 
 /**
  * 日付と月表示を行うヘッダーコンポーネント
@@ -22,7 +25,7 @@ const TimelineDayHeader: React.FC<TimelineDayHeaderProps> = ({
   highlightWeekends = true
 }) => {
   // 表示する日付の配列を生成
-  const days = [];
+  const days: Date[] = [];
   let currentDate = new Date(startDate);
   
   while (currentDate <= endDate) {
@@ -35,8 +38,13 @@ const TimelineDayHeader: React.FC<TimelineDayHeaderProps> = ({
   
   // 月ラベル情報の生成
   const getMonthLabels = () => {
-    const months = [];
-    let currentMonth = null;
+    const months: {
+      date: Date;
+      startIndex: number;
+      endIndex: number;
+      width: number;
+    }[] = [];
+    let currentMonth: Date | null = null;
     let monthStartIndex = 0;
     
     days.forEach((day, index) => {
@@ -75,9 +83,6 @@ const TimelineDayHeader: React.FC<TimelineDayHeaderProps> = ({
   };
   
   const monthLabels = getMonthLabels();
-  
-  // 左側のラベル部分の幅（タスク名表示エリア）
-  const LABEL_WIDTH = 200;
 
   return (
     <div
@@ -130,6 +135,7 @@ const TimelineDayHeader: React.FC<TimelineDayHeaderProps> = ({
   );
 };
 
-TimelineDayHeader.LABEL_WIDTH = 200; // 定数としてコンポーネントに追加
+// 静的プロパティを正しく型付けして追加
+(TimelineDayHeader as any).LABEL_WIDTH = LABEL_WIDTH;
 
 export default TimelineDayHeader;

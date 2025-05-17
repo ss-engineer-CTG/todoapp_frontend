@@ -15,9 +15,6 @@ const TaskList: React.FC = () => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [noteTask, setNoteTask] = useState<Task | null>(null);
   
-  // ルートタスク（親を持たないタスク）の取得
-  const rootTasks = tasks.filter(task => !task.parentId);
-  
   // タスク階層の再帰的レンダリング
   const renderTaskHierarchy = (taskIds: string[], depth = 0) => {
     return taskIds.map(taskId => {

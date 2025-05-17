@@ -21,7 +21,8 @@ const TimelineHeader: React.FC = () => {
   
   // ズームレベル変更（最小50%、最大200%）
   const handleZoomChange = (delta: number) => {
-    setZoomLevel(prev => Math.min(200, Math.max(50, prev + delta)));
+    const newZoomLevel = Math.min(200, Math.max(50, zoomLevel + delta));
+    setZoomLevel(newZoomLevel);
   };
   
   // 完了タスク表示切替

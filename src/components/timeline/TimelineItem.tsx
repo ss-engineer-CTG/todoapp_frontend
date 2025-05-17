@@ -8,7 +8,7 @@ import TaskDetailPopover from './TaskDetailPopover';
 interface TimelineItemProps {
   task: Task;
   rowIndex: number;
-  depth: number;
+  depth: number; // 使用しない場合でも型定義を保持
   dayWidth: number;
   startDate: Date;
   rowHeight: number;
@@ -33,7 +33,7 @@ interface TimelineItemProps {
 const TimelineItem: React.FC<TimelineItemProps> = ({
   task,
   rowIndex,
-  depth,
+  depth: _depth, // 使用しないが型定義のために残す
   dayWidth,
   startDate,
   rowHeight,
@@ -51,7 +51,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
   onMouseLeave
 }) => {
   const { updateTask } = useTaskContext();
-  const { status, statusColors } = useTaskStatus(task);
+  const { statusColors } = useTaskStatus(task);
   const [dragType, setDragType] = useState<'start' | 'end' | 'move' | null>(null);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartDate, setDragStartDate] = useState<Date | null>(null);

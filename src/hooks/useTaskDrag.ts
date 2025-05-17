@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
 import { addDays } from 'date-fns';
-import { Task } from '../models/task';
 import { useTaskContext } from '../contexts/TaskContext';
 
 interface DragState {

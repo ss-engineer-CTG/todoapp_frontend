@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { addDays, differenceInDays, isSameDay } from 'date-fns';
+import React, { useState, useCallback, useEffect } from 'react';
+import { addDays, differenceInDays } from 'date-fns';
 import { useTaskContext } from '../../contexts/TaskContext';
 import { useTimelineContext } from '../../contexts/TimelineContext';
 import TimelineHeader from './TimelineHeader';
@@ -180,6 +180,9 @@ const TimelineView: React.FC<TimelineViewProps> = ({ className = '' }) => {
   
   // 今日が表示範囲内にあるかチェック
   const isTodayVisible = today >= startDate && today <= endDate;
+  
+  // TimelineItemList.LABEL_WIDTHの代替値として定数を使用
+  const LABEL_WIDTH = 200;
 
   return (
     <div className={`timeline-view overflow-hidden flex flex-col border rounded bg-white ${className}`}>
@@ -214,7 +217,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ className = '' }) => {
           <div
             className="absolute top-0 bottom-0 w-px bg-red-500 z-10"
             style={{
-              left: `${differenceInDays(today, startDate) * calculateDayWidth() + (TimelineItemList.LABEL_WIDTH || 200)}px`,
+              left: `${differenceInDays(today, startDate) * calculateDayWidth() + LABEL_WIDTH}px`,
               pointerEvents: 'none'
             }}
           />

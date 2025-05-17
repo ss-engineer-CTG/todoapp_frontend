@@ -18,6 +18,10 @@ interface TimelineItemListProps {
   onDelete?: (taskId: string) => void;
 }
 
+// 定数を直接定義
+const LABEL_WIDTH = 200;
+const ROW_HEIGHT = 40;
+
 /**
  * タスク一覧表示コンポーネント
  * タイムライン上にタスクバーを表示する
@@ -41,12 +45,6 @@ const TimelineItemList: React.FC<TimelineItemListProps> = ({
   
   // タスク階層構造の取得
   const taskHierarchy = getTaskHierarchy();
-  
-  // 1行の高さ
-  const ROW_HEIGHT = 40;
-  
-  // 左側のラベル部分の幅（タスク名表示エリア）
-  const LABEL_WIDTH = 200;
   
   // マウスホバー処理
   const handleMouseEnter = (taskId: string) => {
@@ -123,7 +121,7 @@ const TimelineItemList: React.FC<TimelineItemListProps> = ({
         className="task-labels absolute top-0 left-0 bottom-0 bg-white border-r z-10"
         style={{ width: `${LABEL_WIDTH}px` }}
       >
-        {taskHierarchy.map((task, index) => {
+        {taskHierarchy.map((task) => {
           const depth = task.parentId ? taskHierarchy.findIndex(t => t.id === task.parentId) + 1 : 0;
           
           return (
@@ -167,8 +165,8 @@ const TimelineItemList: React.FC<TimelineItemListProps> = ({
   );
 };
 
-// 定数をコンポーネントに追加
-TimelineItemList.LABEL_WIDTH = 200;
-TimelineItemList.ROW_HEIGHT = 40;
+// コンポーネントに静的プロパティを追加
+(TimelineItemList as any).LABEL_WIDTH = LABEL_WIDTH;
+(TimelineItemList as any).ROW_HEIGHT = ROW_HEIGHT;
 
 export default TimelineItemList;

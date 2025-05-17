@@ -157,7 +157,7 @@ export const calculateTaskDepth = (task: Task, tasks: Task[]): number => {
     depth++;
     const parentTask = tasks.find(t => t.id === currentParentId);
     if (!parentTask) break;
-    currentParentId = parentTask.parentId;
+    currentParentId = parentTask.parentId || null;
   }
   
   return depth;
