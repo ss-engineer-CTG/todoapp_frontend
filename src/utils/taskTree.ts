@@ -151,7 +151,7 @@ export const calculateTaskDepth = (task: Task, tasks: Task[]): number => {
   if (!task.parentId) return 0;
   
   let depth = 0;
-  let currentParentId = task.parentId;
+  let currentParentId: string | null = task.parentId; // 明示的に string | null 型を指定
   
   while (currentParentId) {
     depth++;
