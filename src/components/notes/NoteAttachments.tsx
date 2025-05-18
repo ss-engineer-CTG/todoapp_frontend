@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Paperclip, File, X, Download, Image } from 'lucide-react';
 
 interface Attachment {
@@ -76,7 +76,7 @@ const NoteAttachments: React.FC<NoteAttachmentsProps> = ({
       </div>
       
       {attachments.length === 0 ? (
-        <div className="text-center py-6 bg-gray-50 dark:bg-gray-700 rounded-md border border-dashed border-gray-300 dark:border-gray-600">
+        <div className="flex flex-col items-center justify-center h-32 p-4 text-center">
           <Paperclip size={24} className="mx-auto text-gray-400 dark:text-gray-500 mb-2" />
           <p className="text-sm text-gray-500 dark:text-gray-400">
             ファイルをドラッグ&ドロップするか、

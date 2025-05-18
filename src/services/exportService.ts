@@ -1,4 +1,4 @@
-import { Project, Task, SubTask } from '../types/task';
+import { Project } from '../types/task';
 import { formatDateDetailed } from '../utils/dateUtils';
 
 /**

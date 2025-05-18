@@ -1,7 +1,7 @@
 import { Template, TemplateApplyOptions } from '../types/template';
 import { store } from '../store/store';
 import { 
-  createTemplate, 
+  createTemplate as createTemplateAction, 
   updateTemplate, 
   deleteTemplate 
 } from '../store/slices/templatesSlice';
@@ -25,7 +25,7 @@ class TemplateService {
   ): string {
     const templateId = generateId();
     
-    // taskKeysがある場合は、そのタスク数を計算
+    // taskCount計算
     let taskCount = 0;
     if (taskKeys && taskKeys.length > 0) {
       taskCount = taskKeys.length;
@@ -40,13 +40,13 @@ class TemplateService {
       }
     }
     
-    store.dispatch(createTemplate({
+    // テンプレート作成アクションをディスパッチ
+    store.dispatch(createTemplateAction({
       name,
       description: description || '',
       sourceType,
       sourceId,
       taskKeys,
-      taskCount,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }));

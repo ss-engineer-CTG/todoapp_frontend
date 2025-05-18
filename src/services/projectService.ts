@@ -24,7 +24,6 @@ class ProjectService {
     const color = projectData.color || this.getRandomProjectColor();
     
     store.dispatch(addProject({
-      id: projectId,
       ...projectData,
       color,
       expanded: true,

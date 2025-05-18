@@ -1,11 +1,9 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { ChevronDown, ChevronRight, Plus, Check } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { RootState } from '../../store/reducers';
 import { toggleProject } from '../../store/slices/projectsSlice';
-import { toggleTask, updateTaskStatus } from '../../store/slices/tasksSlice';
 import { setQuickAddActive } from '../../store/slices/uiSlice';
-import { formatDate } from '../../utils/dateUtils';
 import TaskItem from './TaskItem';
 
 const TaskList: React.FC = () => {

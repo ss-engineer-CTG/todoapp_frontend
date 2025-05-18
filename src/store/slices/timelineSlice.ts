@@ -52,7 +52,7 @@ const timelineSlice = createSlice({
   initialState,
   reducers: {
     // タイムラインの初期化
-    initializeTimeline: (state) => {
+    initializeTimeline: (_state) => {
       // 初期化ロジック（既に値がある場合は変更しない）
     },
     

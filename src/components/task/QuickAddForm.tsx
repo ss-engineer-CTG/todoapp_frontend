@@ -4,6 +4,7 @@ import { RootState } from '../../store/reducers';
 import { createTask } from '../../store/slices/tasksSlice';
 import { setQuickAddActive } from '../../store/slices/uiSlice';
 import { useFeedback } from '../../hooks/useFeedback';
+import { TaskStatus } from '../../types/task';
 
 const QuickAddForm: React.FC = () => {
   const dispatch = useDispatch();
@@ -45,7 +46,7 @@ const QuickAddForm: React.FC = () => {
       name: taskName,
       start: start.toISOString(),
       end: end.toISOString(),
-      status: 'not-started',
+      status: 'not-started' as TaskStatus,
       notes: ''
     };
     

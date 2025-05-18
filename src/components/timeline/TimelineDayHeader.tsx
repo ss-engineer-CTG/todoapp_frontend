@@ -1,7 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/reducers';
-import { formatDate } from '../../utils/dateUtils';
 
 const TimelineDayHeader: React.FC = () => {
   const { 
@@ -70,8 +69,8 @@ const TimelineDayHeader: React.FC = () => {
     if (date.getDay() === 6) return 'timeline-grid-cell weekend-sat'; // 土曜日
     
     // 今日かどうか確認
-    const isToday = date.toDateString() === today.toDateString();
-    if (isToday) return 'timeline-grid-cell today';
+    const todayDate = today.toDateString() === date.toDateString();
+    if (todayDate) return 'timeline-grid-cell today';
     
     return 'timeline-grid-cell';
   };
@@ -83,9 +82,6 @@ const TimelineDayHeader: React.FC = () => {
           // 月が変わる最初の日か確認
           const isFirstDayOfMonth = index === 0 || 
             (index > 0 && timelineDates[index - 1].getMonth() !== date.getMonth());
-          
-          // 今日の日付かどうか確認
-          const isToday = date.toDateString() === today.toDateString();
           
           return (
             <div 

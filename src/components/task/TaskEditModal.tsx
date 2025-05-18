@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X } from 'lucide-react';
 import { RootState } from '../../store/reducers';
 import { createTask, updateTask } from '../../store/slices/tasksSlice';
-import { closeTaskEditModal } from '../../store/slices/uiSlice';
 import { useFeedback } from '../../hooks/useFeedback';
-import { Task, SubTask } from '../../types/task';
+import { TaskStatus } from '../../types/task';
 
 interface TaskEditModalProps {
   isOpen: boolean;
@@ -20,7 +19,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose }) => {
 
   const [activeTab, setActiveTab] = useState('basic');
   const [taskName, setTaskName] = useState('');
-  const [taskStatus, setTaskStatus] = useState('not-started');
+  const [taskStatus, setTaskStatus] = useState<TaskStatus>('not-started');
   const [taskStart, setTaskStart] = useState<Date>(new Date());
   const [taskEnd, setTaskEnd] = useState<Date>(new Date());
   const [taskNotes, setTaskNotes] = useState('');
@@ -259,7 +258,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose }) => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">ステータス</label>
                 <select
                   value={taskStatus}
-                  onChange={(e) => setTaskStatus(e.target.value)}
+                  onChange={(e) => setTaskStatus(e.target.value as TaskStatus)}
                   className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 >
                   <option value="not-started">未開始</option>

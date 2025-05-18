@@ -3,7 +3,6 @@ import { useSelector } from 'react-redux';
 import { Plus } from 'lucide-react';
 import { RootState } from '../../store/reducers';
 import ProjectHeader from './ProjectHeader';
-import TaskList from '../task/TaskList';
 
 const ProjectList: React.FC = () => {
   const { projects } = useSelector((state: RootState) => state.projects);

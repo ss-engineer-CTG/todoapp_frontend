@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Save, X, File, Plus } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { X } from 'lucide-react';
 import { RootState } from '../../store/reducers';
-import { Template } from '../../types/template';
 import TemplateList from './TemplateList';
 import TemplateForm from './TemplateForm';
 
@@ -12,7 +11,6 @@ interface TemplateManagerProps {
 }
 
 const TemplateManager: React.FC<TemplateManagerProps> = ({ isOpen, onClose }) => {
-  const dispatch = useDispatch();
   const { templates } = useSelector((state: RootState) => state.templates);
   const [activeTab, setActiveTab] = useState<'list' | 'create'>('list');
   const [searchQuery, setSearchQuery] = useState('');

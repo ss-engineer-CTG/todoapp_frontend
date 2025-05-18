@@ -5,7 +5,7 @@ import { formatDate } from '../../utils/dateUtils';
 import { updateTaskStatus } from '../../store/slices/tasksSlice';
 import { openTaskEditModal, openDeleteConfirmation } from '../../store/slices/uiSlice';
 import { duplicateTask } from '../../store/slices/tasksSlice';
-import { Task, SubTask, TaskStatus } from '../../types/task';
+import { TaskStatus } from '../../types/task';
 import { HoverInfo } from '../../types/timeline';
 
 interface TaskDetailPopoverProps {
@@ -17,7 +17,7 @@ const TaskDetailPopover: React.FC<TaskDetailPopoverProps> = ({ info }) => {
 
   if (!info) return null;
   
-  const { task, position, projectId, taskId, subtaskId, projectColor } = info;
+  const { task, position, projectId, taskId, subtaskId } = info;
   
   // ステータスラベルの安全なアクセスのためのマッピング
   const statusLabels: Record<TaskStatus, string> = {
@@ -40,7 +40,7 @@ const TaskDetailPopover: React.FC<TaskDetailPopoverProps> = ({ info }) => {
     dispatch(updateTaskStatus({ 
       projectId, 
       taskId, 
-      subtaskId, 
+      subtaskId: subtaskId || undefined, 
       status: task.status === 'completed' ? 'not-started' : 'completed'
     }));
   };
@@ -51,13 +51,13 @@ const TaskDetailPopover: React.FC<TaskDetailPopoverProps> = ({ info }) => {
       mode: 'edit',
       projectId, 
       taskId, 
-      subtaskId 
+      subtaskId: subtaskId || undefined 
     }));
   };
   
   // タスク複製
   const handleDuplicate = () => {
-    dispatch(duplicateTask({ projectId, taskId, subtaskId }));
+    dispatch(duplicateTask({ projectId, taskId, subtaskId: subtaskId || undefined }));
   };
   
   // タスク削除確認
@@ -65,7 +65,7 @@ const TaskDetailPopover: React.FC<TaskDetailPopoverProps> = ({ info }) => {
     dispatch(openDeleteConfirmation({ 
       projectId, 
       taskId, 
-      subtaskId 
+      subtaskId: subtaskId || undefined
     }));
   };
   
