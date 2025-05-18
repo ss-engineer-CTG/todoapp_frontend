@@ -25,30 +25,13 @@ class TemplateService {
   ): string {
     const templateId = generateId();
     
-    // taskCount計算
-    let taskCount = 0;
-    if (taskKeys && taskKeys.length > 0) {
-      taskCount = taskKeys.length;
-    } else if (sourceId && sourceType === 'project') {
-      const { projects } = store.getState().projects;
-      const project = projects.find(p => p.id === sourceId);
-      if (project) {
-        // プロジェクト内のすべてのタスク数（サブタスクを含む）を計算
-        taskCount = project.tasks.reduce((count, task) => {
-          return count + 1 + task.subtasks.length;
-        }, 0);
-      }
-    }
-    
     // テンプレート作成アクションをディスパッチ
     store.dispatch(createTemplateAction({
       name,
       description: description || '',
       sourceType,
       sourceId,
-      taskKeys,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      taskKeys
     }));
     
     return templateId;
