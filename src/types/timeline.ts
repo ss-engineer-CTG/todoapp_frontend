@@ -1,4 +1,4 @@
-import { Project, Task, SubTask } from './task';
+import { Task, SubTask } from './task';
 
 // タイムラインスケール
 export type TimelineScale = 'day' | 'week' | 'month';

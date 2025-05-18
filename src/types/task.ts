@@ -4,8 +4,8 @@ export type TaskStatus = 'not-started' | 'in-progress' | 'completed' | 'overdue'
 // タスクの優先度
 export type TaskPriority = 'low' | 'medium' | 'high';
 
-// Project型をインポートして再エクスポート
-export { Project } from './project';
+// Projectを別途インポート（型として）
+export type { Project } from './project';
 
 // サブタスクのインターフェース
 export interface SubTask {

@@ -6,7 +6,6 @@ import {
   setQuickAddActive, 
   toggleTaskSelection, 
   moveTaskFocus, 
-  setInlineEditTask,
   clearSelectedTasks,
   openDeleteConfirmation
 } from '../store/slices/uiSlice';
@@ -16,8 +15,7 @@ import {
 } from '../store/slices/tasksSlice';
 import { 
   zoomIn, 
-  zoomOut, 
-  navigateTimeline 
+  zoomOut
 } from '../store/slices/timelineSlice';
 import { getAllTaskKeys } from '../utils/taskUtils';
 import { useFeedback } from './useFeedback';
@@ -30,7 +28,6 @@ export const useKeyboardNavigation = () => {
     taskEditModal, 
     quickAddActive, 
     selectedTasks, 
-    focusedTaskKey, 
     deleteConfirmation,
     inlineEditTask
   } = useSelector((state: RootState) => state.ui);

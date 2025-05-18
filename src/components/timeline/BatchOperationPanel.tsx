@@ -1,6 +1,6 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Check, Trash, X, Calendar, ChevronRight } from 'lucide-react';
+import { Check, Trash, X } from 'lucide-react';
 import { RootState } from '../../store/reducers';
 import { updateMultipleTaskStatus } from '../../store/slices/tasksSlice';
 import { clearSelectedTasks, openDeleteConfirmation } from '../../store/slices/uiSlice';

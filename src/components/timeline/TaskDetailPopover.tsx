@@ -6,16 +6,10 @@ import { updateTaskStatus } from '../../store/slices/tasksSlice';
 import { openTaskEditModal, openDeleteConfirmation } from '../../store/slices/uiSlice';
 import { duplicateTask } from '../../store/slices/tasksSlice';
 import { Task, SubTask, TaskStatus } from '../../types/task';
+import { HoverInfo } from '../../types/timeline';
 
 interface TaskDetailPopoverProps {
-  info: {
-    task: Task | SubTask;
-    position: { x: number; y: number };
-    projectId: string;
-    taskId: string;
-    subtaskId?: string;
-    projectColor: string;
-  } | null;
+  info: HoverInfo | null;
 }
 
 const TaskDetailPopover: React.FC<TaskDetailPopoverProps> = ({ info }) => {
@@ -23,7 +17,7 @@ const TaskDetailPopover: React.FC<TaskDetailPopoverProps> = ({ info }) => {
 
   if (!info) return null;
   
-  const { task, position, projectId, taskId, subtaskId } = info;
+  const { task, position, projectId, taskId, subtaskId, projectColor } = info;
   
   // ステータスラベルの安全なアクセスのためのマッピング
   const statusLabels: Record<TaskStatus, string> = {
@@ -95,8 +89,8 @@ const TaskDetailPopover: React.FC<TaskDetailPopoverProps> = ({ info }) => {
               task.status === 'overdue' ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'
             }`}
           >
-            {statusIcons[task.status]}
-            <span className="ml-1">{statusLabels[task.status]}</span>
+            {statusIcons[task.status as TaskStatus]}
+            <span className="ml-1">{statusLabels[task.status as TaskStatus]}</span>
           </span>
         </div>
         <div className="flex items-center justify-between">

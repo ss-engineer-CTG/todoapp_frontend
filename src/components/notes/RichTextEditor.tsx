@@ -1,11 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { 
   Bold, 
   Italic, 
   List, 
   ListOrdered, 
-  Link, 
-  Image 
+  Link
 } from 'lucide-react';
 
 interface RichTextEditorProps {
@@ -101,7 +100,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         contentEditable
         dangerouslySetInnerHTML={{ __html: value }}
         onInput={handleInput}
-        placeholder={placeholder}
+        data-placeholder={placeholder} // カスタムデータ属性としてプレースホルダーを定義
       />
     </div>
   );

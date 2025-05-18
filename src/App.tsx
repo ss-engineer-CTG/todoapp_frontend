@@ -19,7 +19,7 @@ const App: React.FC = () => {
     dispatch(initializeTimeline());
     
     // キーボードイベントリスナーの登録（グローバルショートカット用）
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = () => {
       // グローバルなキーボードショートカット処理
       // 各コンポーネント固有のショートカットは対応するコンポーネントで処理
     };

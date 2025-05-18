@@ -83,7 +83,7 @@ const TimelineView: React.FC = () => {
           
           {/* タイムライングリッド */}
           <div 
-            className="flex-1 relative overflow-auto"
+            className="flex-1 relative overflow-auto timeline-content"
             ref={timelineContentRef}
             onMouseLeave={() => dispatch(resetHoverInfo())}
           >
@@ -100,7 +100,7 @@ const TimelineView: React.FC = () => {
       </div>
       
       {/* タスク詳細ポップアップ */}
-      <TaskDetailPopover info={hoverInfo} />
+      {hoverInfo && <TaskDetailPopover info={hoverInfo} />}
       
       {/* タスク編集モーダル */}
       <TaskEditModal

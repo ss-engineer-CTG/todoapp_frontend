@@ -83,9 +83,8 @@ export const taskDragHandlers = {
     const data = getDragData(e);
     if (data && data.type === 'task') {
       // ドロップ位置から日付を計算（例：タイムラインの場合）
-      const targetDate = null; // ここにタイムラインからの日付計算ロジック
-      
-      onTaskDrop(data, targetDate);
+      // ここでは日付計算は行わないので、targetDateはundefinedのまま
+      onTaskDrop(data);
     }
   }
 };

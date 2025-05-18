@@ -1,12 +1,17 @@
 import { Task, SubTask, RepeatOptions } from '../types/task';
 import { store } from '../store/store';
 import { 
-  createTask, 
-  updateTask, 
-  deleteTask, 
-  updateTaskStatus,
-  updateTaskDates,
-  duplicateTask
+  createTask as createTaskAction, 
+  updateTask as updateTaskAction, 
+  deleteTask as deleteTaskAction,
+  updateTaskStatus as updateTaskStatusAction,
+  updateTaskDates as updateTaskDatesAction,
+  duplicateTask as duplicateTaskAction,
+  CreateTaskPayload,
+  UpdateTaskPayload,
+  DeleteTaskPayload,
+  UpdateTaskStatusPayload,
+  UpdateTaskDatesPayload
 } from '../store/slices/tasksSlice';
 import { generateId } from '../utils/taskUtils';
 
@@ -25,11 +30,13 @@ class TaskService {
   ): string {
     const taskId = generateId();
     
-    store.dispatch(createTask({
+    const payload: CreateTaskPayload = {
       projectId,
       parentTaskId,
       task: taskData
-    }));
+    };
+    
+    store.dispatch(createTaskAction(payload));
     
     return taskId;
   }
@@ -43,12 +50,14 @@ class TaskService {
     taskData: Partial<Task>, 
     subtaskId?: string | null
   ): void {
-    store.dispatch(updateTask({
+    const payload: UpdateTaskPayload = {
       projectId,
       taskId,
       subtaskId,
       task: taskData
-    }));
+    };
+    
+    store.dispatch(updateTaskAction(payload));
   }
   
   /**
@@ -59,11 +68,13 @@ class TaskService {
     taskId: string, 
     subtaskId?: string | null
   ): void {
-    store.dispatch(deleteTask({
+    const payload: DeleteTaskPayload = {
       projectId,
       taskId,
       subtaskId
-    }));
+    };
+    
+    store.dispatch(deleteTaskAction(payload));
   }
   
   /**
@@ -75,12 +86,14 @@ class TaskService {
     status: string, 
     subtaskId?: string | null
   ): void {
-    store.dispatch(updateTaskStatus({
+    const payload: UpdateTaskStatusPayload = {
       projectId,
       taskId,
       subtaskId,
       status
-    }));
+    };
+    
+    store.dispatch(updateTaskStatusAction(payload));
   }
   
   /**
@@ -100,12 +113,14 @@ class TaskService {
     const start = startDate instanceof Date ? startDate.toISOString() : startDate;
     const end = endDate instanceof Date ? endDate.toISOString() : endDate;
     
-    store.dispatch(updateTask({
+    const payload: UpdateTaskPayload = {
       projectId,
       taskId,
       subtaskId,
       task: { start, end }
-    }));
+    };
+    
+    store.dispatch(updateTaskAction(payload));
   }
   
   /**
@@ -118,13 +133,15 @@ class TaskService {
     daysDelta: number, 
     subtaskId?: string | null
   ): void {
-    store.dispatch(updateTaskDates({
+    const payload: UpdateTaskDatesPayload = {
       projectId,
       taskId,
       subtaskId,
       type,
       daysDelta
-    }));
+    };
+    
+    store.dispatch(updateTaskDatesAction(payload));
   }
   
   /**
@@ -135,11 +152,13 @@ class TaskService {
     taskId: string, 
     subtaskId?: string | null
   ): string {
-    store.dispatch(duplicateTask({
+    const payload: DeleteTaskPayload = {
       projectId,
       taskId,
       subtaskId
-    }));
+    };
+    
+    store.dispatch(duplicateTaskAction(payload));
     
     return generateId(); // 新しいIDを返す（実際のIDはリデューサー内で生成）
   }

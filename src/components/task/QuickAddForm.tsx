@@ -11,7 +11,7 @@ const QuickAddForm: React.FC = () => {
   const { showFeedback } = useFeedback();
   const [taskName, setTaskName] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
-  const [parentTaskId, setParentTaskId] = useState<string | null>(null);
+  const [parentTaskId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
   // 初期化
