@@ -1,172 +1,128 @@
-import React, { useState } from 'react';
-import { Task } from '../../models/task';
+import React from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/reducers';
 import TimelineItem from './TimelineItem';
-import { useTaskContext } from '../../contexts/TaskContext';
+import { Project, Task, SubTask } from '../../types/task';
 
-interface TimelineItemListProps {
-  tasks: Task[];
-  startDate: Date;
-  dayWidth: number;
-  selectedTaskId: string | null;
-  draggingTaskId: string | null;
-  onTaskSelect: (taskId: string) => void;
-  onTaskDragStart: (args: { taskId: string, type: 'start' | 'end' | 'move' }) => void;
-  onTaskDragEnd: () => void;
-  onEdit?: (taskId: string) => void;
-  onNote?: (taskId: string) => void;
-  onToggleCompletion?: (taskId: string) => void;
-  onDelete?: (taskId: string) => void;
-}
-
-// 定数を直接定義
-const LABEL_WIDTH = 200;
-const ROW_HEIGHT = 40;
-
-/**
- * タスク一覧表示コンポーネント
- * タイムライン上にタスクバーを表示する
- */
-const TimelineItemList: React.FC<TimelineItemListProps> = ({
-  tasks,
-  startDate,
-  dayWidth,
-  selectedTaskId,
-  draggingTaskId,
-  onTaskSelect,
-  onTaskDragStart,
-  onTaskDragEnd,
-  onEdit,
-  onNote,
-  onToggleCompletion,
-  onDelete
-}) => {
-  const { getTaskHierarchy } = useTaskContext();
-  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+const TimelineItemList: React.FC = () => {
+  const { timelineStart, timelineEnd, timelineScale, zoomLevel } = useSelector((state: RootState) => state.timeline);
+  const { viewMode, displayCompletedTasks } = useSelector((state: RootState) => state.ui);
+  const { projects } = useSelector((state: RootState) => state.projects);
+  const { today } = useSelector((state: RootState) => state.timeline);
   
-  // タスク階層構造の取得
-  const taskHierarchy = getTaskHierarchy();
-  
-  // マウスホバー処理
-  const handleMouseEnter = (taskId: string) => {
-    setHoveredTaskId(taskId);
+  // フィルタリングされたプロジェクトを取得
+  const getFilteredProjects = () => {
+    let result = [...projects];
+
+    // 表示モードによるフィルタリング
+    if (viewMode !== 'all') {
+      result = result.map(project => {
+        const filteredTasks = project.tasks.filter(task => {
+          // 今日のタスク
+          if (viewMode === 'today') {
+            const taskStart = new Date(task.start);
+            const taskEnd = new Date(task.end);
+            return (today >= taskStart && today <= taskEnd);
+          }
+          // 遅延タスク
+          else if (viewMode === 'overdue') {
+            const taskEnd = new Date(task.end);
+            return (taskEnd < today && task.status !== 'completed');
+          }
+          return true;
+        });
+
+        // サブタスクにも同じフィルタリングを適用
+        const tasksWithFilteredSubtasks = filteredTasks.map(task => {
+          if (!task.subtasks) return task;
+
+          const filteredSubtasks = task.subtasks.filter(subtask => {
+            // 今日のタスク
+            if (viewMode === 'today') {
+              const subtaskStart = new Date(subtask.start);
+              const subtaskEnd = new Date(subtask.end);
+              return (today >= subtaskStart && today <= subtaskEnd);
+            }
+            // 遅延タスク
+            else if (viewMode === 'overdue') {
+              const subtaskEnd = new Date(subtask.end);
+              return (subtaskEnd < today && subtask.status !== 'completed');
+            }
+            return true;
+          });
+
+          return { ...task, subtasks: filteredSubtasks };
+        });
+
+        return { ...project, tasks: tasksWithFilteredSubtasks };
+      });
+    }
+
+    // 完了タスクの表示/非表示
+    if (!displayCompletedTasks) {
+      result = result.map(project => {
+        const filteredTasks = project.tasks.filter(task => task.status !== 'completed');
+        
+        // サブタスクの完了状態も制御
+        const tasksWithFilteredSubtasks = filteredTasks.map(task => {
+          if (!task.subtasks) return task;
+          
+          const filteredSubtasks = task.subtasks.filter(subtask => 
+            subtask.status !== 'completed'
+          );
+          
+          return { ...task, subtasks: filteredSubtasks };
+        });
+        
+        return { ...project, tasks: filteredTasks.length > 0 ? tasksWithFilteredSubtasks : [] };
+      });
+      
+      // 全てのタスクが空のプロジェクトを除外
+      result = result.filter(project => project.tasks.length > 0);
+    }
+
+    return result;
   };
   
-  const handleMouseLeave = () => {
-    setHoveredTaskId(null);
-  };
+  const filteredProjects = getFilteredProjects();
   
-  // 再帰的にタスク行をレンダリング
-  const renderTaskRows = (tasks: Task[], depth = 0, rowIndex = 0) => {
-    let currentRowIndex = rowIndex;
-    const rows: JSX.Element[] = [];
-    
-    tasks.forEach(task => {
-      const isSelected = selectedTaskId === task.id;
-      const isDragging = draggingTaskId === task.id;
-      const isHovered = hoveredTaskId === task.id;
-      
-      // このタスクの子タスクを取得
-      const childTasks = taskHierarchy.filter(t => t.parentId === task.id);
-      
-      rows.push(
-        <TimelineItem
-          key={task.id}
-          task={task}
-          rowIndex={currentRowIndex}
-          depth={depth}
-          dayWidth={dayWidth}
-          startDate={startDate}
-          rowHeight={ROW_HEIGHT}
-          isSelected={isSelected}
-          isDragging={isDragging}
-          isHovered={isHovered}
-          onSelect={() => onTaskSelect(task.id)}
-          onDragStart={(type) => onTaskDragStart({ taskId: task.id, type })}
-          onDragEnd={onTaskDragEnd}
-          onEdit={onEdit ? () => onEdit(task.id) : undefined}
-          onNote={onNote ? () => onNote(task.id) : undefined}
-          onToggleCompletion={onToggleCompletion ? () => onToggleCompletion(task.id) : undefined}
-          onDelete={onDelete ? () => onDelete(task.id) : undefined}
-          onMouseEnter={() => handleMouseEnter(task.id)}
-          onMouseLeave={handleMouseLeave}
-        />
-      );
-      
-      currentRowIndex++;
-      
-      // 子タスクがある場合は再帰的に処理
-      if (childTasks.length > 0) {
-        const childRows = renderTaskRows(childTasks, depth + 1, currentRowIndex);
-        rows.push(...childRows.elements);
-        currentRowIndex = childRows.nextRowIndex;
-      }
-    });
-    
-    return { elements: rows, nextRowIndex: currentRowIndex };
-  };
-  
-  // ルートタスク（親を持たないタスク）
-  const rootTasks = taskHierarchy.filter(task => !task.parentId);
-  
-  // タスク行のレンダリング
-  const { elements: taskRows } = renderTaskRows(rootTasks);
-  
-  // 表の総高さ（行数 × 行の高さ）
-  const totalHeight = tasks.length * ROW_HEIGHT;
+  // 表示するタスクがない場合
+  if (filteredProjects.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center text-gray-500 dark:text-gray-400">
+          <p className="text-lg font-medium">表示するタスクがありません</p>
+          <p className="mt-2">フィルターを変更するか、新しいタスクを追加してください</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
-    <div className="timeline-items-container relative">
-      {/* タスク名ラベル列（固定表示） */}
-      <div
-        className="task-labels absolute top-0 left-0 bottom-0 bg-white border-r z-10"
-        style={{ width: `${LABEL_WIDTH}px` }}
-      >
-        {taskHierarchy.map((task) => {
-          const depth = task.parentId ? taskHierarchy.findIndex(t => t.id === task.parentId) + 1 : 0;
+    <div className="relative">
+      {filteredProjects.map((project, projectIndex) => (
+        <div key={project.id} className="border-b border-gray-200 dark:border-gray-700">
+          {/* プロジェクトヘッダー行 */}
+          <div 
+            className="h-8 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer relative"
+            data-project-id={project.id}
+          >
+            {/* タイムラインのグリッド背景は TimelineItem 内で描画 */}
+          </div>
           
-          return (
-            <div
-              key={task.id}
-              className={`
-                task-label flex items-center px-3
-                ${selectedTaskId === task.id ? 'bg-blue-50' : ''}
-                ${hoveredTaskId === task.id ? 'bg-gray-50' : ''}
-              `}
-              style={{
-                height: `${ROW_HEIGHT}px`,
-                paddingLeft: `${12 + depth * 20}px`
-              }}
-              onClick={() => onTaskSelect(task.id)}
-              onMouseEnter={() => handleMouseEnter(task.id)}
-              onMouseLeave={handleMouseLeave}
-            >
-              <span
-                className={`
-                  text-sm truncate
-                  ${task.completed ? 'line-through text-gray-500' : 'text-gray-700'}
-                `}
-              >
-                {task.title}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      
-      {/* タイムライングリッド */}
-      <div
-        className="timeline-grid absolute"
-        style={{ left: `${LABEL_WIDTH}px`, height: `${totalHeight}px` }}
-      >
-        {/* タスク行 */}
-        {taskRows}
-      </div>
+          {/* プロジェクト内のタスク */}
+          {project.expanded && project.tasks.map(task => (
+            <TimelineItem 
+              key={task.id} 
+              project={project} 
+              task={task} 
+              isParent={true}
+            />
+          ))}
+        </div>
+      ))}
     </div>
   );
 };
-
-// コンポーネントに静的プロパティを追加
-(TimelineItemList as any).LABEL_WIDTH = LABEL_WIDTH;
-(TimelineItemList as any).ROW_HEIGHT = ROW_HEIGHT;
 
 export default TimelineItemList;

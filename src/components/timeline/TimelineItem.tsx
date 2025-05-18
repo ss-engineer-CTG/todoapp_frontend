@@ -1,315 +1,168 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Task } from '../../models/task';
-import { useTaskStatus } from '../../hooks/useTaskStatus';
-import { format, addDays, differenceInDays } from 'date-fns';
-import { useTaskContext } from '../../contexts/TaskContext';
-import TaskDetailPopover from './TaskDetailPopover';
+import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../store/reducers';
+import { Project, Task, SubTask } from '../../types/task';
+import TaskBar from './TaskBar';
+import { getTaskPosition } from '../../utils/taskUtils';
+import { startDrag } from '../../store/slices/timelineSlice';
+import { toggleTask } from '../../store/slices/projectsSlice';
 
 interface TimelineItemProps {
+  project: Project;
   task: Task;
-  rowIndex: number;
-  depth: number; // 使用しない場合でも型定義を保持
-  dayWidth: number;
-  startDate: Date;
-  rowHeight: number;
-  isSelected: boolean;
-  isDragging: boolean;
-  isHovered: boolean;
-  onSelect: () => void;
-  onDragStart: (type: 'start' | 'end' | 'move') => void;
-  onDragEnd: () => void;
-  onEdit?: () => void;
-  onNote?: () => void;
-  onToggleCompletion?: () => void;
-  onDelete?: () => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
+  subtask?: SubTask;
+  isParent: boolean;
 }
 
-/**
- * タイムライン上の個別タスクバーコンポーネント
- * タスクの期間とステータスを視覚化し、ドラッグ操作を処理
- */
-const TimelineItem: React.FC<TimelineItemProps> = ({
-  task,
-  rowIndex,
-  depth: _depth, // 使用しないが型定義のために残す
-  dayWidth,
-  startDate,
-  rowHeight,
-  isSelected,
-  isDragging,
-  isHovered,
-  onSelect,
-  onDragStart,
-  onDragEnd,
-  onEdit,
-  onNote,
-  onToggleCompletion,
-  onDelete,
-  onMouseEnter,
-  onMouseLeave
+const TimelineItem: React.FC<TimelineItemProps> = ({ 
+  project, 
+  task, 
+  subtask, 
+  isParent = true 
 }) => {
-  const { updateTask } = useTaskContext();
-  const { statusColors } = useTaskStatus(task);
-  const [dragType, setDragType] = useState<'start' | 'end' | 'move' | null>(null);
-  const [dragStartX, setDragStartX] = useState(0);
-  const [dragStartDate, setDragStartDate] = useState<Date | null>(null);
-  const [dragEndDate, setDragEndDate] = useState<Date | null>(null);
-  const [showPopover, setShowPopover] = useState(false);
+  const dispatch = useDispatch();
+  const { timelineStart, timelineScale, zoomLevel, dragInfo } = useSelector((state: RootState) => state.timeline);
+  const { selectedTasks, focusedTaskKey } = useSelector((state: RootState) => state.ui);
   
-  const itemRef = useRef<HTMLDivElement>(null);
-  
-  // タスクの表示位置とサイズを計算
-  const calculatePosition = () => {
-    // 開始日の差分（日数）
-    const daysDiff = differenceInDays(task.startDate, startDate);
-    
-    // タスクの期間（日数）
-    const duration = Math.max(1, differenceInDays(task.endDate, task.startDate) + 1);
-    
-    // 位置計算
-    const left = Math.max(0, daysDiff * dayWidth);
-    const width = duration * dayWidth;
-    
-    return { left, width };
+  // スケールファクターを取得
+  const getScaleFactor = () => {
+    if (timelineScale === 'day') return 1;
+    if (timelineScale === 'week') return 7;
+    if (timelineScale === 'month') {
+      const date = new Date(timelineStart);
+      return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    }
+    return 1;
   };
   
-  const position = calculatePosition();
+  // ズームスケールに基づく1日あたりの幅を計算
+  const dayWidth = 34 * (zoomLevel / 100);
+  const scaleFactor = getScaleFactor();
   
-  // ドラッグによる日付変更
-  const updateDates = (diffDays: number) => {
-    if (!dragStartDate) return;
+  // TimelineItemの高さを計算
+  const getItemHeight = () => {
+    // 親タスクの場合は標準の高さ
+    if (isParent) return 'h-8';
     
-    if (dragType === 'start') {
-      // 開始日変更（終了日より後にはならないようにする）
-      const newStartDate = addDays(dragStartDate, diffDays);
-      if (newStartDate <= task.endDate) {
-        updateTask({
-          ...task,
-          startDate: newStartDate
-        });
+    // サブタスクの場合は若干低くする
+    return 'h-7';
+  };
+  
+  // タイムラインの日付を生成
+  const generateTimelineDates = () => {
+    const dates = [];
+    let currentDate = new Date(timelineStart);
+    const timelineEnd = new Date(timelineStart);
+    
+    if (timelineScale === 'day') {
+      // 日ごとの表示のために十分な数の日付を生成
+      timelineEnd.setDate(timelineEnd.getDate() + 60); // 十分な期間を確保
+      
+      while (currentDate <= timelineEnd) {
+        dates.push(new Date(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
       }
-    } else if (dragType === 'end') {
-      // 終了日変更（開始日より前にはならないようにする）
-      const newEndDate = addDays(dragEndDate!, diffDays);
-      if (newEndDate >= task.startDate) {
-        updateTask({
-          ...task,
-          endDate: newEndDate
-        });
+    } else if (timelineScale === 'week') {
+      // 週ごとの表示
+      timelineEnd.setDate(timelineEnd.getDate() + 365); // 十分な期間を確保
+      
+      while (currentDate <= timelineEnd) {
+        dates.push(new Date(currentDate));
+        currentDate.setDate(currentDate.getDate() + 7);
       }
-    } else if (dragType === 'move') {
-      // 全体移動
-      const newStartDate = addDays(dragStartDate, diffDays);
-      const newEndDate = addDays(dragEndDate!, diffDays);
-      updateTask({
-        ...task,
-        startDate: newStartDate,
-        endDate: newEndDate
-      });
+    } else if (timelineScale === 'month') {
+      // 月ごとの表示
+      timelineEnd.setMonth(timelineEnd.getMonth() + 24); // 十分な期間を確保
+      
+      while (currentDate <= timelineEnd) {
+        dates.push(new Date(currentDate));
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+    }
+    
+    return dates;
+  };
+  
+  // 今日の日付を取得
+  const { today } = useSelector((state: RootState) => state.timeline);
+  
+  // 曜日による背景色を取得
+  const getDateCellColor = (date: Date) => {
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const isToday = date.toDateString() === today.toDateString();
+    
+    if (isToday) return 'timeline-grid-cell today';
+    if (date.getDay() === 0) return 'timeline-grid-cell weekend-sun';
+    if (date.getDay() === 6) return 'timeline-grid-cell weekend-sat';
+    
+    return 'timeline-grid-cell';
+  };
+  
+  const timelineDates = generateTimelineDates();
+  
+  // サブタスクを表示するかどうか
+  const currentData = subtask || task;
+  const taskKey = subtask 
+    ? `${project.id}-${task.id}-${subtask.id}` 
+    : `${project.id}-${task.id}`;
+  const isSelected = selectedTasks.includes(taskKey);
+  const isFocused = focusedTaskKey === taskKey;
+  
+  // タスク展開/折りたたみの切り替え
+  const handleTaskToggle = () => {
+    if (isParent) {
+      dispatch(toggleTask({ projectId: project.id, taskId: task.id }));
     }
   };
   
-  // ドラッグ開始
-  const handleMouseDown = (e: React.MouseEvent, type: 'start' | 'end' | 'move') => {
-    if (e.button !== 0) return; // 左クリックのみ
-    e.preventDefault();
-    e.stopPropagation();
-    
-    setDragType(type);
-    setDragStartX(e.clientX);
-    setDragStartDate(new Date(task.startDate));
-    setDragEndDate(new Date(task.endDate));
-    
-    onDragStart(type);
-    
-    // グローバルのマウスイベントリスナーを設定
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-  
-  // ドラッグ中
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!dragType || !dragStartDate) return;
-    
-    // X方向の移動量（ピクセル）
-    const deltaX = e.clientX - dragStartX;
-    
-    // 日数に変換
-    const diffDays = Math.round(deltaX / dayWidth);
-    
-    if (diffDays !== 0) {
-      updateDates(diffDays);
-      setDragStartX(e.clientX);
-    }
-  };
-  
-  // ドラッグ終了
-  const handleMouseUp = () => {
-    setDragType(null);
-    setDragStartDate(null);
-    setDragEndDate(null);
-    onDragEnd();
-    
-    // グローバルのマウスイベントリスナーを削除
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  };
-  
-  // マウスホバー時にポップオーバーを表示
-  const handleMouseEnter = () => {
-    onMouseEnter();
-    setShowPopover(true);
-  };
-  
-  const handleMouseLeave = () => {
-    onMouseLeave();
-    setShowPopover(false);
-  };
-  
-  // コンポーネントのアンマウント時にイベントリスナーを削除
-  useEffect(() => {
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, []);
-
   return (
-    <div
-      ref={itemRef}
-      className={`
-        timeline-item absolute cursor-pointer
-        ${isSelected ? 'z-20' : 'z-10'}
-        ${isDragging ? 'opacity-75' : ''}
-      `}
-      style={{
-        top: `${rowIndex * rowHeight}px`,
-        left: `${position.left}px`,
-        width: `${position.width}px`,
-        height: `${rowHeight - 4}px`
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {/* タスクバー */}
-      <div
-        className={`
-          task-bar h-full rounded shadow-sm flex items-center px-2
-          border transition-all duration-150
-          ${isSelected ? 'ring-2 ring-blue-400' : ''}
-          ${isHovered ? 'shadow' : ''}
-        `}
-        style={{
-          backgroundColor: statusColors.background,
-          borderColor: statusColors.border,
-          opacity: task.completed ? 0.7 : 1
-        }}
-        onMouseDown={(e) => handleMouseDown(e, 'move')}
+    <>
+      <div 
+        className={`relative ${getItemHeight()} hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer`}
+        onClick={handleTaskToggle}
+        id={`task-${taskKey}`}
+        data-task-key={taskKey}
       >
-        {/* 開始日ドラッグハンドル */}
-        <div
-          className="drag-handle-start absolute left-0 top-0 bottom-0 w-2 cursor-w-resize"
-          onMouseDown={(e) => handleMouseDown(e, 'start')}
-        />
-        
-        {/* タスク内容 */}
-        <div className="task-content flex-1 overflow-hidden text-xs">
-          {position.width > 100 ? (
-            <>
-              <div className="task-title font-medium truncate" style={{ color: statusColors.text }}>
-                {task.title}
-              </div>
-              {position.width > 150 && (
-                <div className="task-dates text-xs opacity-75">
-                  {format(task.startDate, 'MM/dd')} - {format(task.endDate, 'MM/dd')}
-                </div>
-              )}
-            </>
-          ) : position.width > 50 ? (
-            <div className="task-title font-medium truncate" style={{ color: statusColors.text }}>
-              {task.title}
-            </div>
-          ) : (
-            <div className="w-full h-full" />
-          )}
+        {/* 背景グリッド */}
+        <div className="absolute inset-0">
+          {timelineDates.map((date, index) => (
+            <div 
+              key={index} 
+              className={`absolute top-0 bottom-0 ${getDateCellColor(date)}`}
+              style={{ 
+                left: `${index * dayWidth * scaleFactor}px`,
+                width: `${dayWidth * scaleFactor}px` 
+              }}
+            ></div>
+          ))}
         </div>
         
-        {/* アクションボタン - ホバー時のみ表示 */}
-        {isHovered && position.width > 100 && (
-          <div className="action-buttons flex space-x-1">
-            {onToggleCompletion && (
-              <button
-                className="p-1 text-gray-500 hover:text-blue-500"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleCompletion();
-                }}
-                title={task.completed ? "完了解除" : "完了にする"}
-              >
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </button>
-            )}
-            
-            {onNote && (
-              <button
-                className="p-1 text-gray-500 hover:text-blue-500"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNote();
-                }}
-                title="ノートを開く"
-              >
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-            )}
-            
-            {onEdit && (
-              <button
-                className="p-1 text-gray-500 hover:text-blue-500"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit();
-                }}
-                title="編集"
-              >
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-              </button>
-            )}
-          </div>
-        )}
-        
-        {/* 終了日ドラッグハンドル */}
-        <div
-          className="drag-handle-end absolute right-0 top-0 bottom-0 w-2 cursor-e-resize"
-          onMouseDown={(e) => handleMouseDown(e, 'end')}
+        {/* タスクバー */}
+        <TaskBar
+          project={project}
+          task={task}
+          subtask={subtask}
+          isParent={isParent}
+          isSelected={isSelected}
+          isFocused={isFocused}
         />
       </div>
       
-      {/* タスク詳細ポップオーバー */}
-      {showPopover && (
-        <TaskDetailPopover
-          task={task}
-          position="top"
-          parentRef={itemRef}
-          onEdit={onEdit}
-          onNote={onNote}
-          onToggleCompletion={onToggleCompletion}
-          onDelete={onDelete}
-        />
+      {/* サブタスク行（親タスクが展開されている場合のみ表示） */}
+      {isParent && task.expanded && task.subtasks && task.subtasks.length > 0 && (
+        <div className="pl-4 border-l-2 border-gray-200 dark:border-gray-700 ml-4">
+          {task.subtasks.map(subtask => (
+            <TimelineItem
+              key={subtask.id}
+              project={project}
+              task={task}
+              subtask={subtask}
+              isParent={false}
+            />
+          ))}
+        </div>
       )}
-    </div>
+    </>
   );
 };
 

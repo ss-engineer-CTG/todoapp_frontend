@@ -1,196 +1,308 @@
-import { v4 as uuidv4 } from 'uuid';
-import { Task, TaskInput } from '../models/task';
+import { Task, SubTask, RepeatOptions } from '../types/task';
+import { store } from '../store/store';
+import { 
+  createTask, 
+  updateTask, 
+  deleteTask, 
+  updateTaskStatus,
+  updateTaskDates,
+  duplicateTask
+} from '../store/slices/tasksSlice';
+import { generateId } from '../utils/taskUtils';
 
 /**
- * タスクデータ操作サービス
- * ローカルストレージを使用してタスクデータを管理
+ * タスク操作サービス
+ * タスクの作成、編集、削除などの操作を行うサービス層
  */
-export const taskService = {
+class TaskService {
   /**
-   * すべてのタスクを取得
+   * 新しいタスクを作成
    */
-  getAllTasks(): Task[] {
-    try {
-      const tasksJson = localStorage.getItem('tasks');
-      if (!tasksJson) return [];
-      
-      const tasks = JSON.parse(tasksJson);
-      
-      // 日付文字列をDateオブジェクトに変換
-      return tasks.map((task: any) => ({
-        ...task,
-        startDate: new Date(task.startDate),
-        endDate: new Date(task.endDate),
-        completedAt: task.completedAt ? new Date(task.completedAt) : undefined
-      }));
-    } catch (error) {
-      console.error('Error getting tasks from localStorage:', error);
-      return [];
-    }
-  },
-  
-  /**
-   * タスクを保存
-   */
-  saveTasks(tasks: Task[]): void {
-    try {
-      localStorage.setItem('tasks', JSON.stringify(tasks));
-    } catch (error) {
-      console.error('Error saving tasks to localStorage:', error);
-    }
-  },
-  
-  /**
-   * タスクを追加
-   */
-  addTask(taskInput: TaskInput): Task {
-    const tasks = this.getAllTasks();
+  createNewTask(
+    projectId: string, 
+    taskData: Omit<Task, 'id' | 'expanded' | 'subtasks'>, 
+    parentTaskId?: string | null
+  ): string {
+    const taskId = generateId();
     
-    const newTask: Task = {
-      id: uuidv4(),
-      title: taskInput.title,
-      startDate: taskInput.startDate,
-      endDate: taskInput.endDate,
-      completed: taskInput.completed || false,
-      parentId: taskInput.parentId || null,
-      noteContent: taskInput.noteContent || '',
-      assignee: taskInput.assignee,
-      projectId: taskInput.projectId
-    };
+    store.dispatch(createTask({
+      projectId,
+      parentTaskId,
+      task: taskData
+    }));
     
-    tasks.push(newTask);
-    this.saveTasks(tasks);
-    
-    return newTask;
-  },
+    return taskId;
+  }
   
   /**
    * タスクを更新
    */
-  updateTask(updatedTask: Task): Task {
-    const tasks = this.getAllTasks();
-    const index = tasks.findIndex(task => task.id === updatedTask.id);
-    
-    if (index !== -1) {
-      tasks[index] = updatedTask;
-      this.saveTasks(tasks);
-    }
-    
-    return updatedTask;
-  },
+  updateTaskData(
+    projectId: string, 
+    taskId: string, 
+    taskData: Partial<Task>, 
+    subtaskId?: string | null
+  ): void {
+    store.dispatch(updateTask({
+      projectId,
+      taskId,
+      subtaskId,
+      task: taskData
+    }));
+  }
   
   /**
    * タスクを削除
    */
-  deleteTask(taskId: string): void {
-    const tasks = this.getAllTasks();
-    const filteredTasks = tasks.filter(task => task.id !== taskId);
-    
-    // 子タスクも削除
-    const childTasks = tasks.filter(task => task.parentId === taskId);
-    childTasks.forEach(child => {
-      this.deleteTask(child.id);
-    });
-    
-    this.saveTasks(filteredTasks);
-  },
+  removeTask(
+    projectId: string, 
+    taskId: string, 
+    subtaskId?: string | null
+  ): void {
+    store.dispatch(deleteTask({
+      projectId,
+      taskId,
+      subtaskId
+    }));
+  }
   
   /**
-   * タスク完了状態を切り替え
+   * タスクのステータスを更新
    */
-  toggleTaskCompletion(taskId: string): Task | null {
-    const tasks = this.getAllTasks();
-    const index = tasks.findIndex(task => task.id === taskId);
-    
-    if (index !== -1) {
-      const task = tasks[index];
-      task.completed = !task.completed;
-      task.completedAt = task.completed ? new Date() : undefined;
-      
-      this.saveTasks(tasks);
-      return task;
-    }
-    
-    return null;
-  },
+  setTaskStatus(
+    projectId: string, 
+    taskId: string, 
+    status: string, 
+    subtaskId?: string | null
+  ): void {
+    store.dispatch(updateTaskStatus({
+      projectId,
+      taskId,
+      subtaskId,
+      status
+    }));
+  }
   
   /**
-   * タスクノート更新
+   * タスクの日付を更新
    */
-  updateTaskNote(taskId: string, noteContent: string): Task | null {
-    const tasks = this.getAllTasks();
-    const index = tasks.findIndex(task => task.id === taskId);
+  updateTaskDateRange(
+    projectId: string, 
+    taskId: string, 
+    startDate: Date | string, 
+    endDate: Date | string, 
+    subtaskId?: string | null
+  ): void {
+    const task = this.getTask(projectId, taskId, subtaskId);
+    if (!task) return;
     
-    if (index !== -1) {
-      tasks[index].noteContent = noteContent;
-      this.saveTasks(tasks);
-      return tasks[index];
-    }
+    // 日付をISOString形式に変換
+    const start = startDate instanceof Date ? startDate.toISOString() : startDate;
+    const end = endDate instanceof Date ? endDate.toISOString() : endDate;
     
-    return null;
-  },
+    store.dispatch(updateTask({
+      projectId,
+      taskId,
+      subtaskId,
+      task: { start, end }
+    }));
+  }
   
   /**
-   * タスクを検索
+   * タスクをドラッグ操作で移動/リサイズ
    */
-  searchTasks(query: string): Task[] {
-    const tasks = this.getAllTasks();
-    if (!query.trim()) return tasks;
-    
-    const lowerQuery = query.toLowerCase();
-    return tasks.filter(task => 
-      task.title.toLowerCase().includes(lowerQuery) ||
-      (task.noteContent && task.noteContent.toLowerCase().includes(lowerQuery))
-    );
-  },
+  moveTaskByDrag(
+    projectId: string, 
+    taskId: string, 
+    type: 'move' | 'resize-start' | 'resize-end', 
+    daysDelta: number, 
+    subtaskId?: string | null
+  ): void {
+    store.dispatch(updateTaskDates({
+      projectId,
+      taskId,
+      subtaskId,
+      type,
+      daysDelta
+    }));
+  }
   
   /**
-   * 特定の期間のタスクを取得
+   * タスクを複製
    */
-  getTasksByDateRange(startDate: Date, endDate: Date): Task[] {
-    const tasks = this.getAllTasks();
+  duplicateTaskItem(
+    projectId: string, 
+    taskId: string, 
+    subtaskId?: string | null
+  ): string {
+    const newId = generateId();
     
-    return tasks.filter(task => {
-      // タスクの期間が指定期間と重複しているかをチェック
-      return (
-        (task.startDate >= startDate && task.startDate <= endDate) ||
-        (task.endDate >= startDate && task.endDate <= endDate) ||
-        (task.startDate <= startDate && task.endDate >= endDate)
-      );
-    });
-  },
+    store.dispatch(duplicateTask({
+      projectId,
+      taskId,
+      subtaskId,
+      newId
+    }));
+    
+    return newId;
+  }
   
   /**
-   * 親タスクに属する子タスクを取得
+   * 繰り返しタスクを作成
    */
-  getChildTasks(parentId: string): Task[] {
-    const tasks = this.getAllTasks();
-    return tasks.filter(task => task.parentId === parentId);
-  },
-  
-  /**
-   * タスク階層構造を取得
-   */
-  getTaskHierarchy(): Task[] {
-    const tasks = this.getAllTasks();
-    const result: Task[] = [];
+  createRecurringTask(
+    projectId: string, 
+    taskData: Omit<Task, 'id' | 'expanded' | 'subtasks'>, 
+    repeatOptions: RepeatOptions,
+    parentTaskId?: string | null
+  ): string[] {
+    const taskIds: string[] = [];
+    const { type, interval, daysOfWeek, endAfter, endDate } = repeatOptions;
     
-    // ルートタスク（親を持たないタスク）
-    const rootTasks = tasks.filter(task => !task.parentId);
+    // 基本タスクを作成
+    const baseTaskId = this.createNewTask(projectId, taskData, parentTaskId);
+    taskIds.push(baseTaskId);
     
-    // 再帰的に子タスクを追加する関数
-    const addTasksRecursively = (currentTasks: Task[]) => {
-      currentTasks.forEach(task => {
-        result.push(task);
-        const children = this.getChildTasks(task.id);
-        addTasksRecursively(children);
-      });
+    // 開始日と繰り返し回数に基づいて追加タスクを生成
+    const startDate = new Date(taskData.start);
+    const duration = this.calculateTaskDuration(taskData.start, taskData.end);
+    let currentDate = new Date(startDate);
+    let instanceCount = 1;
+    
+    // 繰り返し回数または終了日に基づいて生成
+    const shouldContinue = () => {
+      if (endAfter && instanceCount >= endAfter) return false;
+      if (endDate && currentDate > new Date(endDate)) return false;
+      return true;
     };
     
-    addTasksRecursively(rootTasks);
+    while (shouldContinue() && instanceCount < 100) { // 安全のため上限を設定
+      // 次の日付を計算
+      currentDate = this.calculateNextOccurrence(currentDate, type, interval, daysOfWeek);
+      
+      if (!currentDate) break;
+      
+      // 新しい終了日を計算
+      const newEndDate = new Date(currentDate);
+      newEndDate.setDate(newEndDate.getDate() + duration - 1);
+      
+      // 新しいタスクデータを作成
+      const newTaskData = {
+        ...taskData,
+        start: currentDate.toISOString(),
+        end: newEndDate.toISOString(),
+        name: `${taskData.name} (${instanceCount + 1})`
+      };
+      
+      // 新しいタスクを作成
+      const newTaskId = this.createNewTask(projectId, newTaskData, parentTaskId);
+      taskIds.push(newTaskId);
+      
+      instanceCount++;
+    }
     
-    return result;
+    return taskIds;
   }
-};
+  
+  /**
+   * 次の繰り返し日を計算
+   */
+  private calculateNextOccurrence(
+    currentDate: Date, 
+    type: string, 
+    interval: number, 
+    daysOfWeek?: number[]
+  ): Date | null {
+    const nextDate = new Date(currentDate);
+    
+    switch (type) {
+      case 'daily':
+        nextDate.setDate(nextDate.getDate() + interval);
+        break;
+        
+      case 'weekly':
+        nextDate.setDate(nextDate.getDate() + (interval * 7));
+        break;
+        
+      case 'monthly':
+        nextDate.setMonth(nextDate.getMonth() + interval);
+        break;
+        
+      case 'yearly':
+        nextDate.setFullYear(nextDate.getFullYear() + interval);
+        break;
+        
+      case 'custom':
+        if (daysOfWeek && daysOfWeek.length > 0) {
+          // 現在の曜日を取得
+          const currentDay = nextDate.getDay();
+          let nextDay = -1;
+          
+          // 次の指定曜日を検索
+          for (let i = 0; i < 7; i++) {
+            const checkDay = (currentDay + i + 1) % 7;
+            if (daysOfWeek.includes(checkDay)) {
+              nextDay = checkDay;
+              break;
+            }
+          }
+          
+          if (nextDay !== -1) {
+            // 現在の曜日から次の指定曜日までの日数を計算
+            const daysUntilNext = (nextDay - currentDay + 7) % 7;
+            nextDate.setDate(nextDate.getDate() + daysUntilNext);
+          } else {
+            return null;
+          }
+        } else {
+          nextDate.setDate(nextDate.getDate() + interval);
+        }
+        break;
+        
+      default:
+        return null;
+    }
+    
+    return nextDate;
+  }
+  
+  /**
+   * タスクの期間（日数）を計算
+   */
+  private calculateTaskDuration(start: string | Date, end: string | Date): number {
+    const startDate = start instanceof Date ? start : new Date(start);
+    const endDate = end instanceof Date ? end : new Date(end);
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return 1; // デフォルト値
+    }
+    
+    // 開始日と終了日の差を日数で計算（終了日も含む）
+    return Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  }
+  
+  /**
+   * タスクを取得
+   */
+  getTask(
+    projectId: string, 
+    taskId: string, 
+    subtaskId?: string | null
+  ): Task | SubTask | null {
+    const { projects } = store.getState().projects;
+    
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return null;
+    
+    const task = project.tasks.find(t => t.id === taskId);
+    if (!task) return null;
+    
+    if (subtaskId) {
+      return task.subtasks.find(st => st.id === subtaskId) || null;
+    }
+    
+    return task;
+  }
+}
 
-export default taskService;
+export const taskService = new TaskService();

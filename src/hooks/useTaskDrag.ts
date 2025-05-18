@@ -1,151 +1,121 @@
-import { useState, useCallback, useRef } from 'react';
-import { addDays } from 'date-fns';
-import { useTaskContext } from '../contexts/TaskContext';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../store/reducers';
+import { 
+  startDrag,
+  updateDrag,
+  endDrag
+} from '../store/slices/timelineSlice';
+import { updateTaskDates } from '../store/slices/tasksSlice';
+import { useFeedback } from './useFeedback';
 
-interface DragState {
-  taskId: string | null;
-  type: 'start' | 'end' | 'move' | null;
-  initialX: number;
-  initialDate: Date | null;
-  initialEndDate: Date | null;
-}
-
-interface UseTaskDragOptions {
-  dayWidth: number;
-  onDragStart?: (taskId: string, type: 'start' | 'end' | 'move') => void;
-  onDragEnd?: (taskId: string, newStartDate: Date, newEndDate: Date) => void;
-}
-
-/**
- * カスタムフック: タスクのドラッグ操作を管理
- * 
- * タイムライン上でのタスクのドラッグ＆ドロップ操作を処理する
- */
-export const useTaskDrag = ({ dayWidth, onDragStart, onDragEnd }: UseTaskDragOptions) => {
-  const { updateTask, tasks } = useTaskContext();
+export const useTaskDrag = () => {
+  const dispatch = useDispatch();
+  const { showFeedback } = useFeedback();
+  const { dragInfo, zoomLevel } = useSelector((state: RootState) => state.timeline);
+  const dragRef = useRef<HTMLDivElement>(null);
   
-  // ドラッグの状態
-  const [dragState, setDragState] = useState<DragState>({
-    taskId: null,
-    type: null,
-    initialX: 0,
-    initialDate: null,
-    initialEndDate: null
-  });
-  
-  // ドラッグ中かどうか
-  const isDragging = Boolean(dragState.taskId);
-  
-  // 前回の日数差分を保持するためのref
-  const lastDiffDaysRef = useRef(0);
-  
-  // ドラッグ開始
-  const startDrag = useCallback((
-    taskId: string,
-    type: 'start' | 'end' | 'move',
-    clientX: number
+  // ドラッグの開始
+  const handleDragStart = useCallback((
+    projectId: string, 
+    taskId: string, 
+    subtaskId: string | null, 
+    type: 'move' | 'resize-start' | 'resize-end',
+    e: React.MouseEvent
   ) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
+    e.stopPropagation();
     
-    setDragState({
+    dispatch(startDrag({
+      projectId,
       taskId,
+      subtaskId,
       type,
-      initialX: clientX,
-      initialDate: new Date(task.startDate),
-      initialEndDate: new Date(task.endDate)
-    });
+      initialX: e.clientX,
+      startX: e.clientX,
+      taskStart: null, // タスクの開始日はstoreで取得
+      taskEnd: null,   // タスクの終了日はstoreで取得
+      daysDelta: 0
+    }));
     
-    lastDiffDaysRef.current = 0;
-    
-    // コールバックを呼び出し
-    onDragStart?.(taskId, type);
-  }, [tasks, onDragStart]);
+    // グローバルイベントハンドラを追加
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+  }, [dispatch]);
   
-  // ドラッグ中
-  const onDrag = useCallback((clientX: number) => {
-    if (!dragState.taskId || !dragState.type || !dragState.initialDate) return;
+  // ドラッグ中の動き
+  const handleDragMove = useCallback((e: MouseEvent) => {
+    if (!dragInfo) return;
     
-    // X方向の移動量（ピクセル）
-    const deltaX = clientX - dragState.initialX;
+    // ドラッグ距離からの日数変化を計算
+    const dayWidth = 34 * (zoomLevel / 100);
+    const deltaX = e.clientX - dragInfo.initialX;
+    const daysDelta = Math.round(deltaX / dayWidth);
     
-    // 日数に変換（四捨五入して整数の日数にする）
-    const diffDays = Math.round(deltaX / dayWidth);
+    dispatch(updateDrag({
+      currentX: e.clientX,
+      daysDelta
+    }));
     
-    // 前回と同じ日数差分なら何もしない
-    if (diffDays === lastDiffDaysRef.current) return;
-    lastDiffDaysRef.current = diffDays;
-    
-    // 対象タスクを取得
-    const task = tasks.find(t => t.id === dragState.taskId);
-    if (!task) return;
-    
-    // 新しい日付を計算
-    let newStartDate: Date;
-    let newEndDate: Date;
-    
-    if (dragState.type === 'start') {
-      // 開始日のドラッグ
-      newStartDate = addDays(dragState.initialDate, diffDays);
+    // タイムラインの自動スクロール
+    const timelineContent = document.querySelector('.timeline-content');
+    if (timelineContent) {
+      const rect = timelineContent.getBoundingClientRect();
+      const scrollSpeed = 10;
       
-      // 開始日が終了日より後にならないように制約
-      if (newStartDate > task.endDate) {
-        newStartDate = new Date(task.endDate);
+      // 右端に近づいた場合、右にスクロール
+      if (e.clientX > rect.right - 50) {
+        timelineContent.scrollLeft += scrollSpeed;
       }
-      newEndDate = new Date(task.endDate);
-    } else if (dragState.type === 'end') {
-      // 終了日のドラッグ
-      newEndDate = addDays(dragState.initialEndDate!, diffDays);
       
-      // 終了日が開始日より前にならないように制約
-      if (newEndDate < task.startDate) {
-        newEndDate = new Date(task.startDate);
+      // 左端に近づいた場合、左にスクロール
+      if (e.clientX < rect.left + 50) {
+        timelineContent.scrollLeft -= scrollSpeed;
       }
-      newStartDate = new Date(task.startDate);
-    } else {
-      // タスク全体の移動
-      newStartDate = addDays(dragState.initialDate, diffDays);
-      newEndDate = addDays(dragState.initialEndDate!, diffDays);
     }
-    
-    // タスクを更新
-    updateTask({
-      ...task,
-      startDate: newStartDate,
-      endDate: newEndDate
-    });
-  }, [dragState, dayWidth, tasks, updateTask]);
+  }, [dragInfo, zoomLevel, dispatch]);
   
   // ドラッグ終了
-  const endDrag = useCallback(() => {
-    if (dragState.taskId) {
-      const task = tasks.find(t => t.id === dragState.taskId);
-      if (task) {
-        // コールバックを呼び出し
-        onDragEnd?.(task.id, task.startDate, task.endDate);
-      }
+  const handleDragEnd = useCallback(() => {
+    if (!dragInfo) return;
+    
+    document.removeEventListener('mousemove', handleDragMove);
+    document.removeEventListener('mouseup', handleDragEnd);
+    
+    const { projectId, taskId, subtaskId, type, daysDelta } = dragInfo;
+    
+    if (daysDelta !== 0) {
+      // タスクの日付を更新
+      dispatch(updateTaskDates({
+        projectId,
+        taskId,
+        subtaskId,
+        type,
+        daysDelta
+      }));
+      
+      // フィードバック表示
+      const feedbackMessage = 
+        type === 'move' ? 'タスクの日程を更新しました' :
+        type === 'resize-start' ? 'タスクの開始日を更新しました' :
+        'タスクの終了日を更新しました';
+      
+      showFeedback(feedbackMessage, 'success');
     }
     
-    // 状態をリセット
-    setDragState({
-      taskId: null,
-      type: null,
-      initialX: 0,
-      initialDate: null,
-      initialEndDate: null
-    });
-    
-    lastDiffDaysRef.current = 0;
-  }, [dragState.taskId, tasks, onDragEnd]);
+    dispatch(endDrag());
+  }, [dragInfo, dispatch, showFeedback]);
+  
+  // コンポーネントがアンマウントされたときのクリーンアップ
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleDragMove);
+      document.removeEventListener('mouseup', handleDragEnd);
+    };
+  }, [handleDragMove, handleDragEnd]);
   
   return {
-    isDragging,
-    dragTaskId: dragState.taskId,
-    dragType: dragState.type,
-    startDrag,
-    onDrag,
-    endDrag
+    handleDragStart,
+    dragRef,
+    isDragging: !!dragInfo
   };
 };
-
-export default useTaskDrag;

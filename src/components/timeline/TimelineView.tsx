@@ -1,250 +1,159 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { addDays, differenceInDays } from 'date-fns';
-import { useTaskContext } from '../../contexts/TaskContext';
-import { useTimelineContext } from '../../contexts/TimelineContext';
+import React, { useRef, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import TimelineHeader from './TimelineHeader';
 import TimelineDayHeader from './TimelineDayHeader';
 import TimelineItemList from './TimelineItemList';
-import TaskForm from '../task/TaskForm';
-import TaskNote from '../task/TaskNote';
-import { Task } from '../../models/task';
-import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import TaskEditModal from '../task/TaskEditModal';
+import QuickAddForm from '../task/QuickAddForm';
+import TaskDetailPopover from './TaskDetailPopover';
+import BatchOperationPanel from './BatchOperationPanel';
+import TaskList from '../task/TaskList';
+import { RootState } from '../../store/reducers';
+import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
+import { resetHoverInfo, setTimelineEnd, setTimelineStart } from '../../store/slices/timelineSlice';
+import { closeDeleteConfirmation, closeTaskEditModal, setQuickAddActive } from '../../store/slices/uiSlice';
+import ConfirmDialog from '../common/ConfirmDialog';
+import { deleteTask, deleteMultipleTasks } from '../../store/slices/tasksSlice';
 
-interface TimelineViewProps {
-  className?: string;
-}
-
-/**
- * タイムラインビューのルートコンポーネント
- * タイムラインの全体的な構造と状態管理を提供
- */
-const TimelineView: React.FC<TimelineViewProps> = ({ className = '' }) => {
-  // コンテキストから状態と関数を取得
-  const { tasks, toggleTaskCompletion, deleteTask } = useTaskContext();
+const TimelineView: React.FC = () => {
+  const dispatch = useDispatch();
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const timelineContentRef = useRef<HTMLDivElement>(null);
+  
+  // 状態を取得
   const { 
-    viewMode, 
-    startDate, 
-    endDate, 
-    zoomLevel,
-    showCompletedTasks,
-    setStartDate,
-    setEndDate
-  } = useTimelineContext();
+    timelineStart, 
+    timelineEnd, 
+    timelineScale, 
+    zoomLevel, 
+    hoverInfo, 
+    today 
+  } = useSelector((state: RootState) => state.timeline);
   
-  // 内部状態
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [noteTask, setNoteTask] = useState<Task | null>(null);
+  const { 
+    taskEditModal, 
+    quickAddActive, 
+    selectedTasks, 
+    showBatchPanel, 
+    deleteConfirmation 
+  } = useSelector((state: RootState) => state.ui);
   
-  // 表示するタスクのフィルタリング
-  const filteredTasks = tasks.filter(task => {
-    // 完了タスクの表示/非表示
-    if (!showCompletedTasks && task.completed) {
-      return false;
-    }
-    
-    return true;
-  });
+  // キーボードナビゲーションの設定
+  useKeyboardNavigation();
   
-  // タスク選択
-  const handleTaskSelect = (taskId: string) => {
-    setSelectedTaskId(prev => prev === taskId ? null : taskId);
-  };
-  
-  // タスク編集の開始
-  const handleEditTask = (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      setEditingTask(task);
-    }
-  };
-  
-  // タスク編集の終了
-  const handleEditDone = () => {
-    setEditingTask(null);
-  };
-  
-  // タスクノートを開く
-  const handleOpenNote = (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      setNoteTask(task);
-    }
-  };
-  
-  // タスクノートを閉じる
-  const handleCloseNote = () => {
-    setNoteTask(null);
-  };
-  
-  // タスク完了状態のトグル
-  const handleToggleTaskCompletion = (taskId: string) => {
-    toggleTaskCompletion(taskId);
-  };
-  
-  // タスク削除
-  const handleDeleteTask = (taskId: string) => {
-    if (window.confirm('このタスクを削除してもよろしいですか？')) {
-      deleteTask(taskId);
-      if (selectedTaskId === taskId) {
-        setSelectedTaskId(null);
-      }
-    }
-  };
-  
-  // タスクドラッグ開始
-  const handleTaskDragStart = (args: { taskId: string, type: 'start' | 'end' | 'move' }) => {
-    setDraggingTaskId(args.taskId);
-  };
-  
-  // タスクドラッグ終了
-  const handleTaskDragEnd = () => {
-    setDraggingTaskId(null);
-  };
-  
-  // 1日あたりの幅を計算
-  const calculateDayWidth = () => {
-    const baseWidth = viewMode === 'day' ? 50 : viewMode === 'week' ? 30 : 20;
-    return baseWidth * (zoomLevel / 100);
-  };
-  
-  // 選択されたタスクに対するキーボード操作
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (!selectedTaskId) return;
-    
-    // スペースキーでタスク完了状態の切り替え
-    if (e.code === 'Space') {
-      e.preventDefault();
-      handleToggleTaskCompletion(selectedTaskId);
-    }
-    
-    // Deleteキーでタスク削除
-    if (e.code === 'Delete') {
-      e.preventDefault();
-      handleDeleteTask(selectedTaskId);
-    }
-    
-    // Ctrl+Nでノート表示
-    if (e.ctrlKey && e.code === 'KeyN') {
-      e.preventDefault();
-      handleOpenNote(selectedTaskId);
-    }
-    
-    // Enterキーでタスク編集
-    if (e.code === 'Enter') {
-      e.preventDefault();
-      handleEditTask(selectedTaskId);
-    }
-  }, [selectedTaskId]);
-  
-  // グローバルキーボードショートカットの設定
-  useKeyboardShortcuts({
-    'Space': () => {
-      if (selectedTaskId) handleToggleTaskCompletion(selectedTaskId);
-    },
-    'Delete': () => {
-      if (selectedTaskId) handleDeleteTask(selectedTaskId);
-    },
-    'Ctrl+N': () => {
-      if (selectedTaskId) handleOpenNote(selectedTaskId);
-    },
-    'Enter': () => {
-      if (selectedTaskId) handleEditTask(selectedTaskId);
-    }
-  }, [selectedTaskId]);
-  
-  // タイムラインの日付範囲を今日を含むように調整
+  // 今日の位置までスクロール
   useEffect(() => {
-    const today = new Date();
-    const visibleDays = differenceInDays(endDate, startDate) + 1;
-    
-    // 今日が表示範囲に含まれていない場合、今日を中心に表示範囲を調整
-    if (today < startDate || today > endDate) {
-      const newStartDate = addDays(today, -Math.floor(visibleDays / 2));
-      setStartDate(newStartDate);
-      setEndDate(addDays(newStartDate, visibleDays - 1));
+    if (timelineContentRef.current) {
+      // タイムライン上の今日の位置を計算
+      const dayWidth = 34 * (zoomLevel / 100);
+      const timelineStartTime = timelineStart.getTime();
+      const todayTime = today.getTime();
+      const diffDays = Math.floor((todayTime - timelineStartTime) / (1000 * 60 * 60 * 24));
+      const todayPosition = diffDays * dayWidth;
+      
+      // 初期スクロール位置は今日の日付が見えるように調整
+      timelineContentRef.current.scrollLeft = Math.max(0, todayPosition - timelineContentRef.current.clientWidth / 2);
     }
-  }, []);
-
-  // HTMLからのキーイベント取得（フォーカスに関係なく動作させる）
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [handleKeyDown]);
-
-  // 現在の日付を取得
-  const today = new Date();
+  }, [timelineStart, today, zoomLevel]);
   
-  // 今日が表示範囲内にあるかチェック
-  const isTodayVisible = today >= startDate && today <= endDate;
+  // タスク削除確認ダイアログでの削除処理
+  const handleDeleteConfirm = () => {
+    const { projectId, taskId, subtaskId, batchMode } = deleteConfirmation;
+    
+    if (batchMode) {
+      // 複数タスク削除
+      dispatch(deleteMultipleTasks(selectedTasks));
+    } else {
+      // 単一タスク削除
+      dispatch(deleteTask({ projectId, taskId, subtaskId }));
+    }
+    
+    // ダイアログを閉じる
+    dispatch(closeDeleteConfirmation());
+  };
   
-  // TimelineItemList.LABEL_WIDTHの代替値として定数を使用
-  const LABEL_WIDTH = 200;
-
   return (
-    <div className={`timeline-view overflow-hidden flex flex-col border rounded bg-white ${className}`}>
+    <div className="flex flex-col h-full overflow-hidden" data-testid="timeline-view">
+      {/* タイムラインコントロールヘッダー */}
       <TimelineHeader />
       
-      <div className="timeline-content flex-1 overflow-auto">
-        <TimelineDayHeader
-          startDate={startDate}
-          endDate={endDate}
-          dayWidth={calculateDayWidth()}
-          todayIndicator
-          highlightWeekends
-        />
-        
-        <TimelineItemList
-          tasks={filteredTasks}
-          startDate={startDate}
-          dayWidth={calculateDayWidth()}
-          onTaskSelect={handleTaskSelect}
-          onTaskDragStart={handleTaskDragStart}
-          onTaskDragEnd={handleTaskDragEnd}
-          selectedTaskId={selectedTaskId}
-          draggingTaskId={draggingTaskId}
-          onEdit={handleEditTask}
-          onNote={handleOpenNote}
-          onToggleCompletion={handleToggleTaskCompletion}
-          onDelete={handleDeleteTask}
-        />
-        
-        {/* 今日が表示範囲内にある場合、今日の位置にインジケータを表示 */}
-        {isTodayVisible && (
-          <div
-            className="absolute top-0 bottom-0 w-px bg-red-500 z-10"
-            style={{
-              left: `${differenceInDays(today, startDate) * calculateDayWidth() + LABEL_WIDTH}px`,
-              pointerEvents: 'none'
-            }}
-          />
-        )}
-      </div>
-      
-      {/* タスク編集モーダル */}
-      {editingTask && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
-            <div className="p-4">
-              <h3 className="text-lg font-medium mb-4">タスク編集</h3>
-              <TaskForm
-                task={editingTask}
-                onSubmit={handleEditDone}
-                onCancel={handleEditDone}
-              />
-            </div>
+      {/* タイムラインビュー全体 */}
+      <div className="flex-1 overflow-auto" ref={timelineRef}>
+        <div className="flex min-h-full">
+          {/* プロジェクト・タスク一覧 */}
+          <TaskList />
+          
+          {/* タイムライングリッド */}
+          <div 
+            className="flex-1 relative overflow-auto"
+            ref={timelineContentRef}
+            onMouseLeave={() => dispatch(resetHoverInfo())}
+          >
+            {/* タイムラインヘッダー（日付） */}
+            <TimelineDayHeader />
+            
+            {/* タスクのタイムライン表示 */}
+            <TimelineItemList />
+            
+            {/* 今日の日付線 */}
+            <TodayIndicator />
           </div>
         </div>
-      )}
+      </div>
       
-      {/* タスクノートモーダル */}
-      {noteTask && (
-        <TaskNote task={noteTask} onClose={handleCloseNote} />
-      )}
+      {/* タスク詳細ポップアップ */}
+      <TaskDetailPopover info={hoverInfo} />
+      
+      {/* タスク編集モーダル */}
+      <TaskEditModal
+        isOpen={taskEditModal.isOpen}
+        onClose={() => dispatch(closeTaskEditModal())}
+      />
+      
+      {/* 削除確認ダイアログ */}
+      <ConfirmDialog
+        isOpen={deleteConfirmation.isOpen}
+        title="削除の確認"
+        message={
+          deleteConfirmation.batchMode 
+            ? `${selectedTasks.length}個のタスクを削除してもよろしいですか？この操作は取り消せません。` 
+            : `このタスクを削除してもよろしいですか？この操作は取り消せません。`
+        }
+        confirmText="削除"
+        confirmVariant="destructive"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => dispatch(closeDeleteConfirmation())}
+      />
+      
+      {/* クイック追加フォーム */}
+      {quickAddActive && <QuickAddForm />}
+      
+      {/* 一括操作パネル */}
+      {showBatchPanel && selectedTasks.length > 0 && <BatchOperationPanel />}
     </div>
+  );
+};
+
+// 今日の日付を示すインジケーター
+const TodayIndicator: React.FC = () => {
+  const { timelineStart, today, zoomLevel } = useSelector((state: RootState) => state.timeline);
+  
+  // 今日の位置を計算
+  const calculateTodayPosition = () => {
+    const dayWidth = 34 * (zoomLevel / 100);
+    const timelineStartTime = timelineStart.getTime();
+    const todayTime = today.getTime();
+    const diffDays = Math.floor((todayTime - timelineStartTime) / (1000 * 60 * 60 * 24));
+    return diffDays * dayWidth;
+  };
+  
+  const todayPosition = calculateTodayPosition();
+  
+  return (
+    <div 
+      className="absolute top-0 bottom-0 w-px bg-red-500 z-10"
+      style={{ left: `${todayPosition}px` }}
+    ></div>
   );
 };
 

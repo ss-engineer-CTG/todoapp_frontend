@@ -4,85 +4,102 @@ export default {
       "./index.html",
       "./src/**/*.{js,ts,jsx,tsx}",
     ],
+    darkMode: 'class',
     theme: {
       extend: {
         colors: {
-          // プライマリカラー
           primary: {
-            50: '#eff6ff',
-            100: '#dbeafe',
-            200: '#bfdbfe',
-            300: '#93c5fd',
-            400: '#60a5fa',
-            500: '#3b82f6',
-            600: '#2563eb',
-            700: '#1d4ed8',
-            800: '#1e40af',
-            900: '#1e3a8a',
+            50: '#EFF6FF',
+            100: '#DBEAFE',
+            200: '#BFDBFE',
+            300: '#93C5FD',
+            400: '#60A5FA',
+            500: '#3B82F6',
+            600: '#2563EB',
+            700: '#1D4ED8',
+            800: '#1E40AF',
+            900: '#1E3A8A',
             950: '#172554',
           },
+          completed: {
+            50: '#ECFDF5',
+            100: '#D1FAE5',
+            500: '#10B981',
+            600: '#059669',
+            700: '#047857',
+          },
+          overdue: {
+            50: '#FEF2F2',
+            100: '#FEE2E2',
+            500: '#EF4444',
+            600: '#DC2626',
+            700: '#B91C1C',
+          },
         },
-        // タスクステータス用の色
-        backgroundColor: {
-          'status-delayed': '#FECACA',
-          'status-active': '#BFDBFE',
-          'status-future': '#A7F3D0',
-          'status-completed': '#E5E7EB',
+        fontFamily: {
+          sans: [
+            '-apple-system',
+            'BlinkMacSystemFont',
+            'Segoe UI',
+            'Roboto',
+            'Helvetica Neue',
+            'Arial',
+            'Noto Sans',
+            'sans-serif',
+            'Apple Color Emoji',
+            'Segoe UI Emoji',
+            'Segoe UI Symbol',
+            'Noto Color Emoji',
+          ],
         },
-        borderColor: {
-          'status-delayed': '#EF4444',
-          'status-active': '#3B82F6',
-          'status-future': '#10B981',
-          'status-completed': '#9CA3AF',
-        },
-        textColor: {
-          'status-delayed': '#B91C1C',
-          'status-active': '#1E40AF',
-          'status-future': '#047857',
-          'status-completed': '#4B5563',
-        },
-        // スペーシング
         spacing: {
-          'task-row': '40px',
-          'task-bar': '36px',
-          'timeline-label-width': '200px',
+          '0.5': '0.125rem',
+          '1.5': '0.375rem',
+          '2.5': '0.625rem',
+          '3.5': '0.875rem',
         },
-        // アニメーション
-        animation: {
-          'fade-in': 'fadeIn 0.2s ease-in-out',
-          'slide-up': 'slideUp 0.2s ease-in-out',
-          'slide-down': 'slideDown 0.2s ease-in-out',
+        transitionProperty: {
+          'height': 'height',
+          'spacing': 'margin, padding',
+        },
+        zIndex: {
+          '5': '5',
+          '15': '15',
+          '25': '25',
+          '35': '35',
+          '45': '45',
+        },
+        opacity: {
+          '15': '0.15',
+          '35': '0.35',
+          '85': '0.85',
+          '95': '0.95',
+        },
+        cursor: {
+          'grab': 'grab',
+          'grabbing': 'grabbing',
+          'ew-resize': 'ew-resize',
         },
         keyframes: {
           fadeIn: {
             '0%': { opacity: '0' },
             '100%': { opacity: '1' },
           },
-          slideUp: {
-            '0%': { transform: 'translateY(10px)', opacity: '0' },
-            '100%': { transform: 'translateY(0)', opacity: '1' },
+          slideInFromRight: {
+            '0%': { transform: 'translateX(100%)' },
+            '100%': { transform: 'translateX(0)' },
           },
-          slideDown: {
-            '0%': { transform: 'translateY(-10px)', opacity: '0' },
-            '100%': { transform: 'translateY(0)', opacity: '1' },
+          slideInFromTop: {
+            '0%': { transform: 'translateY(-100%)' },
+            '100%': { transform: 'translateY(0)' },
           },
         },
-        // Z-index
-        zIndex: {
-          'timeline-header': '10',
-          'timeline-labels': '20',
-          'timeline-item': '5',
-          'timeline-item-selected': '10',
-          'timeline-popover': '30',
-          'modal': '50',
-        },
-        // カーソル
-        cursor: {
-          'e-resize': 'e-resize',
-          'w-resize': 'w-resize',
-          'ew-resize': 'ew-resize',
+        animation: {
+          fadeIn: 'fadeIn 0.3s ease-in-out',
+          slideInFromRight: 'slideInFromRight 0.3s ease-in-out',
+          slideInFromTop: 'slideInFromTop 0.3s ease-in-out',
         },
       },
     },
     plugins: [],
-  };
+  }

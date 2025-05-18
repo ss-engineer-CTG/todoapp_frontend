@@ -1,71 +1,58 @@
 import { useState, useEffect } from 'react';
 
-/**
- * カスタムフック: ローカルストレージにデータを保存・取得
- * 
- * 使用例:
- * const [tasks, setTasks] = useLocalStorage<Task[]>('tasks', []);
- * const [settings, setSettings] = useLocalStorage<Settings>('settings', defaultSettings);
- */
-export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
-  // 初期値を取得する関数
-  const getStoredValue = (): T => {
+export function useLocalStorage<T>(key: string, initialValue: T) {
+  // ローカルストレージから値を取得するか、初期値を使用
+  const readValue = (): T => {
+    if (typeof window === 'undefined') {
+      return initialValue;
+    }
+    
     try {
-      // ローカルストレージからデータを取得
       const item = window.localStorage.getItem(key);
-      
-      // データが存在する場合はパースして返す
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
-      // エラーが発生した場合は初期値を返す
-      console.error(`Error reading localStorage key "${key}":`, error);
+      console.warn(`Error reading localStorage key "${key}":`, error);
       return initialValue;
     }
   };
   
-  // 状態を初期化
-  const [storedValue, setStoredValue] = useState<T>(getStoredValue);
+  // 実際の値を状態として保持
+  const [storedValue, setStoredValue] = useState<T>(readValue);
   
-  // 値を設定する関数
-  const setValue = (value: T | ((val: T) => T)) => {
+  // 値を設定し、ローカルストレージに保存するラッパー関数を返す
+  const setValue = (value: T | ((val: T) => T)): void => {
     try {
-      // 新しい値を計算
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      
-      // 状態を更新
-      setStoredValue(valueToStore);
+      // 関数として渡された場合は関数を実行して結果を使用
+      const newValue = value instanceof Function ? value(storedValue) : value;
       
       // ローカルストレージに保存
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(key, JSON.stringify(newValue));
+      }
+      
+      // 状態を更新
+      setStoredValue(newValue);
     } catch (error) {
-      // エラーが発生した場合はログに記録
-      console.error(`Error setting localStorage key "${key}":`, error);
+      console.warn(`Error setting localStorage key "${key}":`, error);
     }
   };
   
-  // ローカルストレージの変更を監視
+  // 他のウィンドウでの変更を監視
   useEffect(() => {
-    // ストレージイベントハンドラー
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === key && event.newValue !== null) {
-        // 他のタブ/ウィンドウでの変更を反映
-        setStoredValue(JSON.parse(event.newValue));
-      } else if (event.key === key && event.newValue === null) {
-        // 削除された場合は初期値に戻す
-        setStoredValue(initialValue);
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === key && e.newValue) {
+        setStoredValue(JSON.parse(e.newValue));
       }
     };
     
-    // イベントリスナーを登録
+    // イベントリスナーを追加
     window.addEventListener('storage', handleStorageChange);
     
     // クリーンアップ関数
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [key, initialValue]);
+  }, [key]);
   
-  return [storedValue, setValue];
+  return [storedValue, setValue] as const;
 }
-
-export default useLocalStorage;
