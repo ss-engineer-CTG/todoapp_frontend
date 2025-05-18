@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X } from 'lucide-react';
 import { RootState } from '../../store/reducers';
@@ -110,8 +110,8 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose }) => {
     
     const taskData = {
       name: taskName,
-      start: taskStart,
-      end: taskEnd,
+      start: taskStart.toISOString(),
+      end: taskEnd.toISOString(),
       status: taskStatus,
       notes: taskNotes
     };
@@ -122,7 +122,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose }) => {
         projectId: selectedProjectId,
         taskId: taskId as string,
         subtaskId,
-        task: taskData as Task | SubTask
+        task: taskData
       }));
       showFeedback(`タスク「${taskName}」を更新しました`, 'success');
     } else {
@@ -130,7 +130,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ isOpen, onClose }) => {
       dispatch(createTask({
         projectId: selectedProjectId,
         parentTaskId,
-        task: taskData as Task
+        task: taskData
       }));
       showFeedback(`新規タスク「${taskName}」を追加しました`, 'success');
     }

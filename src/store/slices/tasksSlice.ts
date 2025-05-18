@@ -1,6 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Task, SubTask } from '../../types/task';
-import { generateId } from '../../utils/taskUtils';
 
 // インターフェースと型定義
 interface TasksState {
@@ -16,96 +15,57 @@ const tasksSlice = createSlice({
   initialState,
   reducers: {
     // タスクの作成
-    createTask: (state, action: PayloadAction<{
-      projectId: string;
-      parentTaskId?: string | null;
-      task: Omit<Task, 'id' | 'expanded' | 'subtasks'>;
-    }>) => {
+    createTask: () => {
       // 実際の更新はprojectsSliceでリスナー経由で行う
     },
     
     // タスクの更新
-    updateTask: (state, action: PayloadAction<{
-      projectId: string;
-      taskId: string;
-      subtaskId?: string | null;
-      task: Partial<Task | SubTask>;
-    }>) => {
+    updateTask: () => {
       // 実際の更新はprojectsSliceでリスナー経由で行う
     },
     
     // タスクの削除
-    deleteTask: (state, action: PayloadAction<{
-      projectId: string;
-      taskId: string;
-      subtaskId?: string | null;
-    }>) => {
+    deleteTask: () => {
       // 実際の更新はprojectsSliceでリスナー経由で行う
     },
     
     // 複数タスクの削除
-    deleteMultipleTasks: (state, action: PayloadAction<string[]>) => {
+    deleteMultipleTasks: () => {
       // 実際の更新はprojectsSliceでリスナー経由で行う
     },
     
     // タスクの展開/折りたたみ
-    toggleTask: (state, action: PayloadAction<{
-      projectId: string;
-      taskId: string;
-    }>) => {
+    toggleTask: () => {
       // 実際の更新はprojectsSliceでリスナー経由で行う
     },
     
     // タスクのステータス更新
-    updateTaskStatus: (state, action: PayloadAction<{
-      projectId: string;
-      taskId: string;
-      subtaskId?: string | null;
-      status: string;
-    }>) => {
+    updateTaskStatus: () => {
       // 実際の更新はprojectsSliceでリスナー経由で行う
     },
     
     // 複数タスクのステータス更新
-    updateMultipleTaskStatus: (state, action: PayloadAction<{
-      taskKeys: string[];
-      status: string;
-    }>) => {
+    updateMultipleTaskStatus: () => {
       // 実際の更新はprojectsSliceでリスナー経由で行う
     },
     
     // タスクの日付更新
-    updateTaskDates: (state, action: PayloadAction<{
-      projectId: string;
-      taskId: string;
-      subtaskId?: string | null;
-      type: 'move' | 'resize-start' | 'resize-end';
-      daysDelta: number;
-    }>) => {
+    updateTaskDates: () => {
       // 実際の更新はprojectsSliceでリスナー経由で行う
     },
     
     // タスク複製
-    duplicateTask: (state, action: PayloadAction<{
-      projectId: string;
-      taskId: string;
-      subtaskId?: string | null;
-    }>) => {
+    duplicateTask: () => {
       // 実際の更新はprojectsSliceでリスナー経由で行う
     },
     
     // インライン編集の保存
-    saveInlineEditTask: (state, action: PayloadAction<{
-      projectId: string;
-      taskId: string;
-      subtaskId?: string | null;
-      name: string;
-    }>) => {
+    saveInlineEditTask: () => {
       // 実際の更新はprojectsSliceでリスナー経由で行う
     },
     
     // インライン編集のキャンセル
-    cancelInlineEditTask: (state) => {
+    cancelInlineEditTask: () => {
       // UIスライスで処理
     }
   },

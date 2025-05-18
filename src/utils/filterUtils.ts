@@ -1,4 +1,5 @@
-import { Project, Task, SubTask } from '../types/task';
+import { Task, SubTask } from '../types/task';
+import { Project } from '../types/project';
 
 // タスクをステータスでフィルタリング
 export const filterTasksByStatus = (
@@ -47,7 +48,7 @@ export const filterProjectsByDateRange = (
   endDate: Date
 ): Project[] => {
   return projects.map(project => {
-    const filteredTasks = project.tasks.filter(task => {
+    const filteredTasks = project.tasks.filter((task: Task) => {
       const taskStart = new Date(task.start);
       const taskEnd = new Date(task.end);
       
@@ -56,10 +57,10 @@ export const filterProjectsByDateRange = (
     });
     
     // サブタスクにも同じフィルタリングを適用
-    const tasksWithFilteredSubtasks = filteredTasks.map(task => {
+    const tasksWithFilteredSubtasks = filteredTasks.map((task: Task) => {
       if (!task.subtasks || task.subtasks.length === 0) return task;
       
-      const filteredSubtasks = task.subtasks.filter(subtask => {
+      const filteredSubtasks = task.subtasks.filter((subtask: SubTask) => {
         const subtaskStart = new Date(subtask.start);
         const subtaskEnd = new Date(subtask.end);
         
@@ -86,14 +87,14 @@ export const searchTasks = (
     // プロジェクト名が検索テキストに一致するか
     const projectMatches = project.name.toLowerCase().includes(searchLower);
     
-    const filteredTasks = project.tasks.filter(task => {
+    const filteredTasks = project.tasks.filter((task: Task) => {
       // タスク名かノートが検索テキストに一致するか
       const taskMatches = 
         task.name.toLowerCase().includes(searchLower) || 
         (task.notes && task.notes.toLowerCase().includes(searchLower));
       
       // サブタスクを検索
-      const filteredSubtasks = task.subtasks.filter(subtask => 
+      const filteredSubtasks = task.subtasks.filter((subtask: SubTask) => 
         subtask.name.toLowerCase().includes(searchLower) || 
         (subtask.notes && subtask.notes.toLowerCase().includes(searchLower))
       );

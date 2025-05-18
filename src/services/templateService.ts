@@ -1,5 +1,4 @@
 import { Template, TemplateApplyOptions } from '../types/template';
-import { Project, Task, SubTask } from '../types/task';
 import { store } from '../store/store';
 import { 
   createTemplate, 
@@ -8,7 +7,6 @@ import {
 } from '../store/slices/templatesSlice';
 import { taskService } from './taskService';
 import { generateId } from '../utils/taskUtils';
-import { addDays } from '../utils/dateUtils';
 
 /**
  * テンプレート操作サービス
@@ -48,7 +46,9 @@ class TemplateService {
       sourceType,
       sourceId,
       taskKeys,
-      taskCount
+      taskCount,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     }));
     
     return templateId;

@@ -3,13 +3,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Bell, Plus, Moon, Sun, Filter } from 'lucide-react';
 import { RootState } from '../../store/reducers';
 import { useTheme } from '../../context/ThemeContext';
-import { setViewMode, toggleCompletedTasks } from '../../store/slices/uiSlice';
+import { setViewMode } from '../../store/slices/uiSlice';
 import { useNotifications } from '../../hooks/useNotifications';
 import { openTaskEditModal } from '../../store/slices/uiSlice';
 
 const AppHeader: React.FC = () => {
   const dispatch = useDispatch();
-  const { viewMode, displayCompletedTasks } = useSelector((state: RootState) => state.ui);
+  const { viewMode } = useSelector((state: RootState) => state.ui);
   const { theme, toggleTheme } = useTheme();
   const { notifications, markAllAsRead } = useNotifications();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -25,7 +25,7 @@ const AppHeader: React.FC = () => {
   };
   
   // 表示モードの変更
-  const handleViewModeChange = (mode: string) => {
+  const handleViewModeChange = (mode: 'all' | 'today' | 'overdue') => {
     dispatch(setViewMode(mode));
   };
 

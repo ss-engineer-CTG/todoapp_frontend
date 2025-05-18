@@ -135,16 +135,13 @@ class TaskService {
     taskId: string, 
     subtaskId?: string | null
   ): string {
-    const newId = generateId();
-    
     store.dispatch(duplicateTask({
       projectId,
       taskId,
-      subtaskId,
-      newId
+      subtaskId
     }));
     
-    return newId;
+    return generateId(); // 新しいIDを返す（実際のIDはリデューサー内で生成）
   }
   
   /**
@@ -178,9 +175,10 @@ class TaskService {
     
     while (shouldContinue() && instanceCount < 100) { // 安全のため上限を設定
       // 次の日付を計算
-      currentDate = this.calculateNextOccurrence(currentDate, type, interval, daysOfWeek);
+      const nextDate = this.calculateNextOccurrence(currentDate, type, interval, daysOfWeek);
+      if (!nextDate) break;
       
-      if (!currentDate) break;
+      currentDate = nextDate;
       
       // 新しい終了日を計算
       const newEndDate = new Date(currentDate);

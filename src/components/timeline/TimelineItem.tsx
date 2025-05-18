@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/reducers';
-import { Project, Task, SubTask } from '../../types/task';
+import { Task, SubTask } from '../../types/task';
+import { Project } from '../../types/project';
 import TaskBar from './TaskBar';
-import { getTaskPosition } from '../../utils/taskUtils';
-import { startDrag } from '../../store/slices/timelineSlice';
-import { toggleTask } from '../../store/slices/projectsSlice';
+import { toggleTask } from '../../store/slices/tasksSlice';
 
 interface TimelineItemProps {
   project: Project;
@@ -21,7 +20,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
   isParent = true 
 }) => {
   const dispatch = useDispatch();
-  const { timelineStart, timelineScale, zoomLevel, dragInfo } = useSelector((state: RootState) => state.timeline);
+  const { timelineStart, timelineScale, zoomLevel } = useSelector((state: RootState) => state.timeline);
   const { selectedTasks, focusedTaskKey } = useSelector((state: RootState) => state.ui);
   
   // スケールファクターを取得
@@ -88,7 +87,6 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
   
   // 曜日による背景色を取得
   const getDateCellColor = (date: Date) => {
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isToday = date.toDateString() === today.toDateString();
     
     if (isToday) return 'timeline-grid-cell today';
@@ -101,7 +99,6 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
   const timelineDates = generateTimelineDates();
   
   // サブタスクを表示するかどうか
-  const currentData = subtask || task;
   const taskKey = subtask 
     ? `${project.id}-${task.id}-${subtask.id}` 
     : `${project.id}-${task.id}`;

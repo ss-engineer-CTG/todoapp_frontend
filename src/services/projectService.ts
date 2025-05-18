@@ -1,5 +1,4 @@
 import { Project, ProjectStats } from '../types/project';
-import { Task } from '../types/task';
 import { store } from '../store/store';
 import { 
   addProject, 
@@ -25,9 +24,11 @@ class ProjectService {
     const color = projectData.color || this.getRandomProjectColor();
     
     store.dispatch(addProject({
+      id: projectId,
       ...projectData,
       color,
-      expanded: true
+      expanded: true,
+      tasks: []
     }));
     
     return projectId;

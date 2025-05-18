@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Check, Edit, Copy } from 'lucide-react';
 import { RootState } from '../../store/reducers';
@@ -23,7 +23,6 @@ const TaskBar: React.FC<TaskBarProps> = ({
   project,
   task,
   subtask,
-  isParent,
   isSelected,
   isFocused
 }) => {
@@ -141,7 +140,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
   
   // ドラッグ中のタスクバーのスタイルを生成
   const getDraggedTaskBarStyle = () => {
-    if (!isDragging) return {};
+    if (!isDragging || !dragInfo) return {};
     
     if (dragInfo.type === 'move') {
       const dayWidth = 34 * (zoomLevel / 100);
@@ -264,7 +263,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
       </div>
       
       {/* 日付変更ツールチップ */}
-      {isDragging && (
+      {isDragging && dragInfo && (
         <div 
           className="absolute bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded z-50 whitespace-nowrap"
           style={{ 
@@ -273,16 +272,16 @@ const TaskBar: React.FC<TaskBarProps> = ({
             transform: 'translateX(-50%)'
           }}
         >
-          {dragInfo.type === 'move' ? (
+          {dragInfo.type === 'move' && dragInfo.taskStart && dragInfo.taskEnd ? (
             <>
               {formatDate(new Date(dragInfo.taskStart.getTime() + dragInfo.daysDelta * 86400000))} - 
               {formatDate(new Date(dragInfo.taskEnd.getTime() + dragInfo.daysDelta * 86400000))}
             </>
-          ) : dragInfo.type === 'resize-start' ? (
+          ) : dragInfo.type === 'resize-start' && dragInfo.taskStart ? (
             <>開始日: {formatDate(new Date(dragInfo.taskStart.getTime() + dragInfo.daysDelta * 86400000))}</>
-          ) : (
+          ) : dragInfo.type === 'resize-end' && dragInfo.taskEnd ? (
             <>終了日: {formatDate(new Date(dragInfo.taskEnd.getTime() + dragInfo.daysDelta * 86400000))}</>
-          )}
+          ) : null}
         </div>
       )}
     </>

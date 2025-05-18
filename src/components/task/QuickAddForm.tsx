@@ -43,11 +43,10 @@ const QuickAddForm: React.FC = () => {
     // タスクデータを作成
     const taskData = {
       name: taskName,
-      start,
-      end,
+      start: start.toISOString(),
+      end: end.toISOString(),
       status: 'not-started',
-      notes: '',
-      subtasks: []
+      notes: ''
     };
     
     // タスク追加アクションをディスパッチ

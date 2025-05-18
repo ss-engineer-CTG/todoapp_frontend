@@ -13,7 +13,8 @@ const initialState: NotificationsState = {
       id: 'n1', 
       text: 'モックアップデザインのタスクが明日締め切りです', 
       read: false,
-      createdAt: new Date('2025-05-16').toISOString()
+      createdAt: new Date('2025-05-16').toISOString(),
+      type: 'info'
     }
   ]
 };
@@ -26,7 +27,7 @@ const notificationsSlice = createSlice({
     // 通知の追加
     addNotification: (state, action: PayloadAction<{ 
       text: string; 
-      type?: string;
+      type?: 'info' | 'warning' | 'error' | 'success';
     }>) => {
       const { text, type = 'info' } = action.payload;
       

@@ -5,9 +5,17 @@ import { formatDate } from '../../utils/dateUtils';
 import { updateTaskStatus } from '../../store/slices/tasksSlice';
 import { openTaskEditModal, openDeleteConfirmation } from '../../store/slices/uiSlice';
 import { duplicateTask } from '../../store/slices/tasksSlice';
+import { Task, SubTask, TaskStatus } from '../../types/task';
 
 interface TaskDetailPopoverProps {
-  info: any | null;
+  info: {
+    task: Task | SubTask;
+    position: { x: number; y: number };
+    projectId: string;
+    taskId: string;
+    subtaskId?: string;
+    projectColor: string;
+  } | null;
 }
 
 const TaskDetailPopover: React.FC<TaskDetailPopoverProps> = ({ info }) => {
@@ -15,16 +23,18 @@ const TaskDetailPopover: React.FC<TaskDetailPopoverProps> = ({ info }) => {
 
   if (!info) return null;
   
-  const { task, position, projectId, taskId, subtaskId, projectColor } = info;
+  const { task, position, projectId, taskId, subtaskId } = info;
   
-  const statusLabels = {
+  // ステータスラベルの安全なアクセスのためのマッピング
+  const statusLabels: Record<TaskStatus, string> = {
     'completed': '完了',
     'in-progress': '進行中',
     'not-started': '未開始',
     'overdue': '遅延'
   };
   
-  const statusIcons = {
+  // ステータスアイコンの安全なアクセスのためのマッピング
+  const statusIcons: Record<TaskStatus, React.ReactNode> = {
     'completed': <Check size={14} className="text-green-500" />,
     'in-progress': <Clock size={14} className="text-blue-500" />,
     'not-started': <Clock size={14} className="text-gray-400" />,

@@ -2,7 +2,8 @@ import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Check } from 'lucide-react';
 import { RootState } from '../../store/reducers';
-import { Project, Task, SubTask } from '../../types/task';
+import { Task, SubTask } from '../../types/task';
+import { Project } from '../../types/project';
 import { updateTaskStatus } from '../../store/slices/tasksSlice';
 import { toggleTaskSelection } from '../../store/slices/uiSlice';
 

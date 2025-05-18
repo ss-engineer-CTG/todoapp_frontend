@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Filter, Calendar, Clock, CheckSquare, ChevronDown } from 'lucide-react';
+import { Filter, Calendar, Clock, ChevronDown } from 'lucide-react';
 import { setViewMode, toggleCompletedTasks } from '../../store/slices/uiSlice';
 import { RootState } from '../../store/reducers';
 import { useFeedback } from '../../hooks/useFeedback';
@@ -24,7 +24,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ className = '' }) => {
   ];
   
   // フィルター変更ハンドラー
-  const handleFilterChange = (filterId: string) => {
+  const handleFilterChange = (filterId: 'all' | 'today' | 'overdue') => {
     dispatch(setViewMode(filterId));
     setIsOpen(false);
     showFeedback(`フィルター「${filters.find(f => f.id === filterId)?.name}」を適用しました`);
@@ -72,7 +72,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ className = '' }) => {
             <button
               key={filter.id}
               className={`w-full text-left px-3 py-2 flex items-center text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${viewMode === filter.id ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : ''}`}
-              onClick={() => handleFilterChange(filter.id)}
+              onClick={() => handleFilterChange(filter.id as 'all' | 'today' | 'overdue')}
             >
               <span className="mr-2">{filter.icon}</span>
               <span>{filter.name}</span>

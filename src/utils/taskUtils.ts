@@ -1,4 +1,5 @@
-import { Project, Task, SubTask } from '../types/task';
+import { Task, SubTask } from '../types/task';
+import { Project } from '../types/project';
 
 // ID生成
 export const generateId = (): string => {
@@ -14,8 +15,8 @@ export const getTaskPosition = (
   if (!task || !task.start || !task.end) return { left: 0, width: 0 };
   
   // 日付オブジェクトに変換
-  const taskStart = task.start instanceof Date ? task.start : new Date(task.start);
-  const taskEnd = task.end instanceof Date ? task.end : new Date(task.end);
+  const taskStart = new Date(task.start);
+  const taskEnd = new Date(task.end);
   const timelineStartDate = timelineStart instanceof Date ? timelineStart : new Date(timelineStart);
   
   // 無効な日付の場合はデフォルト値を返す
@@ -137,8 +138,8 @@ export const updateTaskDatesByDays = (
   type: 'move' | 'resize-start' | 'resize-end', 
   daysDelta: number
 ): Task | SubTask => {
-  const taskStart = task.start instanceof Date ? new Date(task.start) : new Date(task.start);
-  const taskEnd = task.end instanceof Date ? new Date(task.end) : new Date(task.end);
+  const taskStart = new Date(task.start);
+  const taskEnd = new Date(task.end);
   
   if (isNaN(taskStart.getTime()) || isNaN(taskEnd.getTime())) {
     return task;

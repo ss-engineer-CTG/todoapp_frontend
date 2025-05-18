@@ -10,10 +10,10 @@ import BatchOperationPanel from './BatchOperationPanel';
 import TaskList from '../task/TaskList';
 import { RootState } from '../../store/reducers';
 import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
-import { resetHoverInfo, setTimelineEnd, setTimelineStart } from '../../store/slices/timelineSlice';
-import { closeDeleteConfirmation, closeTaskEditModal, setQuickAddActive } from '../../store/slices/uiSlice';
-import ConfirmDialog from '../common/ConfirmDialog';
+import { resetHoverInfo } from '../../store/slices/timelineSlice';
+import { closeDeleteConfirmation, closeTaskEditModal } from '../../store/slices/uiSlice';
 import { deleteTask, deleteMultipleTasks } from '../../store/slices/tasksSlice';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 const TimelineView: React.FC = () => {
   const dispatch = useDispatch();
@@ -22,12 +22,10 @@ const TimelineView: React.FC = () => {
   
   // 状態を取得
   const { 
-    timelineStart, 
-    timelineEnd, 
-    timelineScale, 
-    zoomLevel, 
-    hoverInfo, 
-    today 
+    today,
+    timelineStart,
+    zoomLevel,
+    hoverInfo
   } = useSelector((state: RootState) => state.timeline);
   
   const { 
@@ -63,7 +61,7 @@ const TimelineView: React.FC = () => {
     if (batchMode) {
       // 複数タスク削除
       dispatch(deleteMultipleTasks(selectedTasks));
-    } else {
+    } else if (projectId && taskId) {
       // 単一タスク削除
       dispatch(deleteTask({ projectId, taskId, subtaskId }));
     }

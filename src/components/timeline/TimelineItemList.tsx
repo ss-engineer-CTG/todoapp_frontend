@@ -2,13 +2,11 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/reducers';
 import TimelineItem from './TimelineItem';
-import { Project, Task, SubTask } from '../../types/task';
 
 const TimelineItemList: React.FC = () => {
-  const { timelineStart, timelineEnd, timelineScale, zoomLevel } = useSelector((state: RootState) => state.timeline);
+  const { today } = useSelector((state: RootState) => state.timeline);
   const { viewMode, displayCompletedTasks } = useSelector((state: RootState) => state.ui);
   const { projects } = useSelector((state: RootState) => state.projects);
-  const { today } = useSelector((state: RootState) => state.timeline);
   
   // フィルタリングされたプロジェクトを取得
   const getFilteredProjects = () => {
@@ -100,7 +98,7 @@ const TimelineItemList: React.FC = () => {
   
   return (
     <div className="relative">
-      {filteredProjects.map((project, projectIndex) => (
+      {filteredProjects.map(project => (
         <div key={project.id} className="border-b border-gray-200 dark:border-gray-700">
           {/* プロジェクトヘッダー行 */}
           <div 

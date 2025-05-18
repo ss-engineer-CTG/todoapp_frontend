@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { Bell, X, Check } from 'lucide-react';
-import { RootState } from '../../store/reducers';
+import React from 'react';
+import { Bell, X } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import { Notification } from '../../types/notification';
 
