@@ -98,14 +98,14 @@ html, body, #root {
   @apply shadow-lg;
 }
 
-/* タスク項目のスタイルも調整して区別を明確に */
+/* タスク項目のスタイル調整 (左側のリストビュー用) */
 .task-item {
   @apply py-2 px-4 pl-8 hover:bg-gray-50 dark:hover:bg-gray-700;
   @apply border-l-2 border-gray-200 dark:border-gray-700;
   @apply ml-2;
 }
 
-/* より細かい階層構造を表現するためのスタイル */
+/* 階層構造を表現するためのスタイル (左側のリストビュー用) */
 .subtask-item {
   @apply pl-14;
   @apply ml-1;

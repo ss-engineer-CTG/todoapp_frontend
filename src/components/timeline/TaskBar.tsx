@@ -51,7 +51,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
                      dragInfo.taskId === taskId && 
                      dragInfo.subtaskId === subtaskId;
   
-  // 修正: グリッドコンテキストを使用してタスク位置を計算
+  // タスク位置を計算
   const position = getTaskPositionWithGrid(
     currentData, 
     timelineGrid.gridDates[0],

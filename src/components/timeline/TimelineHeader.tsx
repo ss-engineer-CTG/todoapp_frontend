@@ -24,7 +24,14 @@ const TimelineHeader: React.FC = () => {
   // タイムラインスケール切替ハンドラー
   const handleScaleChange = (scale: 'day' | 'week' | 'month') => {
     dispatch(setTimelineScale(scale));
-    showFeedback(`${scale === 'day' ? '日' : scale === 'week' ? '週' : '月'}表示に切り替えました`);
+    
+    const scaleLabels = {
+      'day': '日',
+      'week': '週',
+      'month': '月'
+    };
+    
+    showFeedback(`${scaleLabels[scale]}表示に切り替えました`, 'success');
   };
 
   // 期間ナビゲーションハンドラー

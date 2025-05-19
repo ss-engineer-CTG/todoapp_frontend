@@ -13,7 +13,7 @@ const normalizeDate = (date: Date): Date => {
   return normalized;
 };
 
-// 新しい位置計算関数：グリッドの日付と一貫性のある計算方法を使用
+// タスク位置計算関数：グリッドの日付と一貫性のある計算方法を使用
 export const getTaskPositionWithGrid = (
   task: Task | SubTask, 
   gridStartDate: Date,

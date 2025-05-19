@@ -75,9 +75,9 @@ const TimelineItem: React.FC<TimelineItemProps> = ({ project, task }) => {
         />
       </div>
       
-      {/* サブタスク行（親タスクが展開されている場合のみ表示） */}
+      {/* サブタスク行（親タスクが展開されている場合のみ表示） - インデント処理を削除 */}
       {task.expanded && task.subtasks && task.subtasks.length > 0 && (
-        <div className="pl-4 border-l-2 border-gray-200 dark:border-gray-700 ml-4">
+        <div>
           {task.subtasks.map(subtask => (
             <SubTaskRow
               key={subtask.id}
