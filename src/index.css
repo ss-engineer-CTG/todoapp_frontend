@@ -85,12 +85,30 @@ html, body, #root {
 
 /* プロジェクトヘッダー用スタイル強化 */
 .project-header {
-  @apply bg-indigo-50 dark:bg-indigo-900/30 font-semibold border-l-[6px] shadow-sm;
-  transition: all 0.2s ease;
+  @apply bg-gradient-to-r from-indigo-200 to-indigo-100 dark:from-indigo-900/40 dark:to-indigo-800/20;
+  @apply font-bold text-gray-800 dark:text-gray-100;
+  @apply border-l-[6px] shadow-md;
+  @apply rounded-r-md my-1 py-3 px-4;
+  @apply transition-all duration-200;
 }
 
 .project-header:hover {
-  @apply bg-indigo-100 dark:bg-indigo-900/40;
+  @apply bg-gradient-to-r from-indigo-300 to-indigo-200 dark:from-indigo-800/60 dark:to-indigo-700/30;
+  @apply transform -translate-y-0.5;
+  @apply shadow-lg;
+}
+
+/* タスク項目のスタイルも調整して区別を明確に */
+.task-item {
+  @apply py-2 px-4 pl-8 hover:bg-gray-50 dark:hover:bg-gray-700;
+  @apply border-l-2 border-gray-200 dark:border-gray-700;
+  @apply ml-2;
+}
+
+/* より細かい階層構造を表現するためのスタイル */
+.subtask-item {
+  @apply pl-14;
+  @apply ml-1;
 }
 
 /* タスクバースタイル */

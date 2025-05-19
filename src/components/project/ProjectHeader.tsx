@@ -18,29 +18,29 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project }) => {
   
   return (
     <div 
-      className="flex items-center py-2.5 px-4 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer bg-indigo-50 dark:bg-indigo-900/20 border-l-[6px] shadow-sm"
+      className="project-header flex items-center cursor-pointer"
       onClick={handleToggleProject}
       style={{ borderLeftColor: project.color }}
     >
       <div className="flex-1 flex items-center">
         <button 
-          className="mr-1.5 text-gray-600 dark:text-gray-300"
+          className="mr-2 text-indigo-600 dark:text-indigo-400"
           aria-label={project.expanded ? 'プロジェクトを折りたたむ' : 'プロジェクトを展開する'}
         >
           {project.expanded 
-            ? <ChevronDown size={18} /> 
-            : <ChevronRight size={18} />}
+            ? <ChevronDown size={20} /> 
+            : <ChevronRight size={20} />}
         </button>
         <div 
-          className="w-3.5 h-3.5 rounded-full mr-2.5" 
+          className="w-5 h-5 rounded-full mr-3 ring-2 ring-white dark:ring-gray-800" 
           style={{ backgroundColor: project.color }}
         ></div>
-        <span className="text-sm font-bold text-gray-800 dark:text-gray-100">
+        <span className="text-base font-bold">
           {project.name}
         </span>
       </div>
-      <button className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-        <MoreHorizontal size={16} />
+      <button className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+        <MoreHorizontal size={18} />
       </button>
     </div>
   );

@@ -24,24 +24,24 @@ export const getTaskPosition = (
     return { left: 0, width: 0 };
   }
   
-  // タイムゾーンの問題を解決するため、日付を標準化（時間部分を完全に取り除く）
-  const normalizeDate = (date: Date): Date => {
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  // 日付を標準化して UTC 値を取得（時間部分を完全に取り除く）
+  const normalizeDate = (date: Date): number => {
+    return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
   };
   
-  const normalizedTaskStart = normalizeDate(taskStart);
-  const normalizedTaskEnd = normalizeDate(taskEnd);
-  const normalizedTimelineStart = normalizeDate(timelineStartDate);
+  const normalizedTaskStartTs = normalizeDate(taskStart);
+  const normalizedTaskEndTs = normalizeDate(taskEnd);
+  const normalizedTimelineStartTs = normalizeDate(timelineStartDate);
   
-  // 開始日からの日数を計算（日付のみを比較し、Math.roundで適切に丸める）
+  // 開始日からの日数を計算（Math.floor を使用して一貫性を確保）
   const MS_PER_DAY = 1000 * 60 * 60 * 24;
-  const startDiff = Math.round(
-    (normalizedTaskStart.getTime() - normalizedTimelineStart.getTime()) / MS_PER_DAY
+  const startDiff = Math.floor(
+    (normalizedTaskStartTs - normalizedTimelineStartTs) / MS_PER_DAY
   );
   
   // タスクの期間（日数）を計算
-  const duration = Math.round(
-    (normalizedTaskEnd.getTime() - normalizedTaskStart.getTime()) / MS_PER_DAY
+  const duration = Math.floor(
+    (normalizedTaskEndTs - normalizedTaskStartTs) / MS_PER_DAY
   ) + 1; // 終了日も含める
   
   // ズームレベルに応じてスケール

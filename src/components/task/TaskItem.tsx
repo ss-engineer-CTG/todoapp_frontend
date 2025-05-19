@@ -50,7 +50,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ project, task }) => {
   return (
     <div>
       <div 
-        className={`flex items-center py-1.5 px-3 pl-8 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer 
+        className={`task-item flex items-center cursor-pointer 
                    ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''} 
                    ${isFocused ? 'ring-1 ring-indigo-500 dark:ring-indigo-400' : ''}`}
         onClick={handleTaskSelect}
