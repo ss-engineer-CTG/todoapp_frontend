@@ -202,33 +202,3 @@ html, body, #root {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.3);
 }
-
-/* プロジェクト名ラベル固定表示のためのスタイル追加 */
-.project-label-column {
-  position: sticky;
-  left: 0;
-  z-index: 10;
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
-  background-color: white;
-}
-
-.dark .project-label-column {
-  background-color: rgb(31, 41, 55); /* gray-800 */
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.2);
-}
-
-/* スクロール同期のためのスタイル */
-.timeline-scroll-container {
-  display: flex;
-  overflow: hidden;
-}
-
-.timeline-content {
-  scrollbar-gutter: stable both-edges;
-}
-
-/* タイムラインとプロジェクトラベルが同期して移動するための調整 */
-.timeline-view-container {
-  position: relative;
-  overflow: hidden;
-}

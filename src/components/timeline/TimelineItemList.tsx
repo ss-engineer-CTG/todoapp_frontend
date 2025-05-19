@@ -138,15 +138,17 @@ const TimelineItemList: React.FC = () => {
           className="border-b border-gray-200 dark:border-gray-700"
           data-project-id={project.id}
         >
-          {/* プロジェクトヘッダー行 - プロジェクト名は表示しない */}
+          {/* プロジェクトヘッダー行 */}
           <div 
-            className="h-8 cursor-pointer relative"
+            className="h-8 flex items-center cursor-pointer"
             style={{ 
-              backgroundImage: `linear-gradient(to right, ${project.color}20, transparent)`,
+              backgroundImage: `linear-gradient(to right, ${project.color}30, ${project.color}10)`,
               borderLeft: `4px solid ${project.color}`
             }}
           >
-            {/* プロジェクト名ラベルは削除 - 固定カラムに表示されるため */}
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-300 ml-2 truncate">
+              {project.name}
+            </span>
           </div>
           
           {/* プロジェクト内のタスク */}
