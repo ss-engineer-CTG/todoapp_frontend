@@ -7,7 +7,7 @@ import storage from 'redux-persist/lib/storage';
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['projects', 'templates'], // 永続化するstate
+  whitelist: ['templates'], // projectsを除外し、templatesのみ永続化
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

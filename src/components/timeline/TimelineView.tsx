@@ -1,12 +1,12 @@
 import React, { useRef, useEffect, useState, createContext } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import TimelineHeader from './TimelineHeader';
-import TimelineDayHeader from './TimelineDayHeader';
-import TimelineItemList from './TimelineItemList';
 import TaskEditModal from '../task/TaskEditModal';
 import TaskDetailPopover from './TaskDetailPopover';
 import BatchOperationPanel from './BatchOperationPanel';
 import TaskList from '../task/TaskList';
+import ProjectLabelColumn from './ProjectLabelColumn';
+import TimelineContent from './TimelineContent';
 import { RootState } from '../../store/reducers';
 import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
 import { resetHoverInfo, updateVisibleDateRange } from '../../store/slices/timelineSlice';
@@ -30,6 +30,7 @@ const TimelineView: React.FC = () => {
   const dispatch = useDispatch();
   const timelineRef = useRef<HTMLDivElement>(null);
   const timelineContentRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
   
   // 状態を取得
   const { 
@@ -39,6 +40,10 @@ const TimelineView: React.FC = () => {
     zoomLevel,
     hoverInfo
   } = useSelector((state: RootState) => state.timeline);
+  
+  const {
+    projects
+  } = useSelector((state: RootState) => state.projects);
   
   const { 
     taskEditModal, 
@@ -74,6 +79,50 @@ const TimelineView: React.FC = () => {
   // 現在の日付ズームレベルに基づく日付幅
   const dayWidth = 34 * (zoomLevel / 100);
 
+  // プロジェクト展開時の処理
+  const handleProjectToggle = () => {
+    // プロジェクト展開時に必要な処理があれば実装
+  };
+
+  // スクロール同期処理
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    setScrollTop(target.scrollTop);
+    
+    // 横スクロールのロジックも維持
+    const { scrollLeft, scrollWidth, clientWidth } = target;
+    const scrollEnd = scrollWidth - clientWidth;
+    
+    // スクロール位置が端に近づいたら日付範囲を拡張
+    if (scrollLeft < 100) {
+      // 左端に近づいた場合、過去の日付を追加
+      const newStart = addDays(visibleDateRange.start, -VISIBLE_DAYS_BUFFER);
+      setVisibleDateRange(prev => ({
+        ...prev,
+        start: newStart
+      }));
+    } else if (scrollEnd - scrollLeft < 100) {
+      // 右端に近づいた場合、未来の日付を追加
+      const newEnd = addDays(visibleDateRange.end, VISIBLE_DAYS_BUFFER);
+      setVisibleDateRange(prev => ({
+        ...prev,
+        end: newEnd
+      }));
+    }
+    
+    // 可視範囲をReduxストアに更新
+    const visibleStartDay = Math.floor(scrollLeft / dayWidth);
+    const visibleEndDay = Math.ceil((scrollLeft + clientWidth) / dayWidth);
+    
+    const visibleStartDate = addDays(visibleDateRange.start, visibleStartDay);
+    const visibleEndDate = addDays(visibleDateRange.start, visibleEndDay);
+    
+    dispatch(updateVisibleDateRange({
+      start: visibleStartDate,
+      end: visibleEndDate
+    }));
+  };
+
   // 可視日付を生成
   useEffect(() => {
     const start = new Date(visibleDateRange.start);
@@ -88,58 +137,6 @@ const TimelineView: React.FC = () => {
     
     setVisibleDates(dates);
   }, [visibleDateRange, zoomLevel]);
-
-  // スクロールイベントを監視して日付範囲を動的に調整
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!timelineContentRef.current) return;
-      
-      const { scrollLeft, scrollWidth, clientWidth } = timelineContentRef.current;
-      const scrollEnd = scrollWidth - clientWidth;
-      
-      // スクロール位置が端に近づいたら日付範囲を拡張
-      if (scrollLeft < 100) {
-        // 左端に近づいた場合、過去の日付を追加
-        const newStart = addDays(visibleDateRange.start, -VISIBLE_DAYS_BUFFER);
-        setVisibleDateRange(prev => ({
-          ...prev,
-          start: newStart
-        }));
-      } else if (scrollEnd - scrollLeft < 100) {
-        // 右端に近づいた場合、未来の日付を追加
-        const newEnd = addDays(visibleDateRange.end, VISIBLE_DAYS_BUFFER);
-        setVisibleDateRange(prev => ({
-          ...prev,
-          end: newEnd
-        }));
-      }
-      
-      // 可視範囲をReduxストアに更新
-      const visibleStartDay = Math.floor(scrollLeft / dayWidth);
-      const visibleEndDay = Math.ceil((scrollLeft + clientWidth) / dayWidth);
-      
-      const visibleStartDate = addDays(visibleDateRange.start, visibleStartDay);
-      const visibleEndDate = addDays(visibleDateRange.start, visibleEndDay);
-      
-      dispatch(updateVisibleDateRange({
-        start: visibleStartDate,
-        end: visibleEndDate
-      }));
-    };
-    
-    const contentEl = timelineContentRef.current;
-    if (contentEl) {
-      contentEl.addEventListener('scroll', handleScroll);
-      // 初期時点でも一度実行
-      handleScroll();
-    }
-    
-    return () => {
-      if (contentEl) {
-        contentEl.removeEventListener('scroll', handleScroll);
-      }
-    };
-  }, [visibleDateRange, dayWidth, dispatch]);
 
   // 初期化時に1年前から1年後の日付範囲を設定
   useEffect(() => {
@@ -157,17 +154,6 @@ const TimelineView: React.FC = () => {
   
   // キーボードナビゲーションの設定
   useKeyboardNavigation();
-  
-  // 今日の位置までスクロール
-  useEffect(() => {
-    if (timelineContentRef.current && visibleDates.length > 0) {
-      // タイムライン上の今日の位置を計算
-      const todayPosition = getDatePosition(today);
-      
-      // 初期スクロール位置は今日の日付が見えるように調整
-      timelineContentRef.current.scrollLeft = Math.max(0, todayPosition - timelineContentRef.current.clientWidth / 2);
-    }
-  }, [visibleDates, today]);
   
   // タスク削除確認ダイアログでの削除処理
   const handleDeleteConfirm = () => {
@@ -201,20 +187,21 @@ const TimelineView: React.FC = () => {
             {/* プロジェクト・タスク一覧 */}
             <TaskList />
             
-            {/* タイムライングリッド */}
-            <div 
-              className="flex-1 relative overflow-auto timeline-content"
-              ref={timelineContentRef}
-              onMouseLeave={() => dispatch(resetHoverInfo())}
-            >
-              {/* タイムラインヘッダー（日付） */}
-              <TimelineDayHeader />
+            {/* タイムライングリッド - 新しい構造 */}
+            <div className="flex-1 flex overflow-hidden">
+              {/* 固定プロジェクト名カラム */}
+              <ProjectLabelColumn 
+                projects={projects} 
+                scrollTop={scrollTop}
+                onProjectToggle={handleProjectToggle}
+                containerRef={timelineRef}
+              />
               
-              {/* タスクのタイムライン表示 */}
-              <TimelineItemList />
-              
-              {/* 今日の日付線 */}
-              <TodayIndicator />
+              {/* スクロール可能なタイムラインコンテンツ */}
+              <TimelineContent
+                onScroll={handleScroll}
+                contentRef={timelineContentRef}
+              />
             </div>
           </div>
         </div>
@@ -247,22 +234,6 @@ const TimelineView: React.FC = () => {
         {showBatchPanel && selectedTasks.length > 0 && <BatchOperationPanel />}
       </div>
     </TimelineGridContext.Provider>
-  );
-};
-
-// 今日の日付を示すインジケーター
-const TodayIndicator: React.FC = () => {
-  const { today } = useSelector((state: RootState) => state.timeline);
-  const { getDatePosition } = React.useContext(TimelineGridContext);
-  
-  // 今日の位置を計算
-  const todayPosition = getDatePosition(today);
-  
-  return (
-    <div 
-      className="absolute top-0 bottom-0 w-px bg-red-500 z-10"
-      style={{ left: `${todayPosition}px` }}
-    ></div>
   );
 };
 
