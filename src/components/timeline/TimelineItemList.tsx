@@ -138,18 +138,20 @@ const TimelineItemList: React.FC = () => {
           className="border-b border-gray-200 dark:border-gray-700"
           data-project-id={project.id}
         >
-          {/* プロジェクトヘッダー行 */}
+          {/* プロジェクトヘッダー行 - 修正部分: タイムライン全幅を適用 */}
           <div 
-            className="h-8 flex items-center cursor-pointer"
+            className="h-14 flex items-center cursor-pointer absolute w-full"
             style={{ 
-              backgroundImage: `linear-gradient(to right, ${project.color}30, ${project.color}10)`,
-              borderLeft: `4px solid ${project.color}`
+              backgroundColor: `${project.color}40`, // 不透明度40%で塗りつぶし
+              borderLeft: `4px solid ${project.color}`,
+              borderBottom: `1px solid ${project.color}`,
+              width: `${timelineGrid.totalGridWidth}px` // タイムライン全幅を適用
             }}
           >
-            <span className="text-xs font-medium text-gray-700 dark:text-gray-300 ml-2 truncate">
-              {project.name}
-            </span>
+            {/* プロジェクト名の表示を削除 */}
           </div>
+          {/* ヘッダーの高さを確保するための空要素（absoluteでの配置を補完） */}
+          <div className="h-14"></div>
           
           {/* プロジェクト内のタスク */}
           {project.expanded && project.tasks.map(task => (

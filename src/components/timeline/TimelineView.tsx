@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, createContext } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import TimelineHeader from './TimelineHeader';
 import TimelineDayHeader from './TimelineDayHeader';
 import TimelineItemList from './TimelineItemList';
@@ -9,21 +9,24 @@ import BatchOperationPanel from './BatchOperationPanel';
 import TaskList from '../task/TaskList';
 import { RootState } from '../../store/reducers';
 import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
-import { resetHoverInfo, updateVisibleDateRange } from '../../store/slices/timelineSlice';
+import { updateVisibleDateRange } from '../../store/slices/timelineSlice';
 import { closeDeleteConfirmation, closeTaskEditModal } from '../../store/slices/uiSlice';
 import { deleteTask, deleteMultipleTasks } from '../../store/slices/tasksSlice';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { addDays } from '../../utils/dateUtils';
 
 // 共通で使用するタイムライングリッドのコンテキスト
+// totalGridWidthプロパティを追加
 export const TimelineGridContext = createContext<{
   visibleDates: Date[];
   dayWidth: number;
   getDatePosition: (date: Date) => number;
+  totalGridWidth: number; // タイムライン全体の幅を追加
 }>({
   visibleDates: [],
   dayWidth: 34,
-  getDatePosition: () => 0
+  getDatePosition: () => 0,
+  totalGridWidth: 0
 });
 
 const TimelineView: React.FC = () => {
@@ -72,6 +75,9 @@ const TimelineView: React.FC = () => {
 
   // 現在の日付ズームレベルに基づく日付幅
   const dayWidth = 34 * (zoomLevel / 100);
+
+  // タイムライン全体の幅を計算
+  const totalGridWidth = visibleDates.length * dayWidth;
 
   // スクロールイベントハンドラー
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -183,7 +189,8 @@ const TimelineView: React.FC = () => {
     <TimelineGridContext.Provider value={{
       visibleDates,
       dayWidth,
-      getDatePosition
+      getDatePosition,
+      totalGridWidth // タイムライン全体の幅を提供
     }}>
       <div className="flex flex-col h-full overflow-hidden" data-testid="timeline-view">
         {/* タイムラインコントロールヘッダー */}
