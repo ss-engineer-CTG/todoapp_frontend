@@ -29,7 +29,6 @@ const TimelineView: React.FC = () => {
   
   const { 
     taskEditModal, 
-    projectFormActive, 
     selectedTasks, 
     showBatchPanel, 
     deleteConfirmation 
