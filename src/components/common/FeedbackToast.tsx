@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { X } from 'lucide-react';
 import { RootState } from '../../store/reducers';
+import { clearFeedbackMessage } from '../../store/slices/uiSlice';
 
 const FeedbackToast: React.FC = () => {
   const { message, type } = useSelector((state: RootState) => state.ui.feedback);
   const [isVisible, setIsVisible] = useState(false);
   const [timerId, setTimerId] = useState<NodeJS.Timeout | null>(null);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (message) {
@@ -22,6 +24,7 @@ const FeedbackToast: React.FC = () => {
       // 3秒後に自動的に閉じる
       const timer = setTimeout(() => {
         setIsVisible(false);
+        dispatch(clearFeedbackMessage());
       }, 3000);
       
       setTimerId(timer);
@@ -31,7 +34,7 @@ const FeedbackToast: React.FC = () => {
         if (timer) clearTimeout(timer);
       };
     }
-  }, [message, type]);
+  }, [message, type, dispatch]);
 
   // トーストを閉じる
   const handleClose = () => {
@@ -40,6 +43,7 @@ const FeedbackToast: React.FC = () => {
       clearTimeout(timerId);
       setTimerId(null);
     }
+    dispatch(clearFeedbackMessage());
   };
 
   // メッセージがない場合は何も表示しない
