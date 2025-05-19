@@ -24,8 +24,10 @@ export const useTaskDrag = () => {
     e: React.MouseEvent
   ) => {
     e.stopPropagation();
+    e.preventDefault();
     
-    dispatch(startDrag({
+    // タスクデータの取得
+    const { projects } = dispatch(startDrag({
       projectId,
       taskId,
       subtaskId,
@@ -35,51 +37,65 @@ export const useTaskDrag = () => {
       taskStart: null, // タスクの開始日はstoreで取得
       taskEnd: null,   // タスクの終了日はstoreで取得
       daysDelta: 0
-    }));
+    })) as any; // Redux Toolkitのtypingの問題を回避
     
     // グローバルイベントハンドラを追加
     document.addEventListener('mousemove', handleDragMove);
     document.addEventListener('mouseup', handleDragEnd);
+    
+    // カーソルスタイルを変更
+    document.body.style.cursor = type === 'move' ? 'grabbing' : 'ew-resize';
+    
+    return projects;
   }, [dispatch]);
   
   // ドラッグ中の動き
   const handleDragMove = useCallback((e: MouseEvent) => {
     if (!dragInfo) return;
     
-    // ドラッグ距離からの日数変化を計算
-    const dayWidth = 34 * (zoomLevel / 100);
-    const deltaX = e.clientX - dragInfo.initialX;
-    const daysDelta = Math.round(deltaX / dayWidth);
-    
-    dispatch(updateDrag({
-      currentX: e.clientX,
-      daysDelta
-    }));
-    
-    // タイムラインの自動スクロール
-    const timelineContent = document.querySelector('.timeline-content');
-    if (timelineContent) {
-      const rect = timelineContent.getBoundingClientRect();
-      const scrollSpeed = 10;
+    // スムーズなドラッグのためにrequestAnimationFrameを使用
+    requestAnimationFrame(() => {
+      // ドラッグ距離からの日数変化を計算
+      const dayWidth = 34 * (zoomLevel / 100);
+      const deltaX = e.clientX - dragInfo.initialX;
+      const daysDelta = Math.round(deltaX / dayWidth);
       
-      // 右端に近づいた場合、右にスクロール
-      if (e.clientX > rect.right - 50) {
-        timelineContent.scrollLeft += scrollSpeed;
+      if (daysDelta !== dragInfo.daysDelta) {
+        dispatch(updateDrag({
+          currentX: e.clientX,
+          daysDelta
+        }));
       }
       
-      // 左端に近づいた場合、左にスクロール
-      if (e.clientX < rect.left + 50) {
-        timelineContent.scrollLeft -= scrollSpeed;
+      // タイムラインの自動スクロール
+      const timelineContent = document.querySelector('.timeline-content') as HTMLElement;
+      if (timelineContent) {
+        const rect = timelineContent.getBoundingClientRect();
+        const scrollSpeed = 10;
+        
+        // 右端に近づいた場合、右にスクロール
+        if (e.clientX > rect.right - 50) {
+          timelineContent.scrollLeft += scrollSpeed;
+        }
+        
+        // 左端に近づいた場合、左にスクロール
+        if (e.clientX < rect.left + 50) {
+          timelineContent.scrollLeft -= scrollSpeed;
+        }
       }
-    }
+    });
   }, [dragInfo, zoomLevel, dispatch]);
   
   // ドラッグ終了
   const handleDragEnd = useCallback(() => {
-    if (!dragInfo) return;
-    
+    // グローバルイベントハンドラを削除
     document.removeEventListener('mousemove', handleDragMove);
     document.removeEventListener('mouseup', handleDragEnd);
+    
+    // カーソルスタイルを元に戻す
+    document.body.style.cursor = '';
+    
+    if (!dragInfo) return;
     
     const { projectId, taskId, subtaskId, type, daysDelta } = dragInfo;
     
@@ -110,6 +126,7 @@ export const useTaskDrag = () => {
     return () => {
       document.removeEventListener('mousemove', handleDragMove);
       document.removeEventListener('mouseup', handleDragEnd);
+      document.body.style.cursor = '';
     };
   }, [handleDragMove, handleDragEnd]);
   

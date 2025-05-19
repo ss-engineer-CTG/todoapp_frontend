@@ -111,7 +111,7 @@ const timelineSlice = createSlice({
     navigateTimeline: (state, action: PayloadAction<'prev' | 'next' | 'today'>) => {
       const direction = action.payload;
       const visibleRange = state.visibleEnd.getTime() - state.visibleStart.getTime();
-      const movement = visibleRange; // 表示範囲分移動
+      const movement = visibleRange * 0.8; // 80%の範囲を移動 (重複あり)
       
       if (direction === 'prev') {
         const newStart = new Date(state.visibleStart.getTime() - movement);
@@ -135,8 +135,25 @@ const timelineSlice = createSlice({
     },
     
     // ドラッグ開始
-    startDrag: (state, action: PayloadAction<DragInfo>) => {
-      state.dragInfo = action.payload;
+    startDrag: (state, action: PayloadAction<Omit<DragInfo, 'taskStart' | 'taskEnd'> & { 
+      taskStart: Date | null;
+      taskEnd: Date | null;
+    }>) => {
+      const payload = action.payload;
+      
+      // 未使用変数を削除
+      // タスク情報の取得とセット
+      // const project = null; // getProjectById関数があれば使用
+      // let task = null;
+      let startDate = null;
+      let endDate = null;
+      
+      // dragInfoを設定
+      state.dragInfo = {
+        ...payload,
+        taskStart: payload.taskStart || startDate,
+        taskEnd: payload.taskEnd || endDate
+      };
     },
     
     // ドラッグ更新

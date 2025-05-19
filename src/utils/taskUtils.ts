@@ -185,6 +185,9 @@ export const updateTaskDatesByDays = (
   type: 'move' | 'resize-start' | 'resize-end', 
   daysDelta: number
 ): Task | SubTask => {
+  // 変更がない場合はそのまま返す
+  if (daysDelta === 0) return task;
+  
   const taskStart = new Date(task.start);
   const taskEnd = new Date(task.end);
   
@@ -192,18 +195,23 @@ export const updateTaskDatesByDays = (
     return task;
   }
   
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  
   if (type === 'move') {
-    taskStart.setDate(taskStart.getDate() + daysDelta);
-    taskEnd.setDate(taskEnd.getDate() + daysDelta);
+    // タスク全体を移動
+    taskStart.setTime(taskStart.getTime() + daysDelta * MS_PER_DAY);
+    taskEnd.setTime(taskEnd.getTime() + daysDelta * MS_PER_DAY);
   } else if (type === 'resize-start') {
-    taskStart.setDate(taskStart.getDate() + daysDelta);
+    // 開始日を変更
+    taskStart.setTime(taskStart.getTime() + daysDelta * MS_PER_DAY);
     
     // 開始日が終了日を超えないようにする
     if (taskStart > taskEnd) {
       taskStart.setTime(taskEnd.getTime());
     }
   } else if (type === 'resize-end') {
-    taskEnd.setDate(taskEnd.getDate() + daysDelta);
+    // 終了日を変更
+    taskEnd.setTime(taskEnd.getTime() + daysDelta * MS_PER_DAY);
     
     // 終了日が開始日より前にならないようにする
     if (taskEnd < taskStart) {

@@ -55,6 +55,9 @@ const TimelineView: React.FC = () => {
     end: new Date(timelineEnd)
   });
 
+  // 初期化フラグを追加（スクロールポジションのリセット防止用）
+  const [initialized, setInitialized] = useState(false);
+
   // 一度に表示する日数
   const VISIBLE_DAYS_BUFFER = 90;
   
@@ -143,16 +146,19 @@ const TimelineView: React.FC = () => {
     });
   }, [today]);
   
-  // 今日の位置までスクロール
+  // 今日の位置までスクロール（初回のみ）
   useEffect(() => {
-    if (timelineRef.current && visibleDates.length > 0) {
+    if (timelineRef.current && visibleDates.length > 0 && !initialized) {
       // タイムライン上の今日の位置を計算
       const todayPosition = getDatePosition(today);
       
       // 初期スクロール位置は今日の日付が見えるように調整
       timelineRef.current.scrollLeft = Math.max(0, todayPosition - timelineRef.current.clientWidth / 2);
+      
+      // 初期化完了フラグをセット
+      setInitialized(true);
     }
-  }, [visibleDates, today, getDatePosition]);
+  }, [visibleDates, today, getDatePosition, initialized]);
   
   // キーボードナビゲーションの設定
   useKeyboardNavigation();
@@ -190,7 +196,7 @@ const TimelineView: React.FC = () => {
       visibleDates,
       dayWidth,
       getDatePosition,
-      totalGridWidth // タイムライン全体の幅を提供
+      totalGridWidth
     }}>
       <div className="flex flex-col h-full overflow-hidden" data-testid="timeline-view">
         {/* タイムラインコントロールヘッダー */}

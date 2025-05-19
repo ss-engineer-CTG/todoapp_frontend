@@ -94,7 +94,6 @@ html, body, #root {
 
 .project-header:hover {
   @apply bg-gradient-to-r from-indigo-300 to-indigo-200 dark:from-indigo-800/60 dark:to-indigo-700/30;
-  @apply transform -translate-y-0.5;
   @apply shadow-lg;
 }
 
@@ -119,20 +118,17 @@ html, body, #root {
 .task-bar:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  z-index: 20 !important;
 }
 
 .task-bar.dragging {
   opacity: 0.7;
-  transform: scale(1.02);
-  z-index: 50;
+  z-index: 50 !important;
+  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.1), 0 4px 8px -2px rgba(0, 0, 0, 0.06);
 }
 
 /* ドラッグハンドルスタイル */
 .drag-handle {
-  width: 12px;
-  height: 100%;
-  position: absolute;
-  z-index: 10;
   opacity: 0;
   transition: background-color 0.15s ease, opacity 0.15s ease;
 }
@@ -145,19 +141,13 @@ html, body, #root {
   background-color: rgba(99, 102, 241, 0.3);
 }
 
-.drag-handle.start {
-  left: 0;
-  cursor: ew-resize;
-}
-
-.drag-handle.end {
-  right: 0;
-  cursor: ew-resize;
-}
-
 /* タイムライングリッドスタイル */
 .timeline-grid-cell {
   border-right: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.dark .timeline-grid-cell {
+  border-right: 1px solid rgba(55, 65, 81, 0.8);
 }
 
 .timeline-grid-cell.weekend-sun {
@@ -170,6 +160,18 @@ html, body, #root {
 
 .timeline-grid-cell.today {
   background-color: rgba(254, 240, 138, 0.3);
+}
+
+.dark .timeline-grid-cell.weekend-sun {
+  background-color: rgba(185, 28, 28, 0.1);
+}
+
+.dark .timeline-grid-cell.weekend-sat {
+  background-color: rgba(30, 64, 175, 0.1);
+}
+
+.dark .timeline-grid-cell.today {
+  background-color: rgba(202, 138, 4, 0.1);
 }
 
 /* プロジェクト区切り線のスタイル */
@@ -201,4 +203,22 @@ html, body, #root {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.3);
+}
+
+/* タスク選択時のスタイル */
+.task-bar.selected {
+  @apply ring-2 ring-indigo-500;
+}
+
+.task-bar.focused {
+  @apply ring-2 ring-indigo-700;
+}
+
+/* ドラッグカーソルの定義 */
+.cursor-ew-resize {
+  cursor: ew-resize;
+}
+
+.cursor-move {
+  cursor: move;
 }

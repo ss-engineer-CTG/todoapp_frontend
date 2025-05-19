@@ -134,6 +134,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
   // ドラッグ開始
   const handleStartDrag = (e: React.MouseEvent, type: 'move' | 'resize-start' | 'resize-end') => {
     e.stopPropagation();
+    e.preventDefault();
     
     dispatch(startDrag({
       projectId,
@@ -175,7 +176,6 @@ const TaskBar: React.FC<TaskBarProps> = ({
         transform: `translateX(${dragInfo.daysDelta * dayWidth}px)`,
         opacity: 0.7,
         zIndex: 50,
-        scale: '1.02',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
       };
     } else if (dragInfo.type === 'resize-start') {
@@ -231,7 +231,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
       >
         {/* 開始日ドラッグハンドル */}
         <div 
-          className="drag-handle start"
+          className="drag-handle start absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize z-10 hover:bg-indigo-500/20"
           onMouseDown={(e) => handleStartDrag(e, 'resize-start')}
           aria-label="開始日を調整"
         ></div>
@@ -267,13 +267,13 @@ const TaskBar: React.FC<TaskBarProps> = ({
         
         {/* 終了日ドラッグハンドル */}
         <div 
-          className="drag-handle end"
+          className="drag-handle end absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize z-10 hover:bg-indigo-500/20"
           onMouseDown={(e) => handleStartDrag(e, 'resize-end')}
           aria-label="終了日を調整"
         ></div>
         
         {/* タスク操作メニュー (ホバー時に表示) */}
-        <div className="absolute right-0 top-0 bottom-0 flex items-center pr-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        <div className="absolute right-3 top-0 bottom-0 flex items-center pr-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
           <button 
             className="p-1 text-white bg-gray-500 bg-opacity-50 rounded hover:bg-opacity-80 mr-1"
             onClick={handleEditTask}
@@ -294,10 +294,10 @@ const TaskBar: React.FC<TaskBarProps> = ({
       {/* 日付変更ツールチップ */}
       {isDragging && dragInfo && (
         <div 
-          className="absolute bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded z-50 whitespace-nowrap"
+          className="absolute bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded-md shadow-lg z-50 whitespace-nowrap"
           style={{ 
             left: position.left + position.width / 2,
-            top: '-20px',
+            top: '-24px',
             transform: 'translateX(-50%)'
           }}
         >

@@ -138,9 +138,9 @@ const TimelineItemList: React.FC = () => {
           className="border-b border-gray-200 dark:border-gray-700"
           data-project-id={project.id}
         >
-          {/* プロジェクトヘッダー行 - 修正部分: タイムライン全幅を適用 */}
+          {/* プロジェクトヘッダー行 */}
           <div 
-            className="h-14 flex items-center cursor-pointer absolute w-full"
+            className="h-14 flex items-center cursor-pointer absolute"
             style={{ 
               backgroundColor: `${project.color}40`, // 不透明度40%で塗りつぶし
               borderLeft: `4px solid ${project.color}`,

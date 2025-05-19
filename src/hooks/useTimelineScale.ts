@@ -14,7 +14,9 @@ export const useTimelineScale = () => {
   const { 
     zoomLevel, 
     timelineStart, 
-    timelineEnd 
+    timelineEnd,
+    visibleStart,
+    visibleEnd 
   } = useSelector((state: RootState) => state.timeline);
   
   // ズームイン
@@ -48,16 +50,29 @@ export const useTimelineScale = () => {
   
   // 表示期間の計算
   const displayRange = useCallback(() => {
-    const start = new Date(timelineStart);
-    const end = new Date(timelineEnd);
-    const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    // 全体の期間
+    const timelineStartDate = new Date(timelineStart);
+    const timelineEndDate = new Date(timelineEnd);
+    const totalDays = Math.round((timelineEndDate.getTime() - timelineStartDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // 現在表示中の期間
+    const visibleStartDate = new Date(visibleStart || timelineStart);
+    const visibleEndDate = new Date(visibleEnd || timelineEnd);
+    const visibleDays = Math.round((visibleEndDate.getTime() - visibleStartDate.getTime()) / (1000 * 60 * 60 * 24));
     
     return {
-      start,
-      end,
-      days: diffDays
+      total: {
+        start: timelineStartDate,
+        end: timelineEndDate,
+        days: totalDays
+      },
+      visible: {
+        start: visibleStartDate,
+        end: visibleEndDate,
+        days: visibleDays
+      }
     };
-  }, [timelineStart, timelineEnd]);
+  }, [timelineStart, timelineEnd, visibleStart, visibleEnd]);
   
   return {
     zoomLevel,
@@ -66,6 +81,8 @@ export const useTimelineScale = () => {
     navigate,
     displayRange,
     timelineStart,
-    timelineEnd
+    timelineEnd,
+    visibleStart,
+    visibleEnd
   };
 };
