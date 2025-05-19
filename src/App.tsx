@@ -1,14 +1,17 @@
 import React, { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import TimelineView from './components/timeline/TimelineView';
 import AppHeader from './components/common/AppHeader';
 import FeedbackToast from './components/common/FeedbackToast';
 import { NotificationProvider } from './context/NotificationContext';
 import { initializeProjects } from './store/slices/projectsSlice';
 import { initializeTimeline } from './store/slices/timelineSlice';
+import ProjectForm from './components/project/ProjectForm'; // QuickAddFormの代わりにProjectFormをインポート
+import { RootState } from './store/reducers';
 
 const App: React.FC = () => {
   const dispatch = useDispatch();
+  const { projectFormActive } = useSelector((state: RootState) => state.ui); // quickAddActiveからprojectFormActiveに変更
 
   // アプリケーションの初期化
   useEffect(() => {
@@ -40,6 +43,9 @@ const App: React.FC = () => {
           <TimelineView />
         </main>
         <FeedbackToast />
+        
+        {/* QuickAddFormからProjectFormに置き換え */}
+        {projectFormActive && <ProjectForm />}
       </div>
     </NotificationProvider>
   );

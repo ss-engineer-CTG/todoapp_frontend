@@ -41,7 +41,7 @@ interface UIState {
   showBatchPanel: boolean;
   taskEditModal: TaskEditModalState;
   deleteConfirmation: DeleteConfirmationState;
-  quickAddActive: boolean;
+  projectFormActive: boolean; // QuickAddFormからProjectFormに変更
   inlineEditTask: InlineEditTask | null;
   feedback: FeedbackState;
 }
@@ -67,7 +67,7 @@ const initialState: UIState = {
     subtaskId: null,
     batchMode: false
   },
-  quickAddActive: false,
+  projectFormActive: false, // quickAddActiveからprojectFormActiveに変更
   inlineEditTask: null,
   feedback: {
     message: null,
@@ -183,9 +183,9 @@ const uiSlice = createSlice({
       state.deleteConfirmation.isOpen = false;
     },
     
-    // クイック追加フォームの表示/非表示
-    setQuickAddActive: (state, action: PayloadAction<boolean>) => {
-      state.quickAddActive = action.payload;
+    // プロジェクト追加フォームの表示/非表示
+    setProjectFormActive: (state, action: PayloadAction<boolean>) => {
+      state.projectFormActive = action.payload;
     },
     
     // インライン編集タスクの設定
@@ -226,7 +226,7 @@ export const {
   closeTaskEditModal,
   openDeleteConfirmation, 
   closeDeleteConfirmation, 
-  setQuickAddActive,
+  setProjectFormActive, // setQuickAddActiveから変更
   setInlineEditTask,
   showFeedbackMessage,
   clearFeedbackMessage

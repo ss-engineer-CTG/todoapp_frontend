@@ -6,7 +6,7 @@ export const generateId = (): string => {
   return Math.random().toString(36).substring(2, 9);
 };
 
-// タスクの位置と幅を計算
+// タスクの位置と幅を計算（修正）
 export const getTaskPosition = (
   task: Task | SubTask, 
   timelineStart: Date | string,
@@ -24,11 +24,27 @@ export const getTaskPosition = (
     return { left: 0, width: 0 };
   }
   
-  // 開始日からの日数を計算
-  const startDiff = Math.floor((taskStart.getTime() - timelineStartDate.getTime()) / (1000 * 60 * 60 * 24));
+  // タイムゾーンの問題を解決するため、日付を標準化
+  const normalizeDate = (date: Date): Date => {
+    const normalizedDate = new Date(date);
+    // 時間部分をリセットして純粋に日付だけの比較にする
+    normalizedDate.setHours(0, 0, 0, 0);
+    return normalizedDate;
+  };
+  
+  const normalizedTaskStart = normalizeDate(taskStart);
+  const normalizedTaskEnd = normalizeDate(taskEnd);
+  const normalizedTimelineStart = normalizeDate(timelineStartDate);
+  
+  // 開始日からの日数を計算（日付のみを比較）
+  const startDiff = Math.floor(
+    (normalizedTaskStart.getTime() - normalizedTimelineStart.getTime()) / (1000 * 60 * 60 * 24)
+  );
   
   // タスクの期間（日数）を計算
-  const duration = Math.ceil((taskEnd.getTime() - taskStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const duration = Math.ceil(
+    (normalizedTaskEnd.getTime() - normalizedTaskStart.getTime()) / (1000 * 60 * 60 * 24)
+  ) + 1; // 終了日も含める
   
   // ズームレベルに応じてスケール
   const dayWidth = 34 * (zoomLevel / 100);

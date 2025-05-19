@@ -18,8 +18,9 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project }) => {
   
   return (
     <div 
-      className="flex items-center py-1.5 px-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+      className="flex items-center py-2 px-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer bg-gray-100 dark:bg-gray-750 border-l-4"
       onClick={handleToggleProject}
+      style={{ borderLeftColor: project.color }}
     >
       <div className="flex-1 flex items-center">
         <button 
@@ -31,10 +32,10 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project }) => {
             : <ChevronRight size={16} />}
         </button>
         <div 
-          className="w-2 h-2 rounded-full mr-2" 
+          className="w-3 h-3 rounded-full mr-2" 
           style={{ backgroundColor: project.color }}
         ></div>
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
           {project.name}
         </span>
       </div>

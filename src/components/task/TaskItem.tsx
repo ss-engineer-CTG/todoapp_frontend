@@ -6,7 +6,6 @@ import { Task } from '../../types/task';
 import { Project } from '../../types/project';
 import { toggleTask, updateTaskStatus } from '../../store/slices/tasksSlice';
 import { toggleTaskSelection } from '../../store/slices/uiSlice';
-import { formatDate } from '../../utils/dateUtils';
 import SubtaskItem from './SubtaskItem';
 
 interface TaskItemProps {
@@ -96,9 +95,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ project, task }) => {
           </div>
         </div>
         
-        <div className="text-xs text-gray-500 dark:text-gray-400">
-          {formatDate(task.start)} - {formatDate(task.end)}
-        </div>
+        {/* 期間表示を削除 */}
       </div>
       
       {/* サブタスク */}

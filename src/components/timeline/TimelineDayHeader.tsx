@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/reducers';
+import { formatDateShort } from '../../utils/dateUtils';
 
 const TimelineDayHeader: React.FC = () => {
   const { 
@@ -94,9 +95,10 @@ const TimelineDayHeader: React.FC = () => {
             >
               <div className={`${date.getDay() === 0 ? 'text-red-500 dark:text-red-400' : date.getDay() === 6 ? 'text-blue-500 dark:text-blue-400' : ''}`}>
                 {timelineScale === 'day' && (isFirstDayOfMonth 
-                  ? `${date.getMonth() + 1}月${date.getDate()}日` 
-                  : `${date.getDate()}日`)}
-                {timelineScale === 'week' && `${date.getMonth() + 1}月${date.getDate()}日〜`}
+                  ? formatDateShort(date, true)  // 月表示あり (例: 5/1)
+                  : formatDateShort(date, false) // 月表示なし (例: 11)
+                )}
+                {timelineScale === 'week' && `${date.getMonth() + 1}/${date.getDate()}〜`}
                 {timelineScale === 'month' && `${date.getMonth() + 1}月`}
               </div>
             </div>
