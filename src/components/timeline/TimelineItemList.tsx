@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/reducers';
 import TimelineItem from './TimelineItem';
@@ -8,12 +8,8 @@ const TimelineItemList: React.FC = () => {
   const { today } = useSelector((state: RootState) => state.timeline);
   const { viewMode, displayCompletedTasks } = useSelector((state: RootState) => state.ui);
   const { projects } = useSelector((state: RootState) => state.projects);
-  const timelineGrid = useContext(TimelineGridContext);
+  const timelineGrid = React.useContext(TimelineGridContext);
   const listRef = useRef<HTMLDivElement>(null);
-  const [visibleProjects, setVisibleProjects] = useState<{
-    index: number;
-    project: any;
-  }[]>([]);
 
   // 可視範囲を追跡するためのIntersectionObserver
   useEffect(() => {
@@ -22,25 +18,11 @@ const TimelineItemList: React.FC = () => {
     // プロジェクトの可視性を監視
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach(entry => {
-          const projectId = entry.target.getAttribute('data-project-id');
-          if (projectId) {
-            // 可視状態が変わったプロジェクトを処理
-            if (entry.isIntersecting) {
-              const project = projects.find(p => p.id === projectId);
-              const index = projects.findIndex(p => p.id === projectId);
-              if (project) {
-                setVisibleProjects(prev => {
-                  if (!prev.some(vp => vp.project.id === projectId)) {
-                    return [...prev, { index, project }].sort((a, b) => a.index - b.index);
-                  }
-                  return prev;
-                });
-              }
-            } else {
-              setVisibleProjects(prev => prev.filter(vp => vp.project.id !== projectId));
-            }
-          }
+        entries.forEach(_ => {
+          // 可視状態変化の処理
+          // 注: 現在この処理は最適化のために準備されていますが、
+          // 実際のレンダリングには使用されていません
+          // 将来的には仮想スクロールの実装に使用予定
         });
       },
       {
