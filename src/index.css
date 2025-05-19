@@ -83,6 +83,16 @@ html, body, #root {
   }
 }
 
+/* プロジェクトヘッダー用スタイル強化 */
+.project-header {
+  @apply bg-indigo-50 dark:bg-indigo-900/30 font-semibold border-l-[6px] shadow-sm;
+  transition: all 0.2s ease;
+}
+
+.project-header:hover {
+  @apply bg-indigo-100 dark:bg-indigo-900/40;
+}
+
 /* タスクバースタイル */
 .task-bar {
   transition: all 0.2s ease-in-out;
