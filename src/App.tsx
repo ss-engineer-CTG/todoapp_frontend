@@ -6,12 +6,12 @@ import FeedbackToast from './components/common/FeedbackToast';
 import { NotificationProvider } from './context/NotificationContext';
 import { initializeProjects } from './store/slices/projectsSlice';
 import { initializeTimeline } from './store/slices/timelineSlice';
-import ProjectForm from './components/project/ProjectForm'; // QuickAddFormの代わりにProjectFormをインポート
+import ProjectForm from './components/project/ProjectForm';
 import { RootState } from './store/reducers';
 
 const App: React.FC = () => {
   const dispatch = useDispatch();
-  const { projectFormActive } = useSelector((state: RootState) => state.ui); // quickAddActiveからprojectFormActiveに変更
+  const { projectFormActive } = useSelector((state: RootState) => state.ui);
 
   // アプリケーションの初期化
   useEffect(() => {
@@ -44,7 +44,7 @@ const App: React.FC = () => {
         </main>
         <FeedbackToast />
         
-        {/* QuickAddFormからProjectFormに置き換え */}
+        {/* プロジェクト作成フォーム */}
         {projectFormActive && <ProjectForm />}
       </div>
     </NotificationProvider>

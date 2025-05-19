@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { RootState } from '../../store/reducers';
 import { toggleProject } from '../../store/slices/projectsSlice';
-import { setQuickAddActive } from '../../store/slices/uiSlice';
+import { setProjectFormActive } from '../../store/slices/uiSlice';
 import TaskItem from './TaskItem';
 
 const TaskList: React.FC = () => {
@@ -93,9 +93,9 @@ const TaskList: React.FC = () => {
     dispatch(toggleProject(projectId));
   };
   
-  // クイック追加を開始
-  const handleStartQuickAdd = () => {
-    dispatch(setQuickAddActive(true));
+  // プロジェクト作成フォームを開始
+  const handleCreateProject = () => {
+    dispatch(setProjectFormActive(true));
   };
   
   // ビューが空かどうかチェック
@@ -118,9 +118,9 @@ const TaskList: React.FC = () => {
             </p>
             <button 
               className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
-              onClick={handleStartQuickAdd}
+              onClick={handleCreateProject}
             >
-              + 新しいタスクを追加
+              + 新しいプロジェクトを追加
             </button>
           </div>
         ) : (
@@ -165,10 +165,10 @@ const TaskList: React.FC = () => {
       <div className="p-2 border-t border-gray-200 dark:border-gray-700">
         <button 
           className="w-full py-1.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded flex items-center justify-center text-sm font-medium"
-          onClick={handleStartQuickAdd}
+          onClick={handleCreateProject}
         >
           <Plus size={14} className="mr-1" />
-          クイック追加 (Enter)
+          新規プロジェクト
         </button>
       </div>
     </div>

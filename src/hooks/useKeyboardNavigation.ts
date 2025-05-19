@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store/reducers';
 import { 
   openTaskEditModal, 
-  setQuickAddActive, 
+  setProjectFormActive, 
   toggleTaskSelection, 
   moveTaskFocus, 
   clearSelectedTasks,
@@ -26,7 +26,7 @@ export const useKeyboardNavigation = () => {
   
   const { 
     taskEditModal, 
-    quickAddActive, 
+    projectFormActive, 
     selectedTasks, 
     deleteConfirmation,
     inlineEditTask
@@ -38,7 +38,7 @@ export const useKeyboardNavigation = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // モーダルやポップアップが開いている場合は特定のキーのみ処理
-      if (taskEditModal.isOpen || deleteConfirmation.isOpen || quickAddActive || inlineEditTask) {
+      if (taskEditModal.isOpen || deleteConfirmation.isOpen || projectFormActive || inlineEditTask) {
         // ESCキーで各種モーダルやポップアップを閉じる
         if (e.key === 'Escape') {
           e.preventDefault();
@@ -47,10 +47,10 @@ export const useKeyboardNavigation = () => {
         return;
       }
       
-      // Enterキーでクイック追加モード起動
+      // Enterキーでプロジェクト作成フォーム起動
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        dispatch(setQuickAddActive(true));
+        dispatch(setProjectFormActive(true));
         return;
       }
       
@@ -185,7 +185,7 @@ export const useKeyboardNavigation = () => {
     selectedTasks, 
     taskEditModal.isOpen, 
     deleteConfirmation.isOpen, 
-    quickAddActive,
+    projectFormActive,
     inlineEditTask,
     showFeedback
   ]);

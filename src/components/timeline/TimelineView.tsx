@@ -4,7 +4,6 @@ import TimelineHeader from './TimelineHeader';
 import TimelineDayHeader from './TimelineDayHeader';
 import TimelineItemList from './TimelineItemList';
 import TaskEditModal from '../task/TaskEditModal';
-import QuickAddForm from '../task/QuickAddForm';
 import TaskDetailPopover from './TaskDetailPopover';
 import BatchOperationPanel from './BatchOperationPanel';
 import TaskList from '../task/TaskList';
@@ -30,7 +29,7 @@ const TimelineView: React.FC = () => {
   
   const { 
     taskEditModal, 
-    quickAddActive, 
+    projectFormActive, 
     selectedTasks, 
     showBatchPanel, 
     deleteConfirmation 
@@ -122,9 +121,6 @@ const TimelineView: React.FC = () => {
         onConfirm={handleDeleteConfirm}
         onCancel={() => dispatch(closeDeleteConfirmation())}
       />
-      
-      {/* クイック追加フォーム */}
-      {quickAddActive && <QuickAddForm />}
       
       {/* 一括操作パネル */}
       {showBatchPanel && selectedTasks.length > 0 && <BatchOperationPanel />}

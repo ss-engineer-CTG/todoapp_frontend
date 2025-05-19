@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../store/reducers';
+import { useDispatch } from 'react-redux';
 import { addProject } from '../../store/slices/projectsSlice';
 import { setProjectFormActive } from '../../store/slices/uiSlice';
 import { useFeedback } from '../../hooks/useFeedback';
@@ -38,7 +37,9 @@ const ProjectForm: React.FC = () => {
     const projectData = {
       name: projectName,
       color: projectColor,
-      description: projectDescription
+      description: projectDescription,
+      expanded: true,
+      tasks: []
     };
     
     // プロジェクト追加アクションをディスパッチ
