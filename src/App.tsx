@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import TimelineView from './components/timeline/TimelineView';
 import AppHeader from './components/common/AppHeader';
 import FeedbackToast from './components/common/FeedbackToast';
-import { NotificationProvider } from './context/NotificationContext';
 import { initializeProjects } from './store/slices/projectsSlice';
 import { initializeTimeline } from './store/slices/timelineSlice';
 import ProjectForm from './components/project/ProjectForm';
@@ -36,18 +35,16 @@ const App: React.FC = () => {
   }, [dispatch]);
 
   return (
-    <NotificationProvider>
-      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        <AppHeader />
-        <main className="flex-1 overflow-hidden">
-          <TimelineView />
-        </main>
-        <FeedbackToast />
-        
-        {/* プロジェクト作成フォーム */}
-        {projectFormActive && <ProjectForm />}
-      </div>
-    </NotificationProvider>
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <AppHeader />
+      <main className="flex-1 overflow-hidden">
+        <TimelineView />
+      </main>
+      <FeedbackToast />
+      
+      {/* プロジェクト作成フォーム */}
+      {projectFormActive && <ProjectForm />}
+    </div>
   );
 };
 

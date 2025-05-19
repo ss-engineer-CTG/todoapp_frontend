@@ -26,22 +26,32 @@ interface HoverInfo {
 }
 
 interface TimelineState {
-  timelineScale: 'day' | 'week' | 'month';
-  zoomLevel: number;
   timelineStart: Date;
   timelineEnd: Date;
+  visibleStart: Date;
+  visibleEnd: Date;
   today: Date;
+  zoomLevel: number;
   dragInfo: DragInfo | null;
   hoverInfo: HoverInfo | null;
 }
 
+// 今日の日付を取得
+const today = new Date();
+// 初期表示範囲（今日を中心に前後30日）
+const oneYearAgo = new Date(today);
+oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+const oneYearLater = new Date(today);
+oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+
 // 初期ステート
 const initialState: TimelineState = {
-  timelineScale: 'day',
+  timelineStart: oneYearAgo,
+  timelineEnd: oneYearLater,
+  visibleStart: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000), // 30日前
+  visibleEnd: new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000),   // 30日後
+  today,
   zoomLevel: 100,
-  timelineStart: new Date('2025-05-10'),
-  timelineEnd: new Date('2025-06-15'),
-  today: new Date('2025-05-17'),
   dragInfo: null,
   hoverInfo: null
 };
@@ -52,13 +62,27 @@ const timelineSlice = createSlice({
   initialState,
   reducers: {
     // タイムラインの初期化
-    initializeTimeline: (_state) => {
+    initializeTimeline: (state) => {
       // 初期化ロジック（既に値がある場合は変更しない）
-    },
-    
-    // タイムラインスケールの設定
-    setTimelineScale: (state, action: PayloadAction<'day' | 'week' | 'month'>) => {
-      state.timelineScale = action.payload;
+      const today = new Date();
+      if (!state.today) {
+        state.today = today;
+      }
+      
+      if (!state.timelineStart || !state.timelineEnd) {
+        const oneYearAgo = new Date(today);
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        const oneYearLater = new Date(today);
+        oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+        
+        state.timelineStart = oneYearAgo;
+        state.timelineEnd = oneYearLater;
+      }
+      
+      if (!state.visibleStart || !state.visibleEnd) {
+        state.visibleStart = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+        state.visibleEnd = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }
     },
     
     // ズームイン
@@ -71,40 +95,42 @@ const timelineSlice = createSlice({
       state.zoomLevel = Math.max(state.zoomLevel - 25, 50);
     },
     
-    // タイムライン開始日の設定
-    setTimelineStart: (state, action: PayloadAction<Date>) => {
-      state.timelineStart = action.payload;
+    // タイムライン範囲の更新
+    updateTimelineRange: (state, action: PayloadAction<{ start: Date; end: Date }>) => {
+      state.timelineStart = action.payload.start;
+      state.timelineEnd = action.payload.end;
     },
     
-    // タイムライン終了日の設定
-    setTimelineEnd: (state, action: PayloadAction<Date>) => {
-      state.timelineEnd = action.payload;
+    // 可視範囲の更新
+    updateVisibleDateRange: (state, action: PayloadAction<{ start: Date; end: Date }>) => {
+      state.visibleStart = action.payload.start;
+      state.visibleEnd = action.payload.end;
     },
     
     // タイムラインナビゲーション
     navigateTimeline: (state, action: PayloadAction<'prev' | 'next' | 'today'>) => {
       const direction = action.payload;
-      const dateRange = state.timelineEnd.getTime() - state.timelineStart.getTime();
-      const movement = Math.ceil(dateRange / 2); // 表示範囲の半分の日数分移動
+      const visibleRange = state.visibleEnd.getTime() - state.visibleStart.getTime();
+      const movement = visibleRange; // 表示範囲分移動
       
       if (direction === 'prev') {
-        const newStart = new Date(state.timelineStart.getTime() - movement);
-        const newEnd = new Date(state.timelineEnd.getTime() - movement);
-        state.timelineStart = newStart;
-        state.timelineEnd = newEnd;
+        const newStart = new Date(state.visibleStart.getTime() - movement);
+        const newEnd = new Date(state.visibleEnd.getTime() - movement);
+        state.visibleStart = newStart;
+        state.visibleEnd = newEnd;
       } else if (direction === 'next') {
-        const newStart = new Date(state.timelineStart.getTime() + movement);
-        const newEnd = new Date(state.timelineEnd.getTime() + movement);
-        state.timelineStart = newStart;
-        state.timelineEnd = newEnd;
+        const newStart = new Date(state.visibleStart.getTime() + movement);
+        const newEnd = new Date(state.visibleEnd.getTime() + movement);
+        state.visibleStart = newStart;
+        state.visibleEnd = newEnd;
       } else if (direction === 'today') {
         // 今日を中心にした表示範囲を計算
-        const range = dateRange;
+        const range = visibleRange;
         const halfRange = range / 2;
         const newStart = new Date(state.today.getTime() - halfRange);
         const newEnd = new Date(state.today.getTime() + halfRange);
-        state.timelineStart = newStart;
-        state.timelineEnd = newEnd;
+        state.visibleStart = newStart;
+        state.visibleEnd = newEnd;
       }
     },
     
@@ -145,12 +171,11 @@ const timelineSlice = createSlice({
 
 // アクションエクスポート
 export const { 
-  initializeTimeline, 
-  setTimelineScale, 
+  initializeTimeline,
   zoomIn, 
   zoomOut,
-  setTimelineStart, 
-  setTimelineEnd, 
+  updateTimelineRange,
+  updateVisibleDateRange,
   navigateTimeline,
   startDrag, 
   updateDrag, 

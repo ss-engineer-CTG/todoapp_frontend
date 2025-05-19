@@ -9,7 +9,6 @@ import { duplicateTask } from '../../store/slices/tasksSlice';
 import { formatDate } from '../../utils/dateUtils';
 import { getStatusStyle } from '../../utils/taskUtils';
 import { TimelineGridContext } from './TimelineView';
-import { getTaskPositionWithGrid } from '../../utils/taskUtils';
 
 interface TaskBarProps {
   project: Project;
@@ -52,11 +51,34 @@ const TaskBar: React.FC<TaskBarProps> = ({
                      dragInfo.subtaskId === subtaskId;
   
   // タスク位置を計算
-  const position = getTaskPositionWithGrid(
-    currentData, 
-    timelineGrid.gridDates[0],
-    timelineGrid.dayWidth
-  );
+  const getTaskPosition = () => {
+    if (!currentData || !currentData.start || !currentData.end) return { left: 0, width: 0 };
+    
+    // 日付オブジェクトに変換し、時間部分を正規化
+    const taskStart = new Date(currentData.start);
+    taskStart.setHours(0, 0, 0, 0);
+    
+    const taskEnd = new Date(currentData.end);
+    taskEnd.setHours(0, 0, 0, 0);
+    
+    // 無効な日付の場合はデフォルト値を返す
+    if (isNaN(taskStart.getTime()) || isNaN(taskEnd.getTime())) {
+      return { left: 0, width: 0 };
+    }
+    
+    // 開始日からの日数を計算
+    const startPosition = timelineGrid.getDatePosition(taskStart);
+    
+    // タスクの期間（日数）を計算 - 終了日も含めるため +1 する
+    const durationMs = taskEnd.getTime() - taskStart.getTime();
+    const durationDays = (durationMs / (1000 * 60 * 60 * 24)) + 1;
+    const width = durationDays * timelineGrid.dayWidth;
+    
+    return {
+      left: startPosition,
+      width: width
+    };
+  };
   
   // ステータスに基づく色とスタイルを取得
   const statusStyle = getStatusStyle(currentData.status, project.color);
@@ -177,6 +199,8 @@ const TaskBar: React.FC<TaskBarProps> = ({
     
     return {};
   };
+  
+  const position = getTaskPosition();
   
   return (
     <>

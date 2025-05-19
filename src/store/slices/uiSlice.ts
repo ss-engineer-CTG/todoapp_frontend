@@ -41,7 +41,7 @@ interface UIState {
   showBatchPanel: boolean;
   taskEditModal: TaskEditModalState;
   deleteConfirmation: DeleteConfirmationState;
-  projectFormActive: boolean; // QuickAddFormからProjectFormに変更
+  projectFormActive: boolean;
   inlineEditTask: InlineEditTask | null;
   feedback: FeedbackState;
 }
@@ -67,7 +67,7 @@ const initialState: UIState = {
     subtaskId: null,
     batchMode: false
   },
-  projectFormActive: false, // quickAddActiveからprojectFormActiveに変更
+  projectFormActive: false,
   inlineEditTask: null,
   feedback: {
     message: null,
@@ -226,7 +226,7 @@ export const {
   closeTaskEditModal,
   openDeleteConfirmation, 
   closeDeleteConfirmation, 
-  setProjectFormActive, // setQuickAddActiveから変更
+  setProjectFormActive,
   setInlineEditTask,
   showFeedbackMessage,
   clearFeedbackMessage

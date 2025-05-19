@@ -1,13 +1,65 @@
-import React from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/reducers';
 import TimelineItem from './TimelineItem';
+import { TimelineGridContext } from './TimelineView';
 
 const TimelineItemList: React.FC = () => {
   const { today } = useSelector((state: RootState) => state.timeline);
   const { viewMode, displayCompletedTasks } = useSelector((state: RootState) => state.ui);
   const { projects } = useSelector((state: RootState) => state.projects);
-  
+  const timelineGrid = useContext(TimelineGridContext);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [visibleProjects, setVisibleProjects] = useState<{
+    index: number;
+    project: any;
+  }[]>([]);
+
+  // 可視範囲を追跡するためのIntersectionObserver
+  useEffect(() => {
+    if (!listRef.current) return;
+
+    // プロジェクトの可視性を監視
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          const projectId = entry.target.getAttribute('data-project-id');
+          if (projectId) {
+            // 可視状態が変わったプロジェクトを処理
+            if (entry.isIntersecting) {
+              const project = projects.find(p => p.id === projectId);
+              const index = projects.findIndex(p => p.id === projectId);
+              if (project) {
+                setVisibleProjects(prev => {
+                  if (!prev.some(vp => vp.project.id === projectId)) {
+                    return [...prev, { index, project }].sort((a, b) => a.index - b.index);
+                  }
+                  return prev;
+                });
+              }
+            } else {
+              setVisibleProjects(prev => prev.filter(vp => vp.project.id !== projectId));
+            }
+          }
+        });
+      },
+      {
+        root: null,
+        rootMargin: '100px 0px',
+        threshold: 0.1
+      }
+    );
+
+    // プロジェクト行を監視
+    const projectRows = listRef.current.querySelectorAll('[data-project-id]');
+    projectRows.forEach(row => observer.observe(row));
+
+    return () => {
+      projectRows.forEach(row => observer.unobserve(row));
+      observer.disconnect();
+    };
+  }, [projects, timelineGrid.visibleDates]);
+
   // フィルタリングされたプロジェクトを取得
   const getFilteredProjects = () => {
     let result = [...projects];
@@ -97,15 +149,25 @@ const TimelineItemList: React.FC = () => {
   }
   
   return (
-    <div className="relative">
+    <div className="relative" ref={listRef}>
       {filteredProjects.map(project => (
-        <div key={project.id} className="border-b border-gray-200 dark:border-gray-700">
+        <div 
+          key={project.id} 
+          className="border-b border-gray-200 dark:border-gray-700"
+          data-project-id={project.id}
+        >
           {/* プロジェクトヘッダー行 */}
           <div 
-            className="h-8 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer relative"
-            data-project-id={project.id}
+            className="h-8 cursor-pointer relative"
+            style={{ 
+              backgroundImage: `linear-gradient(to right, ${project.color}20, transparent)`,
+              borderLeft: `4px solid ${project.color}`
+            }}
           >
-            {/* タイムラインのグリッド背景は TimelineItem 内で描画 */}
+            {/* プロジェクト名前ラベル */}
+            <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-xs font-medium text-gray-500 dark:text-gray-400">
+              {project.name}
+            </div>
           </div>
           
           {/* プロジェクト内のタスク */}

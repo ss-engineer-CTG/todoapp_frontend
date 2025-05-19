@@ -5,7 +5,7 @@ import { formatDateShort } from '../../utils/dateUtils';
 import { TimelineGridContext } from './TimelineView';
 
 const TimelineDayHeader: React.FC = () => {
-  const { today, timelineScale } = useSelector((state: RootState) => state.timeline);
+  const { today } = useSelector((state: RootState) => state.timeline);
   const timelineGrid = useContext(TimelineGridContext);
   
   // 曜日による背景色を取得
@@ -22,27 +22,25 @@ const TimelineDayHeader: React.FC = () => {
   return (
     <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="flex h-8">
-        {timelineGrid.gridDates.map((date, index) => {
+        {timelineGrid.visibleDates.map((date, index) => {
           // 月が変わる最初の日か確認
           const isFirstDayOfMonth = index === 0 || 
-            (index > 0 && timelineGrid.gridDates[index - 1].getMonth() !== date.getMonth());
+            (index > 0 && timelineGrid.visibleDates[index - 1].getMonth() !== date.getMonth());
           
           return (
             <div 
-              key={index} 
+              key={date.getTime()} 
               className={`text-center text-xs font-medium py-1 ${getDateCellColor(date)}`}
               style={{ 
-                width: `${timelineGrid.dayWidth * timelineGrid.scaleFactor}px`,
-                minWidth: `${timelineGrid.dayWidth * timelineGrid.scaleFactor}px`
+                width: `${timelineGrid.dayWidth}px`,
+                minWidth: `${timelineGrid.dayWidth}px`
               }}
             >
               <div className={`${date.getDay() === 0 ? 'text-red-500 dark:text-red-400' : date.getDay() === 6 ? 'text-blue-500 dark:text-blue-400' : ''}`}>
-                {timelineScale === 'day' && (isFirstDayOfMonth 
+                {isFirstDayOfMonth 
                   ? formatDateShort(date, true)  // 月表示あり (例: 5/1)
                   : formatDateShort(date, false) // 月表示なし (例: 11)
-                )}
-                {timelineScale === 'week' && `${date.getMonth() + 1}/${date.getDate()}〜`}
-                {timelineScale === 'month' && `${date.getMonth() + 1}月`}
+                }
               </div>
             </div>
           );

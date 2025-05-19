@@ -54,13 +54,13 @@ const TimelineItem: React.FC<TimelineItemProps> = ({ project, task }) => {
       >
         {/* 背景グリッド */}
         <div className="absolute inset-0">
-          {timelineGrid.gridDates.map((date, index) => (
+          {timelineGrid.visibleDates.map((date) => (
             <div 
-              key={index} 
+              key={date.getTime()} 
               className={`absolute top-0 bottom-0 ${getDateCellColor(date)}`}
               style={{ 
-                left: `${index * timelineGrid.dayWidth * timelineGrid.scaleFactor}px`,
-                width: `${timelineGrid.dayWidth * timelineGrid.scaleFactor}px` 
+                left: `${timelineGrid.getDatePosition(date)}px`,
+                width: `${timelineGrid.dayWidth}px` 
               }}
             ></div>
           ))}
@@ -75,7 +75,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({ project, task }) => {
         />
       </div>
       
-      {/* サブタスク行（親タスクが展開されている場合のみ表示） - インデント処理を削除 */}
+      {/* サブタスク行（親タスクが展開されている場合のみ表示） */}
       {task.expanded && task.subtasks && task.subtasks.length > 0 && (
         <div>
           {task.subtasks.map(subtask => (
@@ -130,15 +130,15 @@ const SubTaskRow: React.FC<SubTaskRowProps> = ({ project, task, subtask }) => {
       id={`task-${subTaskKey}`}
       data-task-key={subTaskKey}
     >
-      {/* 背景グリッド - 親タスクと同じグリッドコンテキストを使用 */}
+      {/* 背景グリッド */}
       <div className="absolute inset-0">
-        {timelineGrid.gridDates.map((date, index) => (
+        {timelineGrid.visibleDates.map((date) => (
           <div 
-            key={index} 
+            key={date.getTime()} 
             className={`absolute top-0 bottom-0 ${getDateCellColor(date)}`}
             style={{ 
-              left: `${index * timelineGrid.dayWidth * timelineGrid.scaleFactor}px`,
-              width: `${timelineGrid.dayWidth * timelineGrid.scaleFactor}px` 
+              left: `${timelineGrid.getDatePosition(date)}px`,
+              width: `${timelineGrid.dayWidth}px` 
             }}
           ></div>
         ))}

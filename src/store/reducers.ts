@@ -3,7 +3,6 @@ import projectsReducer from './slices/projectsSlice';
 import tasksReducer from './slices/tasksSlice';
 import uiReducer from './slices/uiSlice';
 import timelineReducer from './slices/timelineSlice';
-import notificationsReducer from './slices/notificationsSlice';
 import templatesReducer from './slices/templatesSlice';
 
 // ルートリデューサー
@@ -12,7 +11,6 @@ export const rootReducer = combineReducers({
   tasks: tasksReducer,
   ui: uiReducer,
   timeline: timelineReducer,
-  notifications: notificationsReducer,
   templates: templatesReducer,
 });
 

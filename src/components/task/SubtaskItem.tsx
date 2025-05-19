@@ -23,12 +23,15 @@ const SubtaskItem: React.FC<SubtaskItemProps> = ({ project, task, subtask }) => 
   // タスクのステータスを更新
   const handleStatusUpdate = (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // 完了状態を切り替え
+    const newStatus = subtask.status === 'completed' ? 'not-started' : 'completed';
+    
     dispatch(updateTaskStatus({ 
       projectId: project.id, 
       taskId: task.id, 
       subtaskId: subtask.id,
-      status: subtask.status === 'completed' ? 'not-started' : 
-              subtask.status === 'in-progress' ? 'completed' : 'in-progress'
+      status: newStatus
     }));
   };
   

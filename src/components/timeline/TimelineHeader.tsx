@@ -7,7 +7,6 @@ import {
   ZoomOut 
 } from 'lucide-react';
 import { 
-  setTimelineScale, 
   zoomIn, 
   zoomOut, 
   navigateTimeline 
@@ -18,21 +17,8 @@ import FilterPanel from '../common/FilterPanel';
 
 const TimelineHeader: React.FC = () => {
   const dispatch = useDispatch();
-  const { timelineScale, zoomLevel } = useSelector((state: RootState) => state.timeline);
+  const { zoomLevel } = useSelector((state: RootState) => state.timeline);
   const { showFeedback } = useFeedback();
-
-  // タイムラインスケール切替ハンドラー
-  const handleScaleChange = (scale: 'day' | 'week' | 'month') => {
-    dispatch(setTimelineScale(scale));
-    
-    const scaleLabels = {
-      'day': '日',
-      'week': '週',
-      'month': '月'
-    };
-    
-    showFeedback(`${scaleLabels[scale]}表示に切り替えました`, 'success');
-  };
 
   // 期間ナビゲーションハンドラー
   const handleNavigate = (direction: 'prev' | 'next' | 'today') => {
@@ -59,22 +45,9 @@ const TimelineHeader: React.FC = () => {
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between">
       <div className="flex items-center space-x-2">
         <button 
-          className={`px-3 py-1 text-sm font-medium rounded ${timelineScale === 'day' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
-          onClick={() => handleScaleChange('day')}
+          className="px-3 py-1 text-sm font-medium rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300"
         >
           日表示
-        </button>
-        <button 
-          className={`px-3 py-1 text-sm font-medium rounded ${timelineScale === 'week' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
-          onClick={() => handleScaleChange('week')}
-        >
-          週表示
-        </button>
-        <button 
-          className={`px-3 py-1 text-sm font-medium rounded ${timelineScale === 'month' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
-          onClick={() => handleScaleChange('month')}
-        >
-          月表示
         </button>
       </div>
       

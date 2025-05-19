@@ -16,30 +16,40 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project }) => {
     dispatch(toggleProject(project.id));
   };
   
+  // 選択カラーの背景色スタイルを生成
+  const getBackgroundStyle = () => {
+    return {
+      backgroundColor: project.color,
+      color: '#FFFFFF',
+      textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
+    };
+  };
+  
   return (
     <div 
-      className="project-header flex items-center cursor-pointer"
+      className="project-header flex items-center cursor-pointer rounded-md my-1 py-3 px-4 shadow-md transition-all duration-200"
       onClick={handleToggleProject}
-      style={{ borderLeftColor: project.color }}
+      style={{
+        ...getBackgroundStyle(),
+        borderLeftWidth: '6px',
+        borderLeftColor: project.color,
+        borderLeftStyle: 'solid'
+      }}
     >
       <div className="flex-1 flex items-center">
         <button 
-          className="mr-2 text-indigo-600 dark:text-indigo-400"
+          className="mr-2 text-white"
           aria-label={project.expanded ? 'プロジェクトを折りたたむ' : 'プロジェクトを展開する'}
         >
           {project.expanded 
             ? <ChevronDown size={20} /> 
             : <ChevronRight size={20} />}
         </button>
-        <div 
-          className="w-5 h-5 rounded-full mr-3 ring-2 ring-white dark:ring-gray-800" 
-          style={{ backgroundColor: project.color }}
-        ></div>
         <span className="text-base font-bold">
           {project.name}
         </span>
       </div>
-      <button className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+      <button className="text-white p-1.5 rounded-full hover:bg-white/20">
         <MoreHorizontal size={18} />
       </button>
     </div>

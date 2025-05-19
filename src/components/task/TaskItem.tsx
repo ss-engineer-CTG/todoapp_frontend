@@ -29,11 +29,14 @@ const TaskItem: React.FC<TaskItemProps> = ({ project, task }) => {
   // タスクのステータスを更新
   const handleStatusUpdate = (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // 完了状態を切り替え
+    const newStatus = task.status === 'completed' ? 'not-started' : 'completed';
+    
     dispatch(updateTaskStatus({ 
       projectId: project.id, 
       taskId: task.id, 
-      status: task.status === 'completed' ? 'not-started' : 
-              task.status === 'in-progress' ? 'completed' : 'in-progress'
+      status: newStatus
     }));
   };
   
@@ -94,8 +97,6 @@ const TaskItem: React.FC<TaskItemProps> = ({ project, task }) => {
             </span>
           </div>
         </div>
-        
-        {/* 期間表示を削除 */}
       </div>
       
       {/* サブタスク */}

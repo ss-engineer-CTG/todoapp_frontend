@@ -172,6 +172,18 @@ html, body, #root {
   background-color: rgba(254, 240, 138, 0.3);
 }
 
+/* プロジェクト区切り線のスタイル */
+.project-divider {
+  @apply h-1;
+  background-image: linear-gradient(to right, rgba(99, 102, 241, 0.3), rgba(99, 102, 241, 0.1), transparent);
+}
+
+/* 仮想スクロール最適化 */
+.virtual-timeline-content {
+  will-change: transform;
+  contain: layout style paint;
+}
+
 /* カスタムスクロールバー */
 ::-webkit-scrollbar {
   width: 8px;

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, createContext } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import TimelineHeader from './TimelineHeader';
 import TimelineDayHeader from './TimelineDayHeader';
@@ -9,20 +9,21 @@ import BatchOperationPanel from './BatchOperationPanel';
 import TaskList from '../task/TaskList';
 import { RootState } from '../../store/reducers';
 import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
-import { resetHoverInfo } from '../../store/slices/timelineSlice';
+import { resetHoverInfo, updateVisibleDateRange } from '../../store/slices/timelineSlice';
 import { closeDeleteConfirmation, closeTaskEditModal } from '../../store/slices/uiSlice';
 import { deleteTask, deleteMultipleTasks } from '../../store/slices/tasksSlice';
 import ConfirmDialog from '../common/ConfirmDialog';
+import { addDays } from '../../utils/dateUtils';
 
 // 共通で使用するタイムライングリッドのコンテキスト
-export const TimelineGridContext = React.createContext<{
-  gridDates: Date[];
+export const TimelineGridContext = createContext<{
+  visibleDates: Date[];
   dayWidth: number;
-  scaleFactor: number;
+  getDatePosition: (date: Date) => number;
 }>({
-  gridDates: [],
+  visibleDates: [],
   dayWidth: 34,
-  scaleFactor: 1
+  getDatePosition: () => 0
 });
 
 const TimelineView: React.FC = () => {
@@ -35,7 +36,6 @@ const TimelineView: React.FC = () => {
     today,
     timelineStart,
     timelineEnd,
-    timelineScale,
     zoomLevel,
     hoverInfo
   } = useSelector((state: RootState) => state.timeline);
@@ -47,86 +47,127 @@ const TimelineView: React.FC = () => {
     deleteConfirmation 
   } = useSelector((state: RootState) => state.ui);
 
-  // タイムライングリッド用のデータを作成
-  const [gridContext, setGridContext] = useState({
-    gridDates: [] as Date[],
-    dayWidth: 34 * (zoomLevel / 100),
-    scaleFactor: getScaleFactor(timelineScale)
+  // 表示中の日付範囲を管理
+  const [visibleDateRange, setVisibleDateRange] = useState({
+    start: new Date(timelineStart),
+    end: new Date(timelineEnd)
   });
-  
-  // スケールファクターを取得
-  function getScaleFactor(scale: 'day' | 'week' | 'month'): number {
-    if (scale === 'day') return 1;
-    if (scale === 'week') return 7;
-    if (scale === 'month') {
-      const date = new Date(timelineStart);
-      return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-    }
-    return 1;
-  }
 
-  // タイムラインの日付を生成
+  // 一度に表示する日数
+  const VISIBLE_DAYS_BUFFER = 90;
+  
+  // 表示中の日付一覧
+  const [visibleDates, setVisibleDates] = useState<Date[]>([]);
+  
+  // 日付のポジションを計算する関数（スクロール位置に応じて調整）
+  const getDatePosition = (date: Date): number => {
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const startDate = new Date(visibleDateRange.start);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const diffDays = Math.round((targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays * dayWidth;
+  };
+
+  // 現在の日付ズームレベルに基づく日付幅
+  const dayWidth = 34 * (zoomLevel / 100);
+
+  // 可視日付を生成
   useEffect(() => {
-    const generateTimelineDates = () => {
-      const dates = [];
-      let currentDate = new Date(timelineStart);
+    const start = new Date(visibleDateRange.start);
+    const end = new Date(visibleDateRange.end);
+    const dates = [];
+
+    let currentDate = new Date(start);
+    while (currentDate <= end) {
+      dates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    setVisibleDates(dates);
+  }, [visibleDateRange, zoomLevel]);
+
+  // スクロールイベントを監視して日付範囲を動的に調整
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!timelineContentRef.current) return;
       
-      if (timelineScale === 'day') {
-        // 日単位
-        const timelineDays = Math.ceil(
-          (new Date(timelineEnd).getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        
-        for (let i = 0; i <= timelineDays; i++) {
-          dates.push(new Date(currentDate));
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-      } else if (timelineScale === 'week') {
-        // 週単位
-        while (currentDate <= new Date(timelineEnd)) {
-          dates.push(new Date(currentDate));
-          currentDate.setDate(currentDate.getDate() + 7);
-        }
-      } else if (timelineScale === 'month') {
-        // 月単位
-        while (currentDate <= new Date(timelineEnd)) {
-          dates.push(new Date(currentDate));
-          currentDate.setMonth(currentDate.getMonth() + 1);
-        }
+      const { scrollLeft, scrollWidth, clientWidth } = timelineContentRef.current;
+      const scrollEnd = scrollWidth - clientWidth;
+      
+      // スクロール位置が端に近づいたら日付範囲を拡張
+      if (scrollLeft < 100) {
+        // 左端に近づいた場合、過去の日付を追加
+        const newStart = addDays(visibleDateRange.start, -VISIBLE_DAYS_BUFFER);
+        setVisibleDateRange(prev => ({
+          ...prev,
+          start: newStart
+        }));
+      } else if (scrollEnd - scrollLeft < 100) {
+        // 右端に近づいた場合、未来の日付を追加
+        const newEnd = addDays(visibleDateRange.end, VISIBLE_DAYS_BUFFER);
+        setVisibleDateRange(prev => ({
+          ...prev,
+          end: newEnd
+        }));
       }
       
-      return dates;
+      // 可視範囲をReduxストアに更新
+      const visibleStartDay = Math.floor(scrollLeft / dayWidth);
+      const visibleEndDay = Math.ceil((scrollLeft + clientWidth) / dayWidth);
+      
+      const visibleStartDate = addDays(visibleDateRange.start, visibleStartDay);
+      const visibleEndDate = addDays(visibleDateRange.start, visibleEndDay);
+      
+      dispatch(updateVisibleDateRange({
+        start: visibleStartDate,
+        end: visibleEndDate
+      }));
     };
+    
+    const contentEl = timelineContentRef.current;
+    if (contentEl) {
+      contentEl.addEventListener('scroll', handleScroll);
+      // 初期時点でも一度実行
+      handleScroll();
+    }
+    
+    return () => {
+      if (contentEl) {
+        contentEl.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [visibleDateRange, dayWidth, dispatch]);
 
-    const dayWidth = 34 * (zoomLevel / 100);
-    const scaleFactor = getScaleFactor(timelineScale);
-    const gridDates = generateTimelineDates();
+  // 初期化時に1年前から1年後の日付範囲を設定
+  useEffect(() => {
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     
-    setGridContext({
-      gridDates,
-      dayWidth,
-      scaleFactor
+    const oneYearLater = new Date(today);
+    oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+    
+    setVisibleDateRange({
+      start: oneYearAgo,
+      end: oneYearLater
     });
-    
-  }, [timelineStart, timelineEnd, timelineScale, zoomLevel]);
+  }, [today]);
   
   // キーボードナビゲーションの設定
   useKeyboardNavigation();
   
   // 今日の位置までスクロール
   useEffect(() => {
-    if (timelineContentRef.current && gridContext.gridDates.length > 0) {
+    if (timelineContentRef.current && visibleDates.length > 0) {
       // タイムライン上の今日の位置を計算
-      const dayWidth = gridContext.dayWidth;
-      const timelineStartTime = new Date(timelineStart).getTime();
-      const todayTime = today.getTime();
-      const diffDays = Math.floor((todayTime - timelineStartTime) / (1000 * 60 * 60 * 24));
-      const todayPosition = diffDays * dayWidth;
+      const todayPosition = getDatePosition(today);
       
       // 初期スクロール位置は今日の日付が見えるように調整
       timelineContentRef.current.scrollLeft = Math.max(0, todayPosition - timelineContentRef.current.clientWidth / 2);
     }
-  }, [timelineStart, today, gridContext]);
+  }, [visibleDates, today]);
   
   // タスク削除確認ダイアログでの削除処理
   const handleDeleteConfirm = () => {
@@ -145,7 +186,11 @@ const TimelineView: React.FC = () => {
   };
   
   return (
-    <TimelineGridContext.Provider value={gridContext}>
+    <TimelineGridContext.Provider value={{
+      visibleDates,
+      dayWidth,
+      getDatePosition
+    }}>
       <div className="flex flex-col h-full overflow-hidden" data-testid="timeline-view">
         {/* タイムラインコントロールヘッダー */}
         <TimelineHeader />
@@ -207,18 +252,11 @@ const TimelineView: React.FC = () => {
 
 // 今日の日付を示すインジケーター
 const TodayIndicator: React.FC = () => {
-  const { timelineStart, today } = useSelector((state: RootState) => state.timeline);
-  const { dayWidth } = React.useContext(TimelineGridContext);
+  const { today } = useSelector((state: RootState) => state.timeline);
+  const { getDatePosition } = React.useContext(TimelineGridContext);
   
   // 今日の位置を計算
-  const calculateTodayPosition = () => {
-    const timelineStartTime = new Date(timelineStart).getTime();
-    const todayTime = today.getTime();
-    const diffDays = Math.floor((todayTime - timelineStartTime) / (1000 * 60 * 60 * 24));
-    return diffDays * dayWidth;
-  };
-  
-  const todayPosition = calculateTodayPosition();
+  const todayPosition = getDatePosition(today);
   
   return (
     <div 

@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store/reducers';
 import { 
-  setTimelineScale, 
   zoomIn, 
   zoomOut, 
   navigateTimeline 
@@ -13,24 +12,10 @@ export const useTimelineScale = () => {
   const dispatch = useDispatch();
   const { showFeedback } = useFeedback();
   const { 
-    timelineScale, 
     zoomLevel, 
     timelineStart, 
     timelineEnd 
   } = useSelector((state: RootState) => state.timeline);
-  
-  // タイムラインスケール（日/週/月）の変更
-  const changeScale = useCallback((scale: 'day' | 'week' | 'month') => {
-    dispatch(setTimelineScale(scale));
-    
-    const scaleLabels = {
-      'day': '日',
-      'week': '週',
-      'month': '月'
-    };
-    
-    showFeedback(`${scaleLabels[scale]}表示に切り替えました`, 'success');
-  }, [dispatch, showFeedback]);
   
   // ズームイン
   const handleZoomIn = useCallback(() => {
@@ -75,9 +60,7 @@ export const useTimelineScale = () => {
   }, [timelineStart, timelineEnd]);
   
   return {
-    timelineScale,
     zoomLevel,
-    changeScale,
     handleZoomIn,
     handleZoomOut,
     navigate,

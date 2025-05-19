@@ -1,9 +1,9 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { RootState } from '../../store/reducers';
-import { toggleProject } from '../../store/slices/projectsSlice';
 import { setProjectFormActive } from '../../store/slices/uiSlice';
+import ProjectHeader from '../project/ProjectHeader';
 import TaskItem from './TaskItem';
 
 const TaskList: React.FC = () => {
@@ -88,11 +88,6 @@ const TaskList: React.FC = () => {
   
   const filteredProjects = getFilteredProjects();
   
-  // プロジェクトの展開/折りたたみを切り替える
-  const handleToggleProject = (projectId: string) => {
-    dispatch(toggleProject(projectId));
-  };
-  
   // プロジェクト作成フォームを開始
   const handleCreateProject = () => {
     dispatch(setProjectFormActive(true));
@@ -126,27 +121,9 @@ const TaskList: React.FC = () => {
         ) : (
           <>
             {filteredProjects.map(project => (
-              <div key={project.id}>
+              <div key={project.id} className="mb-1">
                 {/* プロジェクトヘッダー */}
-                <div 
-                  className="flex items-center py-1.5 px-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                  onClick={() => handleToggleProject(project.id)}
-                >
-                  <div className="flex-1 flex items-center">
-                    <button className="mr-1 text-gray-500 dark:text-gray-400">
-                      {project.expanded 
-                        ? <ChevronDown size={16} /> 
-                        : <ChevronRight size={16} />}
-                    </button>
-                    <div 
-                      className="w-2 h-2 rounded-full mr-2" 
-                      style={{ backgroundColor: project.color }}
-                    ></div>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {project.name}
-                    </span>
-                  </div>
-                </div>
+                <ProjectHeader project={project} />
                 
                 {/* タスク一覧 */}
                 {project.expanded && project.tasks.map(task => (
