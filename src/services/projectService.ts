@@ -17,7 +17,7 @@ class ProjectService {
   /**
    * 新しいプロジェクトを作成
    */
-  createNewProject(projectData: Omit<Project, 'id' | 'tasks' | 'expanded'>): string {
+  createNewProject(projectData: Omit<Project, 'id' | 'tasks'>): string {
     const projectId = generateId();
     
     // カラーが指定されていない場合はランダムな色を設定
@@ -25,9 +25,7 @@ class ProjectService {
     
     store.dispatch(addProject({
       ...projectData,
-      color,
-      expanded: true,
-      tasks: []
+      color
     }));
     
     return projectId;

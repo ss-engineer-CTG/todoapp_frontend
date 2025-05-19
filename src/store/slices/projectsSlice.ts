@@ -2,44 +2,49 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Project } from '../../types/project';
 import { generateId } from '../../utils/taskUtils';
 
-// プロジェクトの初期状態
+// プロジェクトの初期状態（調整後のモックデータ）
 const initialProjects: Project[] = [
+  // プロジェクト1: ウェブサイトリニューアル（現在進行中）
   {
     id: 'p1',
     name: 'ウェブサイトリニューアル',
     color: '#3B82F6', // blue-500
     expanded: true,
+    description: '企業サイトの全面リニューアルプロジェクト',
+    startDate: new Date(2025, 4, 10).toISOString(), // 5月10日
+    endDate: new Date(2025, 5, 20).toISOString(),   // 6月20日
     tasks: [
       {
         id: 't1',
         name: 'デザイン作成',
-        start: new Date('2025-05-15').toISOString(),
-        end: new Date('2025-05-25').toISOString(),
+        start: new Date(2025, 4, 15).toISOString(), // 5月15日
+        end: new Date(2025, 4, 25).toISOString(),   // 5月25日
         status: 'in-progress',
         expanded: true,
         notes: 'デザインはモダンで使いやすさを重視する。カラーパレットは企業カラーを基調とする。',
+        priority: 'high',
         subtasks: [
           {
             id: 'st1',
             name: 'ワイヤーフレーム作成',
-            start: new Date('2025-05-15').toISOString(),
-            end: new Date('2025-05-18').toISOString(),
+            start: new Date(2025, 4, 15).toISOString(), // 5月15日
+            end: new Date(2025, 4, 18).toISOString(),   // 5月18日
             status: 'completed',
-            notes: ''
+            notes: 'ユーザーフローを考慮した設計にする'
           },
           {
             id: 'st2',
             name: 'カラーパレット選定',
-            start: new Date('2025-05-18').toISOString(),
-            end: new Date('2025-05-20').toISOString(),
+            start: new Date(2025, 4, 18).toISOString(), // 5月18日
+            end: new Date(2025, 4, 20).toISOString(),   // 5月20日
             status: 'completed',
-            notes: ''
+            notes: '企業ブランドガイドラインに沿ったカラーを使用'
           },
           {
             id: 'st3',
             name: 'モックアップデザイン',
-            start: new Date('2025-05-20').toISOString(),
-            end: new Date('2025-05-25').toISOString(),
+            start: new Date(2025, 4, 20).toISOString(), // 5月20日
+            end: new Date(2025, 4, 25).toISOString(),   // 5月25日
             status: 'in-progress',
             notes: 'レスポンシブデザインを必ず考慮すること'
           }
@@ -48,100 +53,198 @@ const initialProjects: Project[] = [
       {
         id: 't2',
         name: 'フロントエンド実装',
-        start: new Date('2025-05-25').toISOString(),
-        end: new Date('2025-06-10').toISOString(),
+        start: new Date(2025, 4, 25).toISOString(), // 5月25日
+        end: new Date(2025, 5, 10).toISOString(),   // 6月10日
         status: 'not-started',
         expanded: false,
-        notes: '',
+        notes: 'React.jsとTailwind CSSを使用して実装する',
+        priority: 'medium',
         subtasks: [
           {
             id: 'st4',
             name: 'HTMLコーディング',
-            start: new Date('2025-05-25').toISOString(),
-            end: new Date('2025-05-30').toISOString(),
+            start: new Date(2025, 4, 25).toISOString(), // 5月25日
+            end: new Date(2025, 4, 30).toISOString(),   // 5月30日
             status: 'not-started',
-            notes: ''
-          },
-          {
-            id: 'st5',
-            name: 'CSSスタイリング',
-            start: new Date('2025-05-30').toISOString(),
-            end: new Date('2025-06-05').toISOString(),
-            status: 'not-started',
-            notes: ''
-          },
-          {
-            id: 'st6',
-            name: 'JavaScriptインタラクション',
-            start: new Date('2025-06-05').toISOString(),
-            end: new Date('2025-06-10').toISOString(),
-            status: 'not-started',
-            notes: ''
+            notes: 'セマンティックなHTMLを意識する'
           }
         ]
       }
     ]
   },
+  
+  // プロジェクト2: マーケティングキャンペーン（一部遅延あり）
   {
     id: 'p2',
     name: 'マーケティングキャンペーン',
     color: '#8B5CF6', // purple-500
     expanded: false,
+    description: '夏季販売促進キャンペーン',
+    startDate: new Date(2025, 4, 1).toISOString(),   // 5月1日
+    endDate: new Date(2025, 6, 15).toISOString(),    // 7月15日
     tasks: [
       {
         id: 't3',
         name: 'コンテンツ企画',
-        start: new Date('2025-05-20').toISOString(),
-        end: new Date('2025-05-30').toISOString(),
-        status: 'in-progress',
+        start: new Date(2025, 4, 1).toISOString(),  // 5月1日
+        end: new Date(2025, 4, 15).toISOString(),   // 5月15日
+        status: 'completed',
         expanded: false,
-        notes: '',
+        notes: 'ターゲット層に響くコンテンツを企画する',
+        priority: 'high',
+        subtasks: [
+          {
+            id: 'st5',
+            name: 'ターゲット分析',
+            start: new Date(2025, 4, 1).toISOString(), // 5月1日
+            end: new Date(2025, 4, 5).toISOString(),   // 5月5日
+            status: 'completed',
+            notes: '顧客データの分析'
+          },
+          {
+            id: 'st6',
+            name: 'キーメッセージ策定',
+            start: new Date(2025, 4, 5).toISOString(),  // 5月5日
+            end: new Date(2025, 4, 10).toISOString(),   // 5月10日
+            status: 'completed',
+            notes: 'ブランドボイスを統一する'
+          }
+        ]
+      },
+      {
+        id: 't4',
+        name: 'クリエイティブ制作',
+        start: new Date(2025, 4, 10).toISOString(), // 5月10日
+        end: new Date(2025, 4, 25).toISOString(),   // 5月25日（遅延）
+        status: 'overdue',
+        expanded: false,
+        notes: '締め切りが過ぎているため早急に対応が必要',
+        priority: 'high',
         subtasks: [
           {
             id: 'st7',
-            name: 'ターゲット分析',
-            start: new Date('2025-05-20').toISOString(),
-            end: new Date('2025-05-23').toISOString(),
-            status: 'completed',
-            notes: ''
+            name: 'バナー・画像制作',
+            start: new Date(2025, 4, 10).toISOString(), // 5月10日
+            end: new Date(2025, 4, 17).toISOString(),   // 5月17日
+            status: 'in-progress',
+            notes: '各SNS向けのサイズ別制作'
           },
           {
             id: 'st8',
-            name: 'キーメッセージ策定',
-            start: new Date('2025-05-23').toISOString(),
-            end: new Date('2025-05-30').toISOString(),
-            status: 'in-progress',
-            notes: ''
+            name: '動画コンテンツ制作',
+            start: new Date(2025, 4, 15).toISOString(), // 5月15日
+            end: new Date(2025, 4, 25).toISOString(),   // 5月25日
+            status: 'overdue',
+            notes: 'プロモーション動画の撮影・編集'
           }
         ]
       }
     ]
   },
+  
+  // プロジェクト3: 営業資料作成プロジェクト（すでに完了）
   {
     id: 'p3',
-    name: 'モバイルアプリ開発',
-    color: '#10B981', // green-500
+    name: '営業資料作成プロジェクト',
+    color: '#F59E0B', // amber-500
     expanded: false,
+    description: '新規営業向けプレゼン資料・提案書のテンプレート作成',
+    startDate: new Date(2025, 0, 10).toISOString(),   // 1月10日
+    endDate: new Date(2025, 2, 15).toISOString(),     // 3月15日
     tasks: [
       {
-        id: 't4',
-        name: '要件定義',
-        start: new Date('2025-05-10').toISOString(),
-        end: new Date('2025-05-20').toISOString(),
+        id: 't5',
+        name: '資料構成策定',
+        start: new Date(2025, 0, 10).toISOString(),   // 1月10日
+        end: new Date(2025, 0, 20).toISOString(),     // 1月20日
         status: 'completed',
         expanded: false,
-        notes: '',
-        subtasks: []
-      },
+        notes: '営業部からのヒアリングに基づき基本構成を決定',
+        priority: 'medium',
+        subtasks: [
+          {
+            id: 'st9',
+            name: '営業部ヒアリング',
+            start: new Date(2025, 0, 10).toISOString(), // 1月10日
+            end: new Date(2025, 0, 15).toISOString(),   // 1月15日
+            status: 'completed',
+            notes: '各営業担当者の要望を集約'
+          }
+        ]
+      }
+    ]
+  },
+  
+  // プロジェクト4: 海外進出計画（将来のプロジェクト）
+  {
+    id: 'p4',
+    name: '海外進出計画',
+    color: '#6366F1', // indigo-500
+    expanded: false,
+    description: 'アジア市場への事業展開の戦略策定と実行',
+    startDate: new Date(2025, 6, 1).toISOString(),    // 7月1日
+    endDate: new Date(2025, 11, 31).toISOString(),    // 12月31日
+    tasks: [
       {
-        id: 't5',
-        name: 'UI/UXデザイン',
-        start: new Date('2025-05-20').toISOString(),
-        end: new Date('2025-06-05').toISOString(),
+        id: 't6',
+        name: '市場調査・戦略立案',
+        start: new Date(2025, 6, 1).toISOString(),    // 7月1日
+        end: new Date(2025, 7, 31).toISOString(),     // 8月31日
         status: 'not-started',
         expanded: false,
-        notes: '',
-        subtasks: []
+        notes: 'アジア主要国の市場調査と進出戦略の策定',
+        priority: 'high',
+        subtasks: [
+          {
+            id: 'st10',
+            name: '市場規模・競合調査',
+            start: new Date(2025, 6, 1).toISOString(),  // 7月1日
+            end: new Date(2025, 6, 20).toISOString(),   // 7月20日
+            status: 'not-started',
+            notes: '各国の市場規模と主要競合の調査'
+          },
+          {
+            id: 'st11',
+            name: '規制・法律調査',
+            start: new Date(2025, 6, 20).toISOString(), // 7月20日
+            end: new Date(2025, 7, 10).toISOString(),   // 8月10日
+            status: 'not-started',
+            notes: '各国の法規制・輸入規制の調査'
+          }
+        ]
+      }
+    ]
+  },
+  
+  // プロジェクト5: IT基盤刷新プロジェクト（今日から始まる）
+  {
+    id: 'p5',
+    name: 'IT基盤刷新プロジェクト',
+    color: '#F97316', // orange-500
+    expanded: false,
+    description: '社内IT環境のクラウド移行と業務効率化',
+    startDate: new Date(2025, 4, 19).toISOString(),   // 5月19日（今日）
+    endDate: new Date(2025, 9, 30).toISOString(),     // 10月30日
+    tasks: [
+      {
+        id: 't7',
+        name: '現状評価・計画策定',
+        start: new Date(2025, 4, 19).toISOString(),   // 5月19日（今日）
+        end: new Date(2025, 5, 15).toISOString(),     // 6月15日
+        status: 'not-started',
+        expanded: false,
+        notes: '現在のIT環境の評価と移行計画の策定',
+        priority: 'medium',
+        subtasks: [
+          {
+            id: 'st12',
+            name: 'ITインフラ調査',
+            start: new Date(2025, 4, 19).toISOString(), // 5月19日（今日）
+            end: new Date(2025, 4, 31).toISOString(),   // 5月31日
+            status: 'not-started',
+            notes: '現行システムの調査・課題洗い出し'
+          }
+        ]
       }
     ]
   }
@@ -170,12 +273,11 @@ const projectsSlice = createSlice({
     },
     
     // プロジェクトの追加
-    addProject: (state, action: PayloadAction<Omit<Project, 'id'>>) => {
+    addProject: (state, action: PayloadAction<Omit<Project, 'id' | 'tasks'>>) => {
       const newProject: Project = {
         id: generateId(),
-        ...action.payload,
         tasks: [],
-        expanded: true
+        ...action.payload
       };
       state.projects.push(newProject);
     },
