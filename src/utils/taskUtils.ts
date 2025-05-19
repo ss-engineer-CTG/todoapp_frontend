@@ -6,12 +6,51 @@ export const generateId = (): string => {
   return Math.random().toString(36).substring(2, 9);
 };
 
-// タスクの位置と幅を計算（修正済み）
+// 日付標準化ユーティリティ関数
+const normalizeDate = (date: Date): Date => {
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+};
+
+// 新しい位置計算関数：グリッドの日付と一貫性のある計算方法を使用
+export const getTaskPositionWithGrid = (
+  task: Task | SubTask, 
+  gridStartDate: Date,
+  dayWidth: number
+): { left: number; width: number } => {
+  if (!task || !task.start || !task.end) return { left: 0, width: 0 };
+  
+  // 日付オブジェクトに変換し、時間部分を正規化
+  const taskStart = normalizeDate(new Date(task.start));
+  const taskEnd = normalizeDate(new Date(task.end));
+  const timelineStartDate = normalizeDate(new Date(gridStartDate));
+  
+  // 無効な日付の場合はデフォルト値を返す
+  if (isNaN(taskStart.getTime()) || isNaN(taskEnd.getTime()) || isNaN(timelineStartDate.getTime())) {
+    return { left: 0, width: 0 };
+  }
+  
+  // 開始日からの日数を計算
+  const startDiffMs = taskStart.getTime() - timelineStartDate.getTime();
+  const startDiffDays = startDiffMs / (1000 * 60 * 60 * 24);
+  
+  // タスクの期間（日数）を計算 - 終了日も含めるため +1 する
+  const durationMs = taskEnd.getTime() - taskStart.getTime();
+  const durationDays = (durationMs / (1000 * 60 * 60 * 24)) + 1;
+  
+  return {
+    left: startDiffDays * dayWidth,
+    width: durationDays * dayWidth
+  };
+};
+
+// 既存の位置計算関数 - 後方互換性のために残しておく
 export const getTaskPosition = (
   task: Task | SubTask, 
   timelineStart: Date | string,
   zoomLevel: number
-) => {
+): { left: number; width: number } => {
   if (!task || !task.start || !task.end) return { left: 0, width: 0 };
   
   // 日付オブジェクトに変換
@@ -24,25 +63,19 @@ export const getTaskPosition = (
     return { left: 0, width: 0 };
   }
   
-  // 日付を標準化して UTC 値を取得（時間部分を完全に取り除く）
-  const normalizeDate = (date: Date): number => {
-    return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-  };
+  // すべての日付を標準化
+  const normalizedTaskStart = normalizeDate(taskStart);
+  const normalizedTaskEnd = normalizeDate(taskEnd);
+  const normalizedTimelineStart = normalizeDate(timelineStartDate);
   
-  const normalizedTaskStartTs = normalizeDate(taskStart);
-  const normalizedTaskEndTs = normalizeDate(taskEnd);
-  const normalizedTimelineStartTs = normalizeDate(timelineStartDate);
-  
-  // 開始日からの日数を計算（Math.floor を使用して一貫性を確保）
+  // 日付差をミリ秒で計算し、日数に変換
   const MS_PER_DAY = 1000 * 60 * 60 * 24;
-  const startDiff = Math.floor(
-    (normalizedTaskStartTs - normalizedTimelineStartTs) / MS_PER_DAY
-  );
+  
+  // 開始日差分の計算（整数に丸めず、正確な差分を使用）
+  const startDiff = (normalizedTaskStart.getTime() - normalizedTimelineStart.getTime()) / MS_PER_DAY;
   
   // タスクの期間（日数）を計算
-  const duration = Math.floor(
-    (normalizedTaskEndTs - normalizedTaskStartTs) / MS_PER_DAY
-  ) + 1; // 終了日も含める
+  const duration = ((normalizedTaskEnd.getTime() - normalizedTaskStart.getTime()) / MS_PER_DAY) + 1; // 終了日も含める
   
   // ズームレベルに応じてスケール
   const dayWidth = 34 * (zoomLevel / 100);

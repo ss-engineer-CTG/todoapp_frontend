@@ -1,93 +1,40 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/reducers';
 import { Task, SubTask } from '../../types/task';
 import { Project } from '../../types/project';
 import TaskBar from './TaskBar';
 import { toggleTask } from '../../store/slices/tasksSlice';
+import { TimelineGridContext } from './TimelineView';
 
 interface TimelineItemProps {
   project: Project;
   task: Task;
-  subtask?: SubTask;
-  isParent: boolean;
 }
 
-const TimelineItem: React.FC<TimelineItemProps> = ({ 
-  project, 
-  task, 
-  subtask, 
-  isParent = true 
-}) => {
+const TimelineItem: React.FC<TimelineItemProps> = ({ project, task }) => {
   const dispatch = useDispatch();
-  const { timelineStart, timelineScale, zoomLevel } = useSelector((state: RootState) => state.timeline);
   const { selectedTasks, focusedTaskKey } = useSelector((state: RootState) => state.ui);
+  const timelineGrid = useContext(TimelineGridContext);
   
-  // スケールファクターを取得
-  const getScaleFactor = () => {
-    if (timelineScale === 'day') return 1;
-    if (timelineScale === 'week') return 7;
-    if (timelineScale === 'month') {
-      const date = new Date(timelineStart);
-      return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-    }
-    return 1;
+  // 親タスクのタスクキーを生成
+  const parentTaskKey = `${project.id}-${task.id}`;
+  const isSelected = selectedTasks.includes(parentTaskKey);
+  const isFocused = focusedTaskKey === parentTaskKey;
+  
+  // タスク展開/折りたたみの切り替え
+  const handleTaskToggle = () => {
+    dispatch(toggleTask({ projectId: project.id, taskId: task.id }));
   };
-  
-  // ズームスケールに基づく1日あたりの幅を計算
-  const dayWidth = 34 * (zoomLevel / 100);
-  const scaleFactor = getScaleFactor();
-  
-  // TimelineItemの高さを計算
-  const getItemHeight = () => {
-    // 親タスクの場合は標準の高さ
-    if (isParent) return 'h-8';
-    
-    // サブタスクの場合は若干低くする
-    return 'h-7';
-  };
-  
-  // タイムラインの日付を生成
-  const generateTimelineDates = () => {
-    const dates = [];
-    let currentDate = new Date(timelineStart);
-    const timelineEnd = new Date(timelineStart);
-    
-    if (timelineScale === 'day') {
-      // 日ごとの表示のために十分な数の日付を生成
-      timelineEnd.setDate(timelineEnd.getDate() + 60); // 十分な期間を確保
-      
-      while (currentDate <= timelineEnd) {
-        dates.push(new Date(currentDate));
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-    } else if (timelineScale === 'week') {
-      // 週ごとの表示
-      timelineEnd.setDate(timelineEnd.getDate() + 365); // 十分な期間を確保
-      
-      while (currentDate <= timelineEnd) {
-        dates.push(new Date(currentDate));
-        currentDate.setDate(currentDate.getDate() + 7);
-      }
-    } else if (timelineScale === 'month') {
-      // 月ごとの表示
-      timelineEnd.setMonth(timelineEnd.getMonth() + 24); // 十分な期間を確保
-      
-      while (currentDate <= timelineEnd) {
-        dates.push(new Date(currentDate));
-        currentDate.setMonth(currentDate.getMonth() + 1);
-      }
-    }
-    
-    return dates;
-  };
-  
-  // 今日の日付を取得
-  const { today } = useSelector((state: RootState) => state.timeline);
-  
+
   // 曜日による背景色を取得
   const getDateCellColor = (date: Date) => {
-    const isToday = date.toDateString() === today.toDateString();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const isToday = date.getFullYear() === today.getFullYear() && 
+                   date.getMonth() === today.getMonth() && 
+                   date.getDate() === today.getDate();
     
     if (isToday) return 'timeline-grid-cell today';
     if (date.getDay() === 0) return 'timeline-grid-cell weekend-sun';
@@ -96,70 +43,116 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
     return 'timeline-grid-cell';
   };
   
-  const timelineDates = generateTimelineDates();
-  
-  // サブタスクを表示するかどうか
-  const taskKey = subtask 
-    ? `${project.id}-${task.id}-${subtask.id}` 
-    : `${project.id}-${task.id}`;
-  const isSelected = selectedTasks.includes(taskKey);
-  const isFocused = focusedTaskKey === taskKey;
-  
-  // タスク展開/折りたたみの切り替え
-  const handleTaskToggle = () => {
-    if (isParent) {
-      dispatch(toggleTask({ projectId: project.id, taskId: task.id }));
-    }
-  };
-  
   return (
     <>
+      {/* 親タスク行 */}
       <div 
-        className={`relative ${getItemHeight()} hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer`}
+        className="relative h-8 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
         onClick={handleTaskToggle}
-        id={`task-${taskKey}`}
-        data-task-key={taskKey}
+        id={`task-${parentTaskKey}`}
+        data-task-key={parentTaskKey}
       >
         {/* 背景グリッド */}
         <div className="absolute inset-0">
-          {timelineDates.map((date, index) => (
+          {timelineGrid.gridDates.map((date, index) => (
             <div 
               key={index} 
               className={`absolute top-0 bottom-0 ${getDateCellColor(date)}`}
               style={{ 
-                left: `${index * dayWidth * scaleFactor}px`,
-                width: `${dayWidth * scaleFactor}px` 
+                left: `${index * timelineGrid.dayWidth * timelineGrid.scaleFactor}px`,
+                width: `${timelineGrid.dayWidth * timelineGrid.scaleFactor}px` 
               }}
             ></div>
           ))}
         </div>
         
-        {/* タスクバー */}
+        {/* 親タスクバー */}
         <TaskBar
           project={project}
           task={task}
-          subtask={subtask}
-          isParent={isParent}
           isSelected={isSelected}
           isFocused={isFocused}
         />
       </div>
       
       {/* サブタスク行（親タスクが展開されている場合のみ表示） */}
-      {isParent && task.expanded && task.subtasks && task.subtasks.length > 0 && (
+      {task.expanded && task.subtasks && task.subtasks.length > 0 && (
         <div className="pl-4 border-l-2 border-gray-200 dark:border-gray-700 ml-4">
           {task.subtasks.map(subtask => (
-            <TimelineItem
+            <SubTaskRow
               key={subtask.id}
               project={project}
               task={task}
               subtask={subtask}
-              isParent={false}
             />
           ))}
         </div>
       )}
     </>
+  );
+};
+
+// 子タスク行を専用のコンポーネントとして実装
+interface SubTaskRowProps {
+  project: Project;
+  task: Task;
+  subtask: SubTask;
+}
+
+const SubTaskRow: React.FC<SubTaskRowProps> = ({ project, task, subtask }) => {
+  const { selectedTasks, focusedTaskKey } = useSelector((state: RootState) => state.ui);
+  const timelineGrid = useContext(TimelineGridContext);
+  
+  // 子タスクのタスクキーを生成
+  const subTaskKey = `${project.id}-${task.id}-${subtask.id}`;
+  const isSelected = selectedTasks.includes(subTaskKey);
+  const isFocused = focusedTaskKey === subTaskKey;
+  
+  // 曜日による背景色を取得
+  const getDateCellColor = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const isToday = date.getFullYear() === today.getFullYear() && 
+                   date.getMonth() === today.getMonth() && 
+                   date.getDate() === today.getDate();
+    
+    if (isToday) return 'timeline-grid-cell today';
+    if (date.getDay() === 0) return 'timeline-grid-cell weekend-sun';
+    if (date.getDay() === 6) return 'timeline-grid-cell weekend-sat';
+    
+    return 'timeline-grid-cell';
+  };
+  
+  return (
+    <div 
+      className="relative h-7 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+      id={`task-${subTaskKey}`}
+      data-task-key={subTaskKey}
+    >
+      {/* 背景グリッド - 親タスクと同じグリッドコンテキストを使用 */}
+      <div className="absolute inset-0">
+        {timelineGrid.gridDates.map((date, index) => (
+          <div 
+            key={index} 
+            className={`absolute top-0 bottom-0 ${getDateCellColor(date)}`}
+            style={{ 
+              left: `${index * timelineGrid.dayWidth * timelineGrid.scaleFactor}px`,
+              width: `${timelineGrid.dayWidth * timelineGrid.scaleFactor}px` 
+            }}
+          ></div>
+        ))}
+      </div>
+      
+      {/* 子タスクバー */}
+      <TaskBar
+        project={project}
+        task={task}
+        subtask={subtask}
+        isSelected={isSelected}
+        isFocused={isFocused}
+      />
+    </div>
   );
 };
 

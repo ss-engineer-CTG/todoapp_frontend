@@ -114,7 +114,6 @@ const TimelineItemList: React.FC = () => {
               key={task.id} 
               project={project} 
               task={task} 
-              isParent={true}
             />
           ))}
         </div>

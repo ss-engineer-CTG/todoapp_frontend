@@ -1,20 +1,20 @@
-import React, { useRef } from 'react';
+import React, { useRef, useContext } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Check, Edit, Copy } from 'lucide-react';
 import { RootState } from '../../store/reducers';
 import { Project, Task, SubTask } from '../../types/task';
-import { getTaskPosition } from '../../utils/taskUtils';
 import { setHoverInfo, startDrag } from '../../store/slices/timelineSlice';
 import { toggleTaskSelection, setInlineEditTask, openTaskEditModal } from '../../store/slices/uiSlice';
 import { duplicateTask } from '../../store/slices/tasksSlice';
 import { formatDate } from '../../utils/dateUtils';
 import { getStatusStyle } from '../../utils/taskUtils';
+import { TimelineGridContext } from './TimelineView';
+import { getTaskPositionWithGrid } from '../../utils/taskUtils';
 
 interface TaskBarProps {
   project: Project;
   task: Task;
   subtask?: SubTask;
-  isParent: boolean;
   isSelected: boolean;
   isFocused: boolean;
 }
@@ -27,9 +27,10 @@ const TaskBar: React.FC<TaskBarProps> = ({
   isFocused
 }) => {
   const dispatch = useDispatch();
-  const { timelineStart, zoomLevel, dragInfo } = useSelector((state: RootState) => state.timeline);
+  const { dragInfo } = useSelector((state: RootState) => state.timeline);
   const { inlineEditTask } = useSelector((state: RootState) => state.ui);
   const taskBarRef = useRef<HTMLDivElement>(null);
+  const timelineGrid = useContext(TimelineGridContext);
   
   // 現在のタスクデータ
   const currentData = subtask || task;
@@ -50,8 +51,12 @@ const TaskBar: React.FC<TaskBarProps> = ({
                      dragInfo.taskId === taskId && 
                      dragInfo.subtaskId === subtaskId;
   
-  // タスクの位置と幅を計算
-  const position = getTaskPosition(currentData, timelineStart, zoomLevel);
+  // 修正: グリッドコンテキストを使用してタスク位置を計算
+  const position = getTaskPositionWithGrid(
+    currentData, 
+    timelineGrid.gridDates[0],
+    timelineGrid.dayWidth
+  );
   
   // ステータスに基づく色とスタイルを取得
   const statusStyle = getStatusStyle(currentData.status, project.color);
@@ -143,7 +148,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
     if (!isDragging || !dragInfo) return {};
     
     if (dragInfo.type === 'move') {
-      const dayWidth = 34 * (zoomLevel / 100);
+      const dayWidth = timelineGrid.dayWidth;
       return {
         transform: `translateX(${dragInfo.daysDelta * dayWidth}px)`,
         opacity: 0.7,
@@ -152,7 +157,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
       };
     } else if (dragInfo.type === 'resize-start') {
-      const dayWidth = 34 * (zoomLevel / 100);
+      const dayWidth = timelineGrid.dayWidth;
       const deltaWidth = -dragInfo.daysDelta * dayWidth;
       return {
         width: `calc(100% + ${deltaWidth}px)`,
@@ -161,7 +166,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
         zIndex: 50
       };
     } else if (dragInfo.type === 'resize-end') {
-      const dayWidth = 34 * (zoomLevel / 100);
+      const dayWidth = timelineGrid.dayWidth;
       const deltaWidth = dragInfo.daysDelta * dayWidth;
       return {
         width: `calc(100% + ${deltaWidth}px)`,
