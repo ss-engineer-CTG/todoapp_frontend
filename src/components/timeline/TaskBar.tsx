@@ -3,12 +3,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Check, Edit, Copy } from 'lucide-react';
 import { RootState } from '../../store/reducers';
 import { Project, Task, SubTask } from '../../types/task';
-import { setHoverInfo, startDrag } from '../../store/slices/timelineSlice';
+import { setHoverInfo } from '../../store/slices/timelineSlice';
 import { toggleTaskSelection, setInlineEditTask, openTaskEditModal } from '../../store/slices/uiSlice';
 import { duplicateTask } from '../../store/slices/tasksSlice';
 import { formatDate } from '../../utils/dateUtils';
 import { getStatusStyle } from '../../utils/taskUtils';
 import { TimelineGridContext } from './TimelineView';
+import { useTaskDrag } from '../../hooks/useTaskDrag';
 
 interface TaskBarProps {
   project: Project;
@@ -26,16 +27,18 @@ const TaskBar: React.FC<TaskBarProps> = ({
   isFocused
 }) => {
   const dispatch = useDispatch();
-  const { dragInfo } = useSelector((state: RootState) => state.timeline);
   const { inlineEditTask } = useSelector((state: RootState) => state.ui);
   const taskBarRef = useRef<HTMLDivElement>(null);
   const timelineGrid = useContext(TimelineGridContext);
+  
+  // useTaskDragフックを使用
+  const { handleDragStart, isDragging, dragInfo } = useTaskDrag();
   
   // 現在のタスクデータ
   const currentData = subtask || task;
   const projectId = project.id;
   const taskId = task.id;
-  const subtaskId = subtask?.id;
+  const subtaskId = subtask?.id || null; // nullに変換して型を一致させる
   const taskKey = subtask ? `${projectId}-${taskId}-${subtaskId}` : `${projectId}-${taskId}`;
   
   // インライン編集中かどうか
@@ -43,12 +46,6 @@ const TaskBar: React.FC<TaskBarProps> = ({
                          inlineEditTask.projectId === projectId && 
                          inlineEditTask.taskId === taskId && 
                          inlineEditTask.subtaskId === subtaskId;
-  
-  // ドラッグ中かどうか
-  const isDragging = dragInfo && 
-                     dragInfo.projectId === projectId && 
-                     dragInfo.taskId === taskId && 
-                     dragInfo.subtaskId === subtaskId;
   
   // タスク位置を計算
   const getTaskPosition = () => {
@@ -131,24 +128,6 @@ const TaskBar: React.FC<TaskBarProps> = ({
     }));
   };
   
-  // ドラッグ開始
-  const handleStartDrag = (e: React.MouseEvent, type: 'move' | 'resize-start' | 'resize-end') => {
-    e.stopPropagation();
-    e.preventDefault();
-    
-    dispatch(startDrag({
-      projectId,
-      taskId,
-      subtaskId,
-      type,
-      initialX: e.clientX,
-      startX: e.clientX,
-      taskStart: new Date(currentData.start),
-      taskEnd: new Date(currentData.end),
-      daysDelta: 0
-    }));
-  };
-  
   // タスク編集モーダルを開く
   const handleEditTask = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -169,6 +148,12 @@ const TaskBar: React.FC<TaskBarProps> = ({
   // ドラッグ中のタスクバーのスタイルを生成
   const getDraggedTaskBarStyle = () => {
     if (!isDragging || !dragInfo) return {};
+    
+    if (dragInfo.projectId !== projectId || 
+        dragInfo.taskId !== taskId || 
+        dragInfo.subtaskId !== subtaskId) {
+      return {};
+    }
     
     if (dragInfo.type === 'move') {
       const dayWidth = timelineGrid.dayWidth;
@@ -232,7 +217,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
         {/* 開始日ドラッグハンドル */}
         <div 
           className="drag-handle start absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize z-10 hover:bg-indigo-500/20"
-          onMouseDown={(e) => handleStartDrag(e, 'resize-start')}
+          onMouseDown={(e) => handleDragStart(projectId, taskId, subtaskId, 'resize-start', e)}
           aria-label="開始日を調整"
         ></div>
         
@@ -256,7 +241,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
         ) : (
           <div 
             className="px-2 text-xs font-medium truncate flex-1 h-full flex items-center cursor-move"
-            onMouseDown={(e) => handleStartDrag(e, 'move')}
+            onMouseDown={(e) => handleDragStart(projectId, taskId, subtaskId, 'move', e)}
           >
             {currentData.status === 'completed' && (
               <Check size={12} className="mr-1" />
@@ -268,7 +253,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
         {/* 終了日ドラッグハンドル */}
         <div 
           className="drag-handle end absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize z-10 hover:bg-indigo-500/20"
-          onMouseDown={(e) => handleStartDrag(e, 'resize-end')}
+          onMouseDown={(e) => handleDragStart(projectId, taskId, subtaskId, 'resize-end', e)}
           aria-label="終了日を調整"
         ></div>
         
@@ -292,7 +277,10 @@ const TaskBar: React.FC<TaskBarProps> = ({
       </div>
       
       {/* 日付変更ツールチップ */}
-      {isDragging && dragInfo && (
+      {isDragging && dragInfo && 
+       dragInfo.projectId === projectId && 
+       dragInfo.taskId === taskId && 
+       dragInfo.subtaskId === subtaskId && (
         <div 
           className="absolute bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded-md shadow-lg z-50 whitespace-nowrap"
           style={{ 

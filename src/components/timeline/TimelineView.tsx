@@ -209,7 +209,7 @@ const TimelineView: React.FC = () => {
           
           {/* 右側のタイムライングリッド */}
           <div 
-            className="flex-1 relative overflow-auto"
+            className="flex-1 relative overflow-auto timeline-content"
             ref={timelineRef}
             onScroll={handleScroll}
           >

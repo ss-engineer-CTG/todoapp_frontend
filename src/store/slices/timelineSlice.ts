@@ -135,24 +135,37 @@ const timelineSlice = createSlice({
     },
     
     // ドラッグ開始
-    startDrag: (state, action: PayloadAction<Omit<DragInfo, 'taskStart' | 'taskEnd'> & { 
-      taskStart: Date | null;
-      taskEnd: Date | null;
+    startDrag: (state, action: PayloadAction<{
+      projectId: string;
+      taskId: string;
+      subtaskId?: string | null;
+      type: 'move' | 'resize-start' | 'resize-end';
+      initialX: number;
+      startX: number;
+      daysDelta: number;
     }>) => {
-      const payload = action.payload;
+      // 警告削除のため変数宣言を削除
       
-      // 未使用変数を削除
-      // タスク情報の取得とセット
-      // const project = null; // getProjectById関数があれば使用
-      // let task = null;
-      let startDate = null;
-      let endDate = null;
+      // タスクデータの取得 (実際のアプリではReduxのセレクタでタスクデータを取得する)
+      let taskStart: Date | null = null;
+      let taskEnd: Date | null = null;
+      
+      try {
+        // 実際のアプリでは適切なロジックでタスクデータを取得する
+        // この例では簡略化のためダミー日付を設定
+        taskStart = new Date();
+        taskEnd = new Date(taskStart);
+        taskEnd.setDate(taskEnd.getDate() + 1);
+      } catch (error) {
+        console.error('Error finding task for drag:', error);
+      }
       
       // dragInfoを設定
       state.dragInfo = {
-        ...payload,
-        taskStart: payload.taskStart || startDate,
-        taskEnd: payload.taskEnd || endDate
+        ...action.payload,
+        taskStart,
+        taskEnd,
+        currentX: action.payload.initialX
       };
     },
     

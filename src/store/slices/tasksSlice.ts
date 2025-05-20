@@ -131,6 +131,8 @@ const tasksSlice = createSlice({
 export const updateTasksInProject = (state: any, action: PayloadAction<UpdateTaskDatesPayload>) => {
   const { projectId, taskId, subtaskId, type, daysDelta } = action.payload;
   
+  console.log('Updating task dates:', { projectId, taskId, subtaskId, type, daysDelta }); // デバッグ用
+  
   const projectIndex = state.projects.findIndex((p: any) => p.id === projectId);
   if (projectIndex === -1) return;
   
