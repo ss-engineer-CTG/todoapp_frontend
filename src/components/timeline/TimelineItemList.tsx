@@ -151,7 +151,7 @@ const TimelineItemList: React.FC = () => {
             {/* プロジェクト名の表示を削除 */}
           </div>
           {/* ヘッダーの高さを確保するための空要素（absoluteでの配置を補完） */}
-          <div className="h-14"></div>
+          <div className="h-20"></div>
           
           {/* プロジェクト内のタスク */}
           {project.expanded && project.tasks.map(task => (

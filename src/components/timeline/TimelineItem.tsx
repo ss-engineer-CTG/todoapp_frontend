@@ -126,7 +126,7 @@ const SubTaskRow: React.FC<SubTaskRowProps> = ({ project, task, subtask }) => {
   
   return (
     <div 
-      className="relative h-7 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+      className="relative h-8 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
       id={`task-${subTaskKey}`}
       data-task-key={subTaskKey}
     >

@@ -191,7 +191,7 @@ const TaskBar: React.FC<TaskBarProps> = ({
     <>
       <div
         ref={taskBarRef}
-        className={`absolute h-6 rounded-sm shadow-sm flex items-center group task-bar
+        className={`absolute h-7 rounded-sm shadow-sm flex items-center group task-bar
                    ${isSelected ? 'ring-2 ring-indigo-500' : ''} 
                    ${isFocused ? 'ring-2 ring-indigo-700' : ''} 
                    ${isDragging ? 'dragging' : ''}`}
