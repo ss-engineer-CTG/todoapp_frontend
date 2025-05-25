@@ -12,7 +12,7 @@
 
 ## 技術スタック
 
-- **フロントエンド**: Next.js/React/TypeScript
+- **フロントエンド**: React/TypeScript
 - **スタイリング**: Tailwind CSS + shadcn/ui
 - **状態管理**: React Context + useReducer
 - **実行環境**: Electron対応予定
