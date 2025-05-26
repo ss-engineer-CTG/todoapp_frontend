@@ -20,7 +20,7 @@ interface TodoContextType extends TodoState {
   updateTask: (id: string, updates: Partial<Task>) => void
   deleteTask: (id: string) => void
   deleteTasks: (ids: string[]) => void
-  selectTask: (id: string, event?: React.MouseEvent) => void
+  selectTask: (id: string, event?: React.MouseEvent | KeyboardEvent) => void
   toggleTaskCompletion: (id: string) => void
   toggleTaskCollapse: (id: string, forceState?: boolean) => void
   copyTask: (id: string) => void
@@ -109,7 +109,7 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
     dispatch({ type: 'DELETE_TASKS', payload: ids })
   }
 
-  const selectTask = (id: string, event?: React.MouseEvent) => {
+  const selectTask = (id: string, event?: React.MouseEvent | KeyboardEvent) => {
     dispatch({ type: 'SELECT_TASK', payload: { id, event } })
   }
 
@@ -162,11 +162,18 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
 
     // 折りたたまれた親タスクの処理
     if (task.parentId) {
-      let currentParentId = task.parentId
+      let currentParentId: string | null = task.parentId
       while (currentParentId) {
         const currentParent = state.tasks.find(t => t.id === currentParentId)
         if (currentParent && currentParent.collapsed) return false
-        currentParentId = state.taskRelationMap.parentMap[currentParentId] || null
+        
+        // 修正：null許容型の適切な処理
+        const nextParentId = state.taskRelationMap.parentMap[currentParentId]
+        currentParentId = nextParentId || null
+        
+        // 無限ループ防止
+        let loopCounter = 0
+        if (loopCounter++ > 10) break
       }
     }
 

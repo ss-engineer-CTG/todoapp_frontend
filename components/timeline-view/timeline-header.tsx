@@ -14,6 +14,36 @@ interface TimelineHeaderProps {
   onScroll: (scrollLeft: number) => void
 }
 
+interface MonthGroup {
+  month: number
+  year: number
+  width: number
+}
+
+// 日本の祝日判定関数
+const isHoliday = (date: Date): boolean => {
+  const year = date.getFullYear()
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  
+  // 固定祝日（例：2025年）
+  const fixedHolidays = [
+    { month: 1, day: 1 },   // 元日
+    { month: 2, day: 11 },  // 建国記念の日
+    { month: 4, day: 29 },  // 昭和の日
+    { month: 5, day: 3 },   // 憲法記念日
+    { month: 5, day: 4 },   // みどりの日
+    { month: 5, day: 5 },   // こどもの日
+    { month: 8, day: 11 },  // 山の日
+    { month: 11, day: 3 },  // 文化の日
+    { month: 11, day: 23 }, // 勤労感謝の日
+  ]
+  
+  return fixedHolidays.some(holiday => 
+    holiday.month === month && holiday.day === day
+  )
+}
+
 export default function TimelineHeader({
   visibleDates,
   viewUnit,
@@ -48,8 +78,8 @@ export default function TimelineHeader({
               }}
             >
               {(() => {
-                const monthGroups = []
-                let currentMonth = null
+                const monthGroups: MonthGroup[] = []
+                let currentMonth: number | null = null
                 let monthStart = 0
                 let monthWidth = 0
 

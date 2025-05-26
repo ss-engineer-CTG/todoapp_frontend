@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
-import type { Task } from "@/types/todo"
+import type { Task, CheckedState } from "@/types/todo"
 
 interface TaskItemProps {
   task: Task
@@ -42,8 +42,8 @@ export default function TaskItem({ task }: TaskItemProps) {
     selectTask(task.id, e)
   }
 
-  const handleToggleCompletion = (e: React.MouseEvent) => {
-    e.stopPropagation()
+  // 修正：CheckedState型に対応
+  const handleToggleCompletion = (checked: CheckedState) => {
     toggleTaskCompletion(task.id)
   }
 
@@ -54,7 +54,6 @@ export default function TaskItem({ task }: TaskItemProps) {
 
   const handleAddSubtask = (e: React.MouseEvent) => {
     e.stopPropagation()
-    // サブタスク追加のロジック
     addTask({
       name: "新しいサブタスク",
       projectId: task.projectId,
@@ -66,7 +65,8 @@ export default function TaskItem({ task }: TaskItemProps) {
       notes: "",
       assignee: task.assignee,
       level: task.level + 1,
-      collapsed: false
+      collapsed: false,
+      expanded: false
     })
   }
 

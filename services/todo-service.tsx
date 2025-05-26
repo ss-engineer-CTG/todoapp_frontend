@@ -9,19 +9,22 @@ export const initialState: TodoState = {
       id: "p1", 
       name: "仕事", 
       color: "#f97316", 
-      collapsed: false 
+      collapsed: false,
+      expanded: true
     },
     { 
       id: "p2", 
       name: "個人", 
       color: "#8b5cf6", 
-      collapsed: false 
+      collapsed: false,
+      expanded: true
     },
     { 
       id: "p3", 
       name: "学習", 
       color: "#10b981", 
-      collapsed: false 
+      collapsed: false,
+      expanded: true
     },
   ],
   tasks: [
@@ -38,6 +41,7 @@ export const initialState: TodoState = {
       assignee: "自分",
       level: 0,
       collapsed: false,
+      expanded: false,
       status: 'in-progress'
     },
     {
@@ -53,6 +57,7 @@ export const initialState: TodoState = {
       assignee: "自分",
       level: 1,
       collapsed: false,
+      expanded: false,
       status: 'not-started'
     },
     {
@@ -68,6 +73,7 @@ export const initialState: TodoState = {
       assignee: "自分",
       level: 1,
       collapsed: false,
+      expanded: false,
       status: 'not-started'
     },
     {
@@ -83,6 +89,7 @@ export const initialState: TodoState = {
       assignee: "自分",
       level: 0,
       collapsed: false,
+      expanded: false,
       status: 'not-started'
     },
     {
@@ -98,6 +105,7 @@ export const initialState: TodoState = {
       assignee: "自分",
       level: 0,
       collapsed: false,
+      expanded: false,
       status: 'in-progress'
     },
     {
@@ -113,6 +121,7 @@ export const initialState: TodoState = {
       assignee: "自分",
       level: 1,
       collapsed: false,
+      expanded: false,
       status: 'not-started'
     },
   ],
@@ -178,6 +187,12 @@ const determineTaskStatus = (task: Task): Task['status'] => {
   if (task.dueDate < now) return 'overdue'
   if (task.startDate <= now) return 'in-progress'
   return 'not-started'
+}
+
+// 重複を除く配列生成関数（修正版）
+const getUniqueTaskIds = (taskIds: string[]): string[] => {
+  // Array.fromを使用してSetから配列に変換
+  return Array.from(new Set(taskIds))
 }
 
 // Reducerの実装
@@ -311,8 +326,9 @@ export const todoReducer = (state: TodoState, action: TodoAction): TodoState => 
         allTaskIdsToDelete = [...allTaskIdsToDelete, taskId, ...childTasks.map(t => t.id)]
       })
       
-      allTaskIdsToDelete = [...new Set(allTaskIdsToDelete)]
-      const updatedTasks = state.tasks.filter(task => !allTaskIdsToDelete.includes(task.id))
+      // 修正：Array.fromを使用して重複排除
+      const uniqueTaskIds = getUniqueTaskIds(allTaskIdsToDelete)
+      const updatedTasks = state.tasks.filter(task => !uniqueTaskIds.includes(task.id))
       
       return {
         ...state,
@@ -326,7 +342,7 @@ export const todoReducer = (state: TodoState, action: TodoAction): TodoState => 
     case 'SELECT_TASK': {
       const { id, event } = action.payload
       
-      if (event && (event.ctrlKey || event.metaKey)) {
+      if (event && ('ctrlKey' in event && (event.ctrlKey || event.metaKey))) {
         // Ctrl/Cmd+クリック：複数選択
         const newSelectedIds = state.selectedTaskIds.includes(id)
           ? state.selectedTaskIds.filter(taskId => taskId !== id)
@@ -339,7 +355,7 @@ export const todoReducer = (state: TodoState, action: TodoAction): TodoState => 
           activeArea: "tasks",
           isDetailPanelVisible: true
         }
-      } else if (event && event.shiftKey && state.selectedTaskIds.length > 0) {
+      } else if (event && ('shiftKey' in event && event.shiftKey) && state.selectedTaskIds.length > 0) {
         // Shift+クリック：範囲選択
         const filteredTasks = state.tasks.filter(task => 
           task.projectId === state.selectedProjectId &&

@@ -3,6 +3,14 @@
 import { useEffect } from "react"
 import { useTodoContext } from "./use-todo-context"
 
+interface KeyboardEvent {
+  type: 'keyboard'
+  originalEvent: globalThis.KeyboardEvent
+  ctrlKey: boolean
+  shiftKey: boolean
+  altKey: boolean
+}
+
 export const useKeyboardShortcuts = () => {
   const {
     selectedTaskIds,
@@ -25,7 +33,7 @@ export const useKeyboardShortcuts = () => {
   } = useTodoContext()
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
       // 入力フィールドの場合はスキップ
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return
@@ -56,7 +64,8 @@ export const useKeyboardShortcuts = () => {
                 notes: "",
                 assignee: "自分",
                 level: task.level,
-                collapsed: false
+                collapsed: false,
+                expanded: false
               })
             }
           }
@@ -79,7 +88,8 @@ export const useKeyboardShortcuts = () => {
                 notes: "",
                 assignee: task.assignee,
                 level: task.level + 1,
-                collapsed: false
+                collapsed: false,
+                expanded: false
               })
             }
           }
@@ -125,7 +135,14 @@ export const useKeyboardShortcuts = () => {
             const currentIndex = filteredTasks.findIndex(t => t.id === selectedTaskId)
             if (currentIndex > 0) {
               const prevTaskId = filteredTasks[currentIndex - 1].id
-              selectTask(prevTaskId, e)
+              // 修正：KeyboardEventに対応
+              selectTask(prevTaskId, {
+                type: 'keyboard',
+                originalEvent: e,
+                ctrlKey: e.ctrlKey,
+                shiftKey: e.shiftKey,
+                altKey: e.altKey
+              } as any)
             }
           }
           break
@@ -137,7 +154,14 @@ export const useKeyboardShortcuts = () => {
             const currentIndex = filteredTasks.findIndex(t => t.id === selectedTaskId)
             if (currentIndex < filteredTasks.length - 1) {
               const nextTaskId = filteredTasks[currentIndex + 1].id
-              selectTask(nextTaskId, e)
+              // 修正：KeyboardEventに対応
+              selectTask(nextTaskId, {
+                type: 'keyboard',
+                originalEvent: e,
+                ctrlKey: e.ctrlKey,
+                shiftKey: e.shiftKey,
+                altKey: e.altKey
+              } as any)
             }
           }
           break

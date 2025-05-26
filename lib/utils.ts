@@ -169,13 +169,16 @@ export function toKebabCase(str: string): string {
     .toLowerCase()
 }
 
-// URLパラメータをオブジェクトに変換
+// URLパラメータをオブジェクトに変換（修正版）
 export function parseUrlParams(search: string): Record<string, string> {
   const params = new URLSearchParams(search)
   const result: Record<string, string> = {}
-  for (const [key, value] of params) {
+  
+  // 修正：for...of ループの代わりにforEachを使用
+  params.forEach((value, key) => {
     result[key] = value
-  }
+  })
+  
   return result
 }
 

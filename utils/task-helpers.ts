@@ -1,8 +1,11 @@
 import type { Task, Project } from "@/types/todo"
 import { isOverdue, isDueToday, isDueSoon } from "./date-helpers"
 
-// タスクのステータス判定
-export const determineTaskStatus = (task: Task): Task['status'] => {
+// TaskStatus型の定義
+type TaskStatus = 'not-started' | 'in-progress' | 'completed' | 'overdue'
+
+// タスクのステータス判定（修正版）
+export const determineTaskStatus = (task: Task): TaskStatus => {
   if (task.completed) return 'completed'
   if (isOverdue(task.dueDate)) return 'overdue'
   if (isDueToday(task.dueDate) || isDueSoon(task.dueDate, 1)) return 'in-progress'
@@ -113,7 +116,7 @@ export const filterTasks = (
   })
 }
 
-// タスクのソート
+// タスクのソート（修正版）
 export const sortTasks = (
   tasks: Task[],
   sortBy: 'name' | 'dueDate' | 'startDate' | 'priority' | 'status',
@@ -122,28 +125,45 @@ export const sortTasks = (
   return [...tasks].sort((a, b) => {
     let comparison = 0
     
-    switch (sortBy) {
-      case 'name':
-        comparison = a.name.localeCompare(b.name, 'ja')
-        break
-      case 'dueDate':
-        comparison = a.dueDate.getTime() - b.dueDate.getTime()
-        break
-      case 'startDate':
-        comparison = a.startDate.getTime() - b.startDate.getTime()
-        break
-      case 'priority':
-        const priorityOrder = { high: 3, medium: 2, low: 1 }
-        const aPriority = priorityOrder[calculateTaskPriority(a)]
-        const bPriority = priorityOrder[calculateTaskPriority(b)]
-        comparison = bPriority - aPriority // 高い優先度を先に
-        break
-      case 'status':
-        const statusOrder = { overdue: 4, 'in-progress': 3, 'not-started': 2, completed: 1 }
-        const aStatus = statusOrder[determineTaskStatus(a)]
-        const bStatus = statusOrder[determineTaskStatus(b)]
-        comparison = bStatus - aStatus
-        break
+    try {
+      switch (sortBy) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name, 'ja')
+          break
+        case 'dueDate':
+          comparison = a.dueDate.getTime() - b.dueDate.getTime()
+          break
+        case 'startDate':
+          comparison = a.startDate.getTime() - b.startDate.getTime()
+          break
+        case 'priority':
+          const priorityOrder = { high: 3, medium: 2, low: 1 }
+          const aPriority = priorityOrder[calculateTaskPriority(a)]
+          const bPriority = priorityOrder[calculateTaskPriority(b)]
+          comparison = bPriority - aPriority // 高い優先度を先に
+          break
+        case 'status':
+          const statusOrder: Record<TaskStatus, number> = { 
+            overdue: 4, 
+            'in-progress': 3, 
+            'not-started': 2, 
+            completed: 1 
+          }
+          
+          // 修正：undefinedチェックを追加
+          const aStatusKey = determineTaskStatus(a)
+          const bStatusKey = determineTaskStatus(b)
+          
+          const aStatus = statusOrder[aStatusKey] ?? 999 // デフォルト値
+          const bStatus = statusOrder[bStatusKey] ?? 999 // デフォルト値
+          
+          comparison = bStatus - aStatus
+          break
+      }
+    } catch (error) {
+      console.warn('Task sorting error:', error)
+      // エラー時はタスク名でソート
+      comparison = a.name.localeCompare(b.name, 'ja')
     }
     
     return order === 'asc' ? comparison : -comparison
@@ -158,7 +178,8 @@ export const duplicateTask = (task: Task, newName?: string): Omit<Task, 'id'> =>
     completed: false,
     completionDate: null,
     startDate: new Date(),
-    dueDate: new Date(Date.now() + (task.dueDate.getTime() - task.startDate.getTime()))
+    dueDate: new Date(Date.now() + (task.dueDate.getTime() - task.startDate.getTime())),
+    expanded: false
   }
 }
 
