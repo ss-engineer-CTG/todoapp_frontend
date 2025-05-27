@@ -1,0 +1,32 @@
+{
+    "compilerOptions": {
+      "composite": true,
+      "skipLibCheck": true,
+      "module": "ESNext",
+      "moduleResolution": "bundler",
+      "allowSyntheticDefaultImports": true,
+      "strict": true,
+      "noEmit": true,
+      "target": "ES2022",
+      "lib": ["ES2022"],
+      "types": ["node", "vite/client"],
+      "esModuleInterop": true,
+      "forceConsistentCasingInFileNames": true,
+      "isolatedModules": true,
+      "verbatimModuleSyntax": false,
+      "resolveJsonModule": true,
+      "allowImportingTsExtensions": true
+    },
+    "include": [
+      "vite.config.ts",
+      "vitest.config.ts",
+      "tailwind.config.js",
+      "postcss.config.js",
+      "eslint.config.js",
+      "prettier.config.js"
+    ],
+    "exclude": [
+      "node_modules",
+      "dist"
+    ]
+  }
