@@ -6,6 +6,17 @@ import { getDatePosition } from '@/utils/timelineUtils'
 const TimelineGrid: React.FC = () => {
   const { viewUnit, visibleDates, dateRange } = useTimeline()
 
+  if (!visibleDates || visibleDates.length === 0) {
+    return null
+  }
+
+  const firstDate = visibleDates[0]
+  const lastDate = visibleDates[visibleDates.length - 1]
+
+  if (!firstDate || !lastDate) {
+    return null
+  }
+
   return (
     <>
       {/* 背景グリッド */}
@@ -13,7 +24,8 @@ const TimelineGrid: React.FC = () => {
         {viewUnit === 'week' ? (
           // 週表示
           visibleDates.map((weekStart, index) => {
-            const isFirstMonth = index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== weekStart.getMonth())
+            const prevWeekStart = index > 0 ? visibleDates[index - 1] : null
+            const isFirstMonth = index === 0 || (prevWeekStart && prevWeekStart.getMonth() !== weekStart.getMonth())
             const nextWeek = index < visibleDates.length - 1 ? visibleDates[index + 1] : null
             const isLastWeekOfMonth = nextWeek ? weekStart.getMonth() !== nextWeek.getMonth() : index === visibleDates.length - 1
 
@@ -40,7 +52,8 @@ const TimelineGrid: React.FC = () => {
         ) : (
           // 日表示
           visibleDates.map((date, index) => {
-            const isFirstMonth = index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
+            const prevDate = index > 0 ? visibleDates[index - 1] : null
+            const isFirstMonth = index === 0 || (prevDate && prevDate.getMonth() !== date.getMonth())
             const isFirstWeek = date.getDay() === 1
             const nextDate = index < visibleDates.length - 1 ? visibleDates[index + 1] : null
             const isLastDateOfMonth = nextDate ? date.getMonth() !== nextDate.getMonth() : index === visibleDates.length - 1
@@ -52,7 +65,7 @@ const TimelineGrid: React.FC = () => {
                   Math.floor(index / 7) % 2 === 0 ? 'bg-muted/20' : 'bg-background/60'
                 }`}
                 style={{
-                  left: `${getDatePosition(date, { startDate:  visibleDates[0], cellWidth: dateRange.cellWidth }, 'day')}px`,
+                  left: `${getDatePosition(date, { startDate: firstDate, cellWidth: dateRange.cellWidth }, 'day')}px`,
                   width: `${dateRange.cellWidth}px`,
                   borderRightWidth: isLastDateOfMonth ? '3px' : isFirstWeek ? '1px' : '0px',
                   borderRightStyle: 'solid',
@@ -77,7 +90,7 @@ const TimelineGrid: React.FC = () => {
             for (let i = 0; i < 7; i++) {
               const currentDate = new Date(weekStart)
               currentDate.setDate(currentDate.getDate() + i)
-              if (currentDate <= new Date(visibleDates[visibleDates.length - 1].getTime() + 6 * 24 * 60 * 60 * 1000)) {
+              if (currentDate <= new Date(lastDate.getTime() + 6 * 24 * 60 * 60 * 1000)) {
                 weekDates.push(currentDate)
               }
             }
@@ -110,7 +123,7 @@ const TimelineGrid: React.FC = () => {
                 key={`holiday-${date.getTime()}`}
                 className="absolute inset-y-0 bg-muted/30"
                 style={{
-                  left: `${getDatePosition(date, { startDate: visibleDates[0], cellWidth: dateRange.cellWidth }, 'day')}px`,
+                  left: `${getDatePosition(date, { startDate: firstDate, cellWidth: dateRange.cellWidth }, 'day')}px`,
                   width: `${dateRange.cellWidth}px`,
                   zIndex: 1
                 }}

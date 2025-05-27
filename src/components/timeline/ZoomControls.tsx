@@ -10,6 +10,7 @@ const ZoomControls: React.FC = () => {
     zoomOut,
     resetZoom,
     fitToScreen,
+    handleZoom,
     ZOOM_CONFIG
   } = useTimeline()
 
@@ -34,9 +35,7 @@ const ZoomControls: React.FC = () => {
           step={ZOOM_CONFIG.step}
           value={zoomLevel}
           onChange={(e) => {
-            // handleZoom関数を直接呼び出す代わりに、useTimelineから取得
-            const newZoom = parseInt(e.target.value)
-            // ここでズームレベルを設定（useTimelineフック内で処理）
+            handleZoom(parseInt(e.target.value))
           }}
           className="w-20 h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer dark:bg-gray-600"
           title={`ズーム: ${zoomLevel}%`}

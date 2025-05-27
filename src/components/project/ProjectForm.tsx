@@ -19,7 +19,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ projectId, onSave, onCancel }
   const existingProject = isEditing ? projects.find(p => p.id === projectId) : null
   
   const [name, setName] = React.useState(existingProject?.name || '')
-  const [color, setColor] = React.useState(existingProject?.color || PROJECT_COLORS[0].value)
+  const [color, setColor] = React.useState(
+    existingProject?.color || (PROJECT_COLORS.length > 0 ? PROJECT_COLORS[0]!.value : '#f97316')
+  )
 
   React.useEffect(() => {
     inputRef.current?.focus()

@@ -19,7 +19,6 @@ const GanttChart: React.FC = () => {
     dateRange,
     scrollLeft,
     setScrollLeft,
-    timelineRef,
     setTimelineRef
   } = useTimeline()
 

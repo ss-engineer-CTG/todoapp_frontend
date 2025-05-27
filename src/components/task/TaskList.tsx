@@ -2,7 +2,6 @@ import React from 'react'
 import { ChevronDown, ChevronRight, Plus, MoreHorizontal, Copy, Trash } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -16,33 +15,21 @@ import TaskActions from '@/components/task/TaskActions'
 const TaskList: React.FC = () => {
   const { selectedProjectId, projects } = useProjects()
   const {
-    tasks,
     filteredTasks,
     selectedTaskIds,
     isMultiSelectMode,
     isAddingTask,
-    newTaskName,
-    setNewTaskName,
     selectTask,
     toggleTaskCompleted,
     toggleTaskCollapsed,
     addTask,
-    saveNewTask,
-    cancelAddTask,
     copyTasks,
     deleteTasks,
   } = useTasks()
-  const { activeArea, setActiveArea, showCompleted } = useApp()
+  const { activeArea, setActiveArea } = useApp()
 
   const selectedProject = projects.find(p => p.id === selectedProjectId)
-  const newTaskInputRef = React.useRef<HTMLInputElement>(null)
   const taskRefs = React.useRef<{ [key: string]: HTMLDivElement }>({})
-
-  React.useEffect(() => {
-    if (isAddingTask) {
-      newTaskInputRef.current?.focus()
-    }
-  }, [isAddingTask])
 
   const handleTaskSelect = (taskId: string, event?: React.MouseEvent) => {
     selectTask(taskId, event)

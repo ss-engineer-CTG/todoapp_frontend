@@ -8,11 +8,13 @@ export interface Task {
   completed: boolean
   startDate: Date
   dueDate: Date
+  endDate: Date // タイムライン表示用の終了日
   completionDate: Date | null
   notes: string
   assignee: string
   level: number
   collapsed: boolean
+  expanded: boolean // タイムライン表示用の展開状態
   milestone: boolean
   status: TaskStatus
   subtasks?: Task[]
@@ -29,6 +31,7 @@ export interface TaskFormData {
   parentId: string | null
   startDate?: Date
   dueDate?: Date
+  endDate?: Date
   notes?: string
   assignee?: string
   level?: number

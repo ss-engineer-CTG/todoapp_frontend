@@ -10,7 +10,6 @@ import TaskDetail from '@/components/task/TaskDetail'
 import GanttChart from '@/components/timeline/GanttChart'
 import { useApp } from '@/hooks/useApp'
 import { useKeyboard } from '@/hooks/useKeyboard'
-import { cn } from '@/lib/utils'
 
 // メインアプリケーションコンテンツ
 const AppContent: React.FC = () => {

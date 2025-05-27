@@ -6,6 +6,17 @@ import { cn } from '@/lib/utils'
 const TimelineHeader: React.FC = () => {
   const { viewUnit, visibleDates, dateRange, dynamicSizes } = useTimeline()
 
+  if (!visibleDates || visibleDates.length === 0) {
+    return null
+  }
+
+  const firstDate = visibleDates[0]
+  const lastDate = visibleDates[visibleDates.length - 1]
+
+  if (!firstDate || !lastDate) {
+    return null
+  }
+
   return (
     <div className="border-b-2 overflow-hidden bg-background">
       <div className="w-full overflow-x-auto timeline-header" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -34,12 +45,15 @@ const TimelineHeader: React.FC = () => {
                 visibleDates.forEach((date, index) => {
                   if (currentMonth !== date.getMonth()) {
                     if (currentMonth !== null) {
-                      monthGroups.push({
-                        month: currentMonth,
-                        year: visibleDates[monthStart].getFullYear(),
-                        startIndex: monthStart,
-                        width: monthWidth * dateRange.cellWidth
-                      })
+                      const startDate = visibleDates[monthStart]
+                      if (startDate) {
+                        monthGroups.push({
+                          month: currentMonth,
+                          year: startDate.getFullYear(),
+                          startIndex: monthStart,
+                          width: monthWidth * dateRange.cellWidth
+                        })
+                      }
                     }
                     currentMonth = date.getMonth()
                     monthStart = index
@@ -87,7 +101,7 @@ const TimelineHeader: React.FC = () => {
               }}
             >
               {visibleDates.map((date, index) => {
-                const isFirstMonth = index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
+                const prevDate = index > 0 ? visibleDates[index - 1] : null
                 const nextDate = index < visibleDates.length - 1 ? visibleDates[index + 1] : null
                 const isLastDateOfMonth = nextDate ? date.getMonth() !== nextDate.getMonth() : index === visibleDates.length - 1
                 const isFirstWeek = date.getDay() === 1
@@ -138,7 +152,8 @@ const TimelineHeader: React.FC = () => {
               const weekEnd = new Date(date)
               weekEnd.setDate(weekEnd.getDate() + 6)
 
-              const isFirstMonth = index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
+              const prevWeek = index > 0 ? visibleDates[index - 1] : null
+              const isFirstMonth = index === 0 || (prevWeek && prevWeek.getMonth() !== date.getMonth())
               const nextWeek = index < visibleDates.length - 1 ? visibleDates[index + 1] : null
               const isLastWeekOfMonth = nextWeek ? date.getMonth() !== nextWeek.getMonth() : index === visibleDates.length - 1
 

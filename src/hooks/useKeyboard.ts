@@ -92,17 +92,21 @@ export function useKeyboard() {
           if (activeArea === 'tasks' && filteredTasks.length > 0) {
             if (selectedTaskId) {
               const currentIndex = filteredTasks.findIndex(t => t.id === selectedTaskId)
-              if (currentIndex > 0) {
-                const prevTaskId = filteredTasks[currentIndex - 1].id
-                selectTask(prevTaskId, e.shiftKey ? { shiftKey: true } as React.MouseEvent : undefined)
+              const prevTask = currentIndex > 0 ? filteredTasks[currentIndex - 1] : null
+              if (prevTask) {
+                selectTask(prevTask.id, e.shiftKey ? { shiftKey: true } as React.MouseEvent : undefined)
               }
             } else {
-              selectTask(filteredTasks[0].id)
+              const firstTask = filteredTasks[0]
+              if (firstTask) {
+                selectTask(firstTask.id)
+              }
             }
           } else if (activeArea === 'projects' && projects.length > 0) {
             const currentIndex = projects.findIndex(p => p.id === selectedProjectId)
-            if (currentIndex > 0) {
-              setSelectedProjectId(projects[currentIndex - 1].id)
+            const prevProject = currentIndex > 0 ? projects[currentIndex - 1] : null
+            if (prevProject) {
+              setSelectedProjectId(prevProject.id)
             }
           }
           break
@@ -112,17 +116,21 @@ export function useKeyboard() {
           if (activeArea === 'tasks' && filteredTasks.length > 0) {
             if (selectedTaskId) {
               const currentIndex = filteredTasks.findIndex(t => t.id === selectedTaskId)
-              if (currentIndex < filteredTasks.length - 1) {
-                const nextTaskId = filteredTasks[currentIndex + 1].id
-                selectTask(nextTaskId, e.shiftKey ? { shiftKey: true } as React.MouseEvent : undefined)
+              const nextTask = currentIndex < filteredTasks.length - 1 ? filteredTasks[currentIndex + 1] : null
+              if (nextTask) {
+                selectTask(nextTask.id, e.shiftKey ? { shiftKey: true } as React.MouseEvent : undefined)
               }
             } else {
-              selectTask(filteredTasks[0].id)
+              const firstTask = filteredTasks[0]
+              if (firstTask) {
+                selectTask(firstTask.id)
+              }
             }
           } else if (activeArea === 'projects' && projects.length > 0) {
             const currentIndex = projects.findIndex(p => p.id === selectedProjectId)
-            if (currentIndex < projects.length - 1) {
-              setSelectedProjectId(projects[currentIndex + 1].id)
+            const nextProject = currentIndex < projects.length - 1 ? projects[currentIndex + 1] : null
+            if (nextProject) {
+              setSelectedProjectId(nextProject.id)
             }
           }
           break

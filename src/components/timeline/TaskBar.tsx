@@ -135,7 +135,7 @@ const TaskBar: React.FC<TaskBarProps> = ({ task, project }) => {
 
       {/* サブタスク */}
       {task.expanded &&
-        subtasks.map((subtask, subtaskIndex) => (
+        subtasks.map((subtask) => (
           <TaskBar key={subtask.id} task={subtask} project={project} />
         ))}
     </div>

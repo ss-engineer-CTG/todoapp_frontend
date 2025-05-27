@@ -2,7 +2,7 @@ import { useTaskContext } from '@/context/TaskContext'
 import { useProjectContext } from '@/context/ProjectContext'
 import { useAppContext } from '@/context/AppProvider'
 import { useMemo } from 'react'
-import type { Task, TaskFormData } from '@/types/task'
+import type { Task } from '@/types/task'
 import { getChildTasks } from '@/utils/taskUtils'
 
 export function useTasks() {
@@ -18,7 +18,7 @@ export function useTasks() {
 
       // 折りたたまれた親タスクの子タスクは非表示
       if (task.parentId) {
-        let currentParentId = task.parentId
+        let currentParentId: string | null = task.parentId
         while (currentParentId) {
           const currentParent = taskState.tasks.find(t => t.id === currentParentId)
           if (currentParent && currentParent.collapsed) return false
@@ -135,8 +135,6 @@ export function useTasks() {
   const toggleMultipleTasksCompleted = (taskIds: string[]) => {
     const firstTask = taskState.tasks.find(t => taskIds.includes(t.id))
     if (!firstTask) return
-
-    const newCompletionState = !firstTask.completed
 
     taskIds.forEach(taskId => {
       toggleTaskCompleted(taskId)

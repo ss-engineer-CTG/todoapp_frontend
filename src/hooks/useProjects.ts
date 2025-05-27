@@ -39,7 +39,7 @@ export function useProjects() {
   }
 
   // タスクの展開/折りたたみ（タイムライン表示用）
-  const toggleTask = (projectId: string, taskId: string) => {
+  const toggleTask = (_projectId: string, _taskId: string) => {
     // TaskContextを通じてタスクの展開状態を切り替え
     // TODO: 実装
   }

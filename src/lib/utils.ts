@@ -48,8 +48,13 @@ export function deepClone<T>(obj: T): T {
 export function shuffleArray<T>(array: T[]): T[] {
   const result = [...array]
   for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]]
+    const j = Math.floor(Math.random() * (i + 1))
+    const temp = result[i]
+    const tempJ = result[j]
+    if (temp !== undefined && tempJ !== undefined) {
+      result[i] = tempJ
+      result[j] = temp
+    }
   }
   return result
 }
@@ -111,7 +116,10 @@ export function formatNumber(
   const fixed = num.toFixed(decimals)
   const parts = fixed.split('.')
   
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandsSeparator)
+  const integerPart = parts[0]
+  if (integerPart) {
+    parts[0] = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandsSeparator)
+  }
   
   return parts.join(decimalSeparator)
 }

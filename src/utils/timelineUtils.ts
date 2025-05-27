@@ -17,8 +17,12 @@ export function getTimeRangeByUnit(unit: 'day' | 'week', zoomLevel: number): Dat
     week: { days: 365, ratio: [0.3, 0.7], label: '週表示' }
   }[unit]
 
-  const beforeDays = Math.floor(config.days * config.ratio[0])
-  const afterDays = Math.floor(config.days * config.ratio[1])
+  if (!config) {
+    throw new Error(`Unsupported unit: ${unit}`)
+  }
+
+  const beforeDays = Math.floor(config.days * (config.ratio[0] ?? 0.3))
+  const afterDays = Math.floor(config.days * (config.ratio[1] ?? 0.7))
 
   const rawStartDate = addDays(today, -beforeDays)
   const rawEndDate = addDays(today, afterDays)
