@@ -17,6 +17,16 @@ export interface SelectOption {
   color?: string
 }
 
-export type ViewMode = 'list' | 'timeline'
-export type ActiveArea = 'projects' | 'tasks' | 'details'
-export type ThemeMode = 'light' | 'dark' | 'system'
+export const DATE_FORMATS = {
+  SHORT: 'M月d日',
+  LONG: 'yyyy年M月d日',
+  TIME: 'HH:mm',
+  DATETIME: 'yyyy年M月d日 HH:mm',
+} as const
+
+export const VALIDATION_RULES = {
+  PROJECT_NAME_MAX_LENGTH: 100,
+  TASK_NAME_MAX_LENGTH: 200,
+  NOTES_MAX_LENGTH: 1000,
+  MIN_PASSWORD_LENGTH: 8,
+} as const

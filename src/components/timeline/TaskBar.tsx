@@ -5,6 +5,7 @@ import { getTaskStatusStyle, getDisplayText } from '@/utils/taskUtils'
 import { useTimeline } from '@/hooks/useTimeline'
 import { useProjects } from '@/hooks/useProjects'
 import { useTasks } from '@/hooks/useTasks'
+import { getChildTasks } from '@/utils/taskUtils'
 import type { Task, Project } from '@/types'
 
 interface TaskBarProps {
@@ -25,7 +26,7 @@ const TaskBar: React.FC<TaskBarProps> = ({ task, project }) => {
   )
 
   const statusStyle = getTaskStatusStyle(task.status, project.color, task.milestone, task.level > 0)
-  const subtasks = tasks.filter(t => t.parentId === task.id)
+  const subtasks = getChildTasks(task.id, tasks)
 
   return (
     <div>

@@ -17,7 +17,6 @@ export interface Task {
   expanded: boolean // タイムライン表示用の展開状態
   milestone: boolean
   status: TaskStatus
-  subtasks?: Task[]
   progress?: number
   priority?: 'low' | 'medium' | 'high'
   tags?: string[]

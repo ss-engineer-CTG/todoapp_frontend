@@ -11,10 +11,12 @@ import { useTasks } from '@/hooks/useTasks'
 import { useApp } from '@/hooks/useApp'
 import TaskForm from '@/components/task/TaskForm'
 import TaskActions from '@/components/task/TaskActions'
+import { getChildTasks } from '@/utils/taskUtils'
 
 const TaskList: React.FC = () => {
   const { selectedProjectId, projects } = useProjects()
   const {
+    tasks,
     filteredTasks,
     selectedTaskIds,
     isMultiSelectMode,
@@ -101,109 +103,113 @@ const TaskList: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-1">
-            {filteredTasks.map((task) => (
-              <div
-                key={task.id}
-                ref={(el) => {
-                  if (el) taskRefs.current[task.id] = el
-                }}
-                className={cn(
-                  "flex items-start p-2 rounded-md cursor-pointer group transition-colors",
-                  selectedTaskIds.includes(task.id) ? "bg-accent/80 ring-1 ring-primary" : "hover:bg-accent/50",
-                  task.completed ? "text-muted-foreground" : ""
-                )}
-                style={{ marginLeft: `${task.level * 1.5}rem` }}
-                onClick={(e) => handleTaskSelect(task.id, e)}
-              >
-                <div className="w-4 flex justify-center">
-                  {task.subtasks && task.subtasks.length > 0 ? (
-                    <button
-                      className="text-muted-foreground"
+            {filteredTasks.map((task) => {
+              const childTasks = getChildTasks(task.id, tasks)
+              
+              return (
+                <div
+                  key={task.id}
+                  ref={(el) => {
+                    if (el) taskRefs.current[task.id] = el
+                  }}
+                  className={cn(
+                    "flex items-start p-2 rounded-md cursor-pointer group transition-colors",
+                    selectedTaskIds.includes(task.id) ? "bg-accent/80 ring-1 ring-primary" : "hover:bg-accent/50",
+                    task.completed ? "text-muted-foreground" : ""
+                  )}
+                  style={{ marginLeft: `${task.level * 1.5}rem` }}
+                  onClick={(e) => handleTaskSelect(task.id, e)}
+                >
+                  <div className="w-4 flex justify-center">
+                    {childTasks.length > 0 ? (
+                      <button
+                        className="text-muted-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleTaskCollapsed(task.id)
+                        }}
+                      >
+                        {task.collapsed ? (
+                          <ChevronRight className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </button>
+                    ) : (
+                      <div className="w-4" />
+                    )}
+                  </div>
+
+                  <Checkbox
+                    checked={task.completed}
+                    onCheckedChange={() => toggleTaskCompleted(task.id)}
+                    className="mr-2 mt-0.5"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+
+                  <div className="flex-grow">
+                    <div className={cn("font-medium", task.completed ? "line-through" : "")}>
+                      {task.name}
+                    </div>
+                    <div className="flex items-center text-xs text-muted-foreground mt-1">
+                      <span className="mr-2">
+                        期限: {format(task.dueDate, "M月d日", { locale: ja })}
+                      </span>
+                      {task.notes && <span className="mr-2">📝</span>}
+                    </div>
+                  </div>
+
+                  <div className="flex opacity-0 group-hover:opacity-100">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
                       onClick={(e) => {
                         e.stopPropagation()
-                        toggleTaskCollapsed(task.id)
+                        handleAddTask(task.id, task.level + 1)
                       }}
+                      title="サブタスク追加"
                     >
-                      {task.collapsed ? (
-                        <ChevronRight className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </button>
-                  ) : (
-                    <div className="w-4" />
-                  )}
-                </div>
+                      <Plus className="h-3 w-3" />
+                    </Button>
 
-                <Checkbox
-                  checked={task.completed}
-                  onCheckedChange={() => toggleTaskCompleted(task.id)}
-                  className="mr-2 mt-0.5"
-                  onClick={(e) => e.stopPropagation()}
-                />
-
-                <div className="flex-grow">
-                  <div className={cn("font-medium", task.completed ? "line-through" : "")}>
-                    {task.name}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            copyTasks([task.id])
+                          }}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          コピー
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteTasks([task.id])
+                          }}
+                          className="text-destructive"
+                        >
+                          <Trash className="h-4 w-4 mr-2" />
+                          削除
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <div className="flex items-center text-xs text-muted-foreground mt-1">
-                    <span className="mr-2">
-                      期限: {format(task.dueDate, "M月d日", { locale: ja })}
-                    </span>
-                    {task.notes && <span className="mr-2">📝</span>}
-                  </div>
                 </div>
-
-                <div className="flex opacity-0 group-hover:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleAddTask(task.id, task.level + 1)
-                    }}
-                    title="サブタスク追加"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreHorizontal className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          copyTasks([task.id])
-                        }}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        コピー
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          deleteTasks([task.id])
-                        }}
-                        className="text-destructive"
-                      >
-                        <Trash className="h-4 w-4 mr-2" />
-                        削除
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-            ))}
+              )
+            })}
 
             {isAddingTask && <TaskForm />}
           </div>
