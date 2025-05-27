@@ -17,11 +17,13 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    console.error('ErrorBoundary - Error caught:', error)
     return { hasError: true, error }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo)
+    console.error('Component stack:', errorInfo.componentStack)
     this.setState({
       error,
       errorInfo
@@ -44,18 +46,34 @@ class ErrorBoundary extends Component<Props, State> {
                 <summary className="cursor-pointer font-medium mb-2">
                   エラー詳細
                 </summary>
-                <pre className="text-xs overflow-auto">
-                  {this.state.error.toString()}
-                  {this.state.errorInfo?.componentStack}
+                <pre className="text-xs overflow-auto whitespace-pre-wrap">
+                  <strong>Error:</strong> {this.state.error.toString()}
+                  {this.state.errorInfo?.componentStack && (
+                    <>
+                      <br /><br />
+                      <strong>Component Stack:</strong>
+                      {this.state.errorInfo.componentStack}
+                    </>
+                  )}
                 </pre>
               </details>
             )}
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
-            >
-              ページを再読み込み
-            </button>
+            <div className="space-x-2">
+              <button
+                onClick={() => {
+                  this.setState({ hasError: false, error: undefined, errorInfo: undefined })
+                }}
+                className="bg-secondary text-secondary-foreground px-4 py-2 rounded-md hover:bg-secondary/80 mr-2"
+              >
+                再試行
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
+              >
+                ページを再読み込み
+              </button>
+            </div>
           </div>
         </div>
       )

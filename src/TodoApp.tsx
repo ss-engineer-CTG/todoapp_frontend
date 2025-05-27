@@ -9,8 +9,8 @@ import ProjectList from '@/components/project/ProjectList'
 import TaskList from '@/components/task/TaskList'
 import TaskDetail from '@/components/task/TaskDetail'
 import GanttChart from '@/components/timeline/GanttChart'
-import { useApp } from '@/hooks/useApp'
 import { useKeyboard } from '@/hooks/useKeyboard'
+import { useAppContext } from '@/context/AppProvider'
 
 // ローディングコンポーネント
 const LoadingScreen: React.FC = () => (
@@ -25,13 +25,13 @@ const LoadingScreen: React.FC = () => (
 // メインアプリケーションコンテンツ
 const AppContent: React.FC = () => {
   const [isInitialized, setIsInitialized] = React.useState(false)
-  const { viewMode, isDetailPanelVisible } = useApp()
+  const { state } = useAppContext()
   
   // 初期化処理
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setIsInitialized(true)
-    }, 100) // 短い遅延でContextの初期化を待つ
+    }, 100)
 
     return () => clearTimeout(timer)
   }, [])
@@ -42,6 +42,8 @@ const AppContent: React.FC = () => {
   if (!isInitialized) {
     return <LoadingScreen />
   }
+
+  const { viewMode, isDetailPanelVisible } = state
 
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">

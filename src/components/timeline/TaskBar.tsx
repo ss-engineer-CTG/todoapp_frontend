@@ -6,7 +6,8 @@ import { useTimeline } from '@/hooks/useTimeline'
 import { useProjects } from '@/hooks/useProjects'
 import { useTasks } from '@/hooks/useTasks'
 import { getChildTasks } from '@/utils/taskUtils'
-import type { Task, Project } from '@/types'
+import type { Task } from '@/types/task'
+import type { Project } from '@/types/project'
 
 interface TaskBarProps {
   task: Task
