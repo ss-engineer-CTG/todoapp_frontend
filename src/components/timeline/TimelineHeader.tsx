@@ -101,7 +101,6 @@ const TimelineHeader: React.FC = () => {
               }}
             >
               {visibleDates.map((date, index) => {
-                const prevDate = index > 0 ? visibleDates[index - 1] : null
                 const nextDate = index < visibleDates.length - 1 ? visibleDates[index + 1] : null
                 const isLastDateOfMonth = nextDate ? date.getMonth() !== nextDate.getMonth() : index === visibleDates.length - 1
                 const isFirstWeek = date.getDay() === 1
