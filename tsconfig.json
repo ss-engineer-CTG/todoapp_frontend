@@ -1,100 +1,100 @@
 {
-    "compilerOptions": {
-      "target": "ES2020",
-      "useDefineForClassFields": true,
-      "lib": ["ES2020", "DOM", "DOM.Iterable"],
-      "module": "ESNext",
-      "skipLibCheck": true,
-  
-      /* Bundler mode */
-      "moduleResolution": "bundler",
-      "allowImportingTsExtensions": true,
-      "resolveJsonModule": true,
-      "isolatedModules": true,
-      "noEmit": true,
-      "jsx": "react-jsx",
-  
-      /* Linting */
-      "strict": true,
-      "noUnusedLocals": true,
-      "noUnusedParameters": true,
-      "noFallthroughCasesInSwitch": true,
-      "noUncheckedIndexedAccess": true,
-      "exactOptionalPropertyTypes": true,
-  
-      /* Path mapping */
-      "baseUrl": ".",
-      "paths": {
-        "@/*": ["./src/*"],
-        "@/components/*": ["./src/components/*"],
-        "@/hooks/*": ["./src/hooks/*"],
-        "@/context/*": ["./src/context/*"],
-        "@/utils/*": ["./src/utils/*"],
-        "@/types/*": ["./src/types/*"],
-        "@/constants/*": ["./src/constants/*"],
-        "@/lib/*": ["./src/lib/*"],
-        "@/styles/*": ["./src/styles/*"]
-      },
-  
-      /* Additional options */
-      "allowSyntheticDefaultImports": true,
-      "esModuleInterop": true,
-      "forceConsistentCasingInFileNames": true,
-      "verbatimModuleSyntax": false,
-  
-      /* Type checking */
-      "noImplicitAny": true,
-      "noImplicitReturns": true,
-      "noPropertyAccessFromIndexSignature": false,
-      "noImplicitOverride": true,
-  
-      /* Experimental */
-      "experimentalDecorators": true,
-      "emitDecoratorMetadata": true,
-  
-      /* Source maps */
-      "sourceMap": true,
-      "inlineSourceMap": false,
-      "inlineSources": false,
-  
-      /* Output */
-      "outDir": "./dist",
-      "rootDir": "./src",
-      "removeComments": false,
-      "importHelpers": true,
-  
-      /* Advanced */
-      "incremental": true,
-      "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo"
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/context/*": ["./src/context/*"],
+      "@/utils/*": ["./src/utils/*"],
+      "@/types/*": ["./src/types/*"],
+      "@/constants/*": ["./src/constants/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/styles/*": ["./src/styles/*"]
     },
-    "include": [
-      "src/**/*",
-      "src/**/*.ts",
-      "src/**/*.tsx",
-      "src/**/*.vue",
-      "tests/**/*",
-      "vite.config.ts"
-    ],
-    "exclude": [
-      "node_modules",
-      "dist",
-      "build",
-      "coverage",
-      "**/*.spec.ts",
-      "**/*.test.ts",
-      "**/*.spec.tsx",
-      "**/*.test.tsx"
-    ],
-    "references": [
-      {
-        "path": "./tsconfig.node.json"
-      }
-    ],
-    "ts-node": {
-      "esm": true,
-      "compilerOptions": {
-        "module": "ESNext",
-        "moduleResolution": "node"
-      }
+
+    /* Additional options */
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": false,
+
+    /* Type checking */
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "noImplicitOverride": true,
+
+    /* Experimental */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    /* Source maps */
+    "sourceMap": true,
+    "inlineSourceMap": false,
+    "inlineSources": false,
+
+    /* Output */
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "removeComments": false,
+    "importHelpers": true,
+
+    /* Advanced */
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo"
+  },
+  "include": [
+    "src/**/*",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "tests/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/*.spec.tsx",
+    "**/*.test.tsx",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "tailwind.config.js",
+    "postcss.config.js",
+    "eslint.config.js",
+    "prettier.config.js"
+  ],
+  "ts-node": {
+    "esm": true,
+    "compilerOptions": {
+      "module": "ESNext",
+      "moduleResolution": "node"
     }
   }
+}
