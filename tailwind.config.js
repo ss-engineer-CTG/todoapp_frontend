@@ -4,7 +4,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class', // クラスベースのダークモード
+  darkMode: 'class',
   theme: {
     container: {
       center: true,
@@ -48,7 +48,6 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // プロジェクト固有のカラー
         project: {
           orange: '#f97316',
           purple: '#8b5cf6',
@@ -59,14 +58,12 @@ export default {
           pink: '#ec4899',
           teal: '#14b8a6',
         },
-        // ステータス別カラー
         status: {
           'not-started': '#9ca3af',
           'in-progress': '#3b82f6',
           'completed': '#10b981',
           'overdue': '#ef4444',
         },
-        // 優先度別カラー
         priority: {
           low: '#10b981',
           medium: '#f59e0b',
@@ -236,22 +233,18 @@ export default {
           }
         }
       },
-      // グリッドテンプレート
       gridTemplateColumns: {
         'auto-fit': 'repeat(auto-fit, minmax(250px, 1fr))',
         'auto-fill': 'repeat(auto-fill, minmax(250px, 1fr))',
       },
-      // ボックスシャドー
       boxShadow: {
         'inner-lg': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
         'glow': '0 0 20px rgba(59, 130, 246, 0.5)',
         'glow-sm': '0 0 10px rgba(59, 130, 246, 0.3)',
       },
-      // ブラー
       backdropBlur: {
         xs: '2px',
       },
-      // レスポンシブブレークポイント
       screens: {
         'xs': '475px',
         '3xl': '1920px',
@@ -259,17 +252,14 @@ export default {
     },
   },
   plugins: [
-    // Tailwind CSS プラグイン
     require('@tailwindcss/forms')({
-      strategy: 'class', // フォームスタイリング戦略
+      strategy: 'class',
     }),
     require('@tailwindcss/typography'),
     require('@tailwindcss/aspect-ratio'),
     require('@tailwindcss/container-queries'),
     
-    // カスタムプラグイン
-    function({ addUtilities, addComponents, theme }) {
-      // カスタムユーティリティ
+    function({ addUtilities, addComponents }) {
       addUtilities({
         '.text-shadow': {
           textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)',
@@ -292,7 +282,6 @@ export default {
         },
       })
 
-      // カスタムコンポーネント
       addComponents({
         '.btn-primary': {
           '@apply bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50': {},
@@ -309,31 +298,12 @@ export default {
       })
     },
   ],
-  // Safelist - パージから除外するクラス
+  // Safelist を最適化
   safelist: [
-    'text-project-orange',
-    'text-project-purple',
-    'text-project-green',
-    'text-project-red',
-    'text-project-blue',
-    'text-project-amber',
-    'text-project-pink',
-    'text-project-teal',
-    'border-project-orange',
-    'border-project-purple',
-    'border-project-green',
-    'border-project-red',
-    'border-project-blue',
-    'border-project-amber',
-    'border-project-pink',
-    'border-project-teal',
-    'bg-project-orange',
-    'bg-project-purple',
-    'bg-project-green',
-    'bg-project-red',
-    'bg-project-blue',
-    'bg-project-amber',
-    'bg-project-pink',
-    'bg-project-teal',
+    // プロジェクトカラー関連のクラスのみ
+    {
+      pattern: /(bg|text|border)-(project|status|priority)-(orange|purple|green|red|blue|amber|pink|teal|not-started|in-progress|completed|overdue|low|medium|high)/,
+      variants: ['hover', 'focus', 'active'],
+    },
   ],
 }

@@ -5,35 +5,48 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// 日付フォーマット関数
-export function formatDate(date: Date, format: string = 'YYYY-MM-DD'): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
+// 日付フォーマット関数（エラーハンドリング強化）
+export function formatDate(date: Date | string | number, format: string = 'YYYY-MM-DD'): string {
+  try {
+    const dateObj = date instanceof Date ? date : new Date(date)
+    
+    if (isNaN(dateObj.getTime())) {
+      console.warn('Invalid date provided to formatDate:', date)
+      return 'Invalid Date'
+    }
 
-  return format
-    .replace('YYYY', year.toString())
-    .replace('YY', year.toString().slice(-2))
-    .replace('MM', month)
-    .replace('M', (date.getMonth() + 1).toString())
-    .replace('DD', day)
-    .replace('D', date.getDate().toString())
-    .replace('HH', hours)
-    .replace('H', date.getHours().toString())
-    .replace('mm', minutes)
-    .replace('m', date.getMinutes().toString())
-    .replace('ss', seconds)
-    .replace('s', date.getSeconds().toString())
+    const year = dateObj.getFullYear()
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+    const day = String(dateObj.getDate()).padStart(2, '0')
+    const hours = String(dateObj.getHours()).padStart(2, '0')
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0')
+    const seconds = String(dateObj.getSeconds()).padStart(2, '0')
+
+    return format
+      .replace('YYYY', year.toString())
+      .replace('YY', year.toString().slice(-2))
+      .replace('MM', month)
+      .replace('M', (dateObj.getMonth() + 1).toString())
+      .replace('DD', day)
+      .replace('D', dateObj.getDate().toString())
+      .replace('HH', hours)
+      .replace('H', dateObj.getHours().toString())
+      .replace('mm', minutes)
+      .replace('m', dateObj.getMinutes().toString())
+      .replace('ss', seconds)
+      .replace('s', dateObj.getSeconds().toString())
+  } catch (error) {
+    console.error('Error formatting date:', error)
+    return 'Format Error'
+  }
 }
 
-// 深いオブジェクトのコピー
+// 深いオブジェクトのコピー（型安全性向上）
 export function deepClone<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') return obj
   if (obj instanceof Date) return new Date(obj.getTime()) as unknown as T
   if (obj instanceof Array) return obj.map(item => deepClone(item)) as unknown as T
+  
   if (typeof obj === 'object') {
     const copy = {} as { [key: string]: any }
     Object.keys(obj).forEach(key => {
@@ -41,11 +54,12 @@ export function deepClone<T>(obj: T): T {
     })
     return copy as T
   }
+  
   return obj
 }
 
-// 配列のシャッフル
-export function shuffleArray<T>(array: T[]): T[] {
+// 配列のシャッフル（型安全性向上）
+export function shuffleArray<T>(array: readonly T[]): T[] {
   const result = [...array]
   for (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -59,8 +73,8 @@ export function shuffleArray<T>(array: T[]): T[] {
   return result
 }
 
-// 配列から重複を除去
-export function uniqueArray<T>(array: T[], keyFn?: (item: T) => any): T[] {
+// 配列から重複を除去（改善版）
+export function uniqueArray<T>(array: readonly T[], keyFn?: (item: T) => any): T[] {
   if (!keyFn) {
     return [...new Set(array)]
   }
@@ -94,11 +108,16 @@ export function getObjectDiff<T extends Record<string, any>>(
 
 // 文字列の省略
 export function truncateText(text: string, maxLength: number, suffix = '...'): string {
+  if (typeof text !== 'string') {
+    console.warn('truncateText: text is not a string:', text)
+    return String(text)
+  }
+  
   if (text.length <= maxLength) return text
   return text.slice(0, maxLength - suffix.length) + suffix
 }
 
-// 数値のフォーマット
+// 数値のフォーマット（エラーハンドリング強化）
 export function formatNumber(
   num: number,
   options: {
@@ -107,31 +126,62 @@ export function formatNumber(
     decimalSeparator?: string
   } = {}
 ): string {
-  const {
-    decimals = 0,
-    thousandsSeparator = ',',
-    decimalSeparator = '.'
-  } = options
+  try {
+    if (typeof num !== 'number' || isNaN(num)) {
+      console.warn('formatNumber: invalid number provided:', num)
+      return '0'
+    }
 
-  const fixed = num.toFixed(decimals)
-  const parts = fixed.split('.')
-  
-  const integerPart = parts[0]
-  if (integerPart) {
-    parts[0] = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandsSeparator)
+    const {
+      decimals = 0,
+      thousandsSeparator = ',',
+      decimalSeparator = '.'
+    } = options
+
+    const fixed = num.toFixed(decimals)
+    const parts = fixed.split('.')
+    
+    const integerPart = parts[0]
+    if (integerPart) {
+      parts[0] = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandsSeparator)
+    }
+    
+    return parts.join(decimalSeparator)
+  } catch (error) {
+    console.error('Error formatting number:', error)
+    return '0'
   }
-  
-  return parts.join(decimalSeparator)
 }
 
-// 色の明度を計算
+// 色の明度を計算（エラーハンドリング強化）
 export function getColorBrightness(hexColor: string): number {
-  const hex = hexColor.replace('#', '')
-  const r = parseInt(hex.substr(0, 2), 16)
-  const g = parseInt(hex.substr(2, 2), 16)
-  const b = parseInt(hex.substr(4, 2), 16)
-  
-  return (r * 299 + g * 587 + b * 114) / 1000
+  try {
+    if (typeof hexColor !== 'string') {
+      console.warn('getColorBrightness: invalid color provided:', hexColor)
+      return 0
+    }
+
+    const hex = hexColor.replace('#', '')
+    
+    if (hex.length !== 6) {
+      console.warn('getColorBrightness: invalid hex color length:', hexColor)
+      return 0
+    }
+
+    const r = parseInt(hex.substr(0, 2), 16)
+    const g = parseInt(hex.substr(2, 2), 16)
+    const b = parseInt(hex.substr(4, 2), 16)
+    
+    if (isNaN(r) || isNaN(g) || isNaN(b)) {
+      console.warn('getColorBrightness: failed to parse color:', hexColor)
+      return 0
+    }
+    
+    return (r * 299 + g * 587 + b * 114) / 1000
+  } catch (error) {
+    console.error('Error calculating color brightness:', error)
+    return 0
+  }
 }
 
 // 色が明るいかどうかを判定
@@ -139,7 +189,7 @@ export function isLightColor(hexColor: string): boolean {
   return getColorBrightness(hexColor) > 127.5
 }
 
-// デバウンス関数
+// デバウンス関数（型安全性向上）
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
@@ -152,7 +202,7 @@ export function debounce<T extends (...args: any[]) => any>(
   }
 }
 
-// スロットル関数
+// スロットル関数（型安全性向上）
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
   wait: number
@@ -168,66 +218,165 @@ export function throttle<T extends (...args: any[]) => any>(
   }
 }
 
-// ローカルストレージのヘルパー関数
+// ローカルストレージのヘルパー関数（エラーハンドリング強化）
 export const storage = {
   get<T>(key: string, defaultValue: T): T {
     try {
+      if (typeof window === 'undefined') {
+        console.warn('localStorage not available (SSR)')
+        return defaultValue
+      }
+
       const item = localStorage.getItem(key)
-      return item ? JSON.parse(item) : defaultValue
-    } catch {
+      if (item === null) return defaultValue
+      
+      return JSON.parse(item)
+    } catch (error) {
+      console.error('Failed to get from localStorage:', error)
       return defaultValue
     }
   },
   
-  set<T>(key: string, value: T): void {
+  set<T>(key: string, value: T): boolean {
     try {
+      if (typeof window === 'undefined') {
+        console.warn('localStorage not available (SSR)')
+        return false
+      }
+
       localStorage.setItem(key, JSON.stringify(value))
+      return true
     } catch (error) {
       console.error('Failed to save to localStorage:', error)
+      return false
     }
   },
   
-  remove(key: string): void {
+  remove(key: string): boolean {
     try {
+      if (typeof window === 'undefined') {
+        console.warn('localStorage not available (SSR)')
+        return false
+      }
+
       localStorage.removeItem(key)
+      return true
     } catch (error) {
       console.error('Failed to remove from localStorage:', error)
+      return false
     }
   },
   
-  clear(): void {
+  clear(): boolean {
     try {
+      if (typeof window === 'undefined') {
+        console.warn('localStorage not available (SSR)')
+        return false
+      }
+
       localStorage.clear()
+      return true
     } catch (error) {
       console.error('Failed to clear localStorage:', error)
+      return false
     }
   }
 }
 
-// URL関連のヘルパー関数
+// URL関連のヘルパー関数（エラーハンドリング強化）
 export function buildUrl(base: string, path: string, params?: Record<string, string>): string {
-  const url = new URL(path, base)
-  
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      url.searchParams.set(key, value)
-    })
+  try {
+    const url = new URL(path, base)
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.set(key, value)
+      })
+    }
+    
+    return url.toString()
+  } catch (error) {
+    console.error('Error building URL:', error)
+    return base
   }
-  
-  return url.toString()
 }
 
-// 配列の安全な取得
-export function safeArrayAccess<T>(array: T[], index: number, defaultValue: T): T {
-  return array[index] !== undefined ? array[index] : defaultValue
+// 配列の安全な取得（型安全性向上）
+export function safeArrayAccess<T>(array: readonly T[], index: number, defaultValue: T): T {
+  if (!Array.isArray(array)) {
+    console.warn('safeArrayAccess: provided value is not an array:', array)
+    return defaultValue
+  }
+
+  if (index < 0 || index >= array.length) {
+    return defaultValue
+  }
+
+  const value = array[index]
+  return value !== undefined ? value : defaultValue
 }
 
 // 範囲内の値にクランプ
 export function clamp(value: number, min: number, max: number): number {
+  if (typeof value !== 'number' || isNaN(value)) {
+    console.warn('clamp: invalid value provided:', value)
+    return min
+  }
+  
   return Math.min(Math.max(value, min), max)
 }
 
-// パーセンテージの計算
+// パーセンテージの計算（エラーハンドリング強化）
 export function calculatePercentage(value: number, total: number): number {
-  return total === 0 ? 0 : Math.round((value / total) * 100)
+  try {
+    if (typeof value !== 'number' || typeof total !== 'number') {
+      console.warn('calculatePercentage: invalid arguments:', { value, total })
+      return 0
+    }
+
+    if (total === 0) return 0
+    if (isNaN(value) || isNaN(total)) return 0
+    
+    return Math.round((value / total) * 100)
+  } catch (error) {
+    console.error('Error calculating percentage:', error)
+    return 0
+  }
+}
+
+// 型安全なキー取得
+export function getKeys<T extends Record<string, any>>(obj: T): (keyof T)[] {
+  return Object.keys(obj)
+}
+
+// 安全な文字列変換
+export function safeString(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value
+  
+  try {
+    return String(value)
+  } catch (error) {
+    console.error('Error converting to string:', error)
+    return ''
+  }
+}
+
+// 空の値チェック
+export function isEmpty(value: unknown): boolean {
+  if (value === null || value === undefined) return true
+  if (typeof value === 'string') return value.trim() === ''
+  if (Array.isArray(value)) return value.length === 0
+  if (typeof value === 'object') return Object.keys(value).length === 0
+  return false
+}
+
+// 安全な JSON パース
+export function safeJsonParse<T>(jsonString: string, defaultValue: T): T {
+  try {
+    return JSON.parse(jsonString)
+  } catch (error) {
+    console.warn('Failed to parse JSON:', error)
+    return defaultValue
+  }
 }

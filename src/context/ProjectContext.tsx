@@ -32,64 +32,128 @@ const initialState: ProjectState = {
 }
 
 function projectReducer(state: ProjectState, action: ProjectAction): ProjectState {
-  switch (action.type) {
-    case 'SET_PROJECTS':
-      return { ...state, projects: action.payload }
-    case 'ADD_PROJECT':
-      const newProject: Project = {
-        id: generateId('p'),
-        name: action.payload.name,
-        color: action.payload.color,
-        expanded: true,
-        collapsed: false,
-      }
-      return {
-        ...state,
-        projects: [...state.projects, newProject],
-        selectedProjectId: newProject.id,
-      }
-    case 'UPDATE_PROJECT':
-      return {
-        ...state,
-        projects: state.projects.map(project =>
-          project.id === action.payload.id
-            ? { ...project, ...action.payload.updates }
-            : project
-        ),
-      }
-    case 'DELETE_PROJECT':
-      return {
-        ...state,
-        projects: state.projects.filter(project => project.id !== action.payload),
-        selectedProjectId: state.selectedProjectId === action.payload
-          ? (state.projects[0]?.id || '')
-          : state.selectedProjectId,
-      }
-    case 'SET_SELECTED_PROJECT':
-      return { ...state, selectedProjectId: action.payload }
-    case 'TOGGLE_PROJECT':
-      return {
-        ...state,
-        projects: state.projects.map(project =>
-          project.id === action.payload
-            ? { ...project, expanded: !project.expanded }
-            : project
-        ),
-      }
-    case 'START_EDIT_PROJECT':
-      return {
-        ...state,
-        isEditingProject: true,
-        editingProjectId: action.payload,
-      }
-    case 'STOP_EDIT_PROJECT':
-      return {
-        ...state,
-        isEditingProject: false,
-        editingProjectId: null,
-      }
-    default:
-      return state
+  try {
+    switch (action.type) {
+      case 'SET_PROJECTS':
+        if (!Array.isArray(action.payload)) {
+          console.warn('SET_PROJECTS: payload is not an array:', action.payload)
+          return state
+        }
+        return { ...state, projects: action.payload }
+
+      case 'ADD_PROJECT':
+        if (!action.payload?.name) {
+          console.warn('ADD_PROJECT: invalid payload:', action.payload)
+          return state
+        }
+        const newProject: Project = {
+          id: generateId('p'),
+          name: action.payload.name.trim(),
+          color: action.payload.color || '#f97316',
+          expanded: true,
+          collapsed: false,
+          description: action.payload.description || '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        return {
+          ...state,
+          projects: [...state.projects, newProject],
+          selectedProjectId: newProject.id,
+        }
+
+      case 'UPDATE_PROJECT':
+        if (!action.payload?.id) {
+          console.warn('UPDATE_PROJECT: invalid payload:', action.payload)
+          return state
+        }
+        return {
+          ...state,
+          projects: state.projects.map(project =>
+            project.id === action.payload.id
+              ? { 
+                  ...project, 
+                  ...action.payload.updates,
+                  updatedAt: new Date()
+                }
+              : project
+          ),
+        }
+
+      case 'DELETE_PROJECT':
+        if (!action.payload) {
+          console.warn('DELETE_PROJECT: invalid payload:', action.payload)
+          return state
+        }
+        const remainingProjects = state.projects.filter(project => project.id !== action.payload)
+        const newSelectedId = state.selectedProjectId === action.payload
+          ? (remainingProjects[0]?.id || '')
+          : state.selectedProjectId
+        
+        return {
+          ...state,
+          projects: remainingProjects,
+          selectedProjectId: newSelectedId,
+        }
+
+      case 'SET_SELECTED_PROJECT':
+        if (!action.payload) {
+          console.warn('SET_SELECTED_PROJECT: invalid payload:', action.payload)
+          return state
+        }
+        // プロジェクトが存在するかチェック
+        const projectExists = state.projects.some(p => p.id === action.payload)
+        if (!projectExists) {
+          console.warn('SET_SELECTED_PROJECT: project does not exist:', action.payload)
+          return state
+        }
+        return { ...state, selectedProjectId: action.payload }
+
+      case 'TOGGLE_PROJECT':
+        if (!action.payload) {
+          console.warn('TOGGLE_PROJECT: invalid payload:', action.payload)
+          return state
+        }
+        return {
+          ...state,
+          projects: state.projects.map(project =>
+            project.id === action.payload
+              ? { ...project, expanded: !project.expanded, updatedAt: new Date() }
+              : project
+          ),
+        }
+
+      case 'START_EDIT_PROJECT':
+        if (!action.payload) {
+          console.warn('START_EDIT_PROJECT: invalid payload:', action.payload)
+          return state
+        }
+        // プロジェクトが存在するかチェック
+        const editProjectExists = state.projects.some(p => p.id === action.payload)
+        if (!editProjectExists) {
+          console.warn('START_EDIT_PROJECT: project does not exist:', action.payload)
+          return state
+        }
+        return {
+          ...state,
+          isEditingProject: true,
+          editingProjectId: action.payload,
+        }
+
+      case 'STOP_EDIT_PROJECT':
+        return {
+          ...state,
+          isEditingProject: false,
+          editingProjectId: null,
+        }
+
+      default:
+        console.warn('projectReducer: unknown action type:', (action as any).type)
+        return state
+    }
+  } catch (error) {
+    console.error('Error in projectReducer:', error)
+    return state
   }
 }
 
@@ -103,8 +167,22 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined)
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(projectReducer, initialState)
 
+  // エラーハンドリング強化
+  const enhancedDispatch = React.useCallback((action: ProjectAction) => {
+    try {
+      dispatch(action)
+    } catch (error) {
+      console.error('Error dispatching project action:', error)
+    }
+  }, [])
+
+  const contextValue = React.useMemo(() => ({
+    state,
+    dispatch: enhancedDispatch,
+  }), [state, enhancedDispatch])
+
   return (
-    <ProjectContext.Provider value={{ state, dispatch }}>
+    <ProjectContext.Provider value={contextValue}>
       {children}
     </ProjectContext.Provider>
   )
@@ -113,7 +191,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 export function useProjectContext() {
   const context = useContext(ProjectContext)
   if (context === undefined) {
-    throw new Error('useProjectContext must be used within a ProjectProvider')
+    const errorMessage = 'useProjectContext must be used within a ProjectProvider'
+    console.error(errorMessage)
+    throw new Error(errorMessage)
   }
   return context
 }

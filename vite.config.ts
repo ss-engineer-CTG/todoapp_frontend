@@ -31,12 +31,12 @@ export default defineConfig({
   // 開発サーバーの設定
   server: {
     port: 3000,
-    host: true, // ネットワーク経由でのアクセスを許可
-    open: true, // 開発サーバー起動時にブラウザを自動で開く
-    strictPort: false, // ポートが使用中の場合は別のポートを使用
-    cors: true, // CORS を有効化
+    host: true,
+    open: true,
+    strictPort: false,
+    cors: true,
     hmr: {
-      overlay: true // エラーオーバーレイを表示
+      overlay: true
     }
   },
 
@@ -47,55 +47,62 @@ export default defineConfig({
     strictPort: false
   },
 
-  // ビルドの設定
+  // ビルドの設定（最適化）
   build: {
     outDir: 'dist',
-    sourcemap: true, // ソースマップを生成
-    minify: 'esbuild', // esbuild による高速な最小化
-    target: 'esnext', // モダンブラウザをターゲット
-    cssCodeSplit: true, // CSS コード分割を有効化
+    sourcemap: true,
+    minify: 'esbuild',
+    target: 'esnext',
+    cssCodeSplit: true,
     
-    // チャンク分割の設定（パフォーマンス最適化）
+    // チャンク分割の最適化
     rollupOptions: {
       output: {
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: 'assets/[ext]/[name]-[hash].[ext]',
         manualChunks: {
-          // vendor: 外部ライブラリ
-          vendor: ['react', 'react-dom'],
-          // ui: UI コンポーネント
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-popover'],
-          // utils: ユーティリティライブラリ
-          utils: ['date-fns', 'clsx', 'tailwind-merge'],
+          // React 関連
+          'react-vendor': ['react', 'react-dom'],
+          // UI ライブラリ
+          'ui-vendor': [
+            '@radix-ui/react-dialog', 
+            '@radix-ui/react-dropdown-menu', 
+            '@radix-ui/react-popover',
+            '@radix-ui/react-checkbox',
+            '@radix-ui/react-slot',
+            '@radix-ui/react-label'
+          ],
+          // ユーティリティライブラリ
+          'utils-vendor': ['date-fns', 'clsx', 'tailwind-merge', 'class-variance-authority'],
+          // アイコン
+          'icons': ['lucide-react'],
+          // カレンダー
+          'calendar': ['react-day-picker']
         }
       }
     },
     
-    // バンドルサイズ警告の閾値
     chunkSizeWarningLimit: 1000,
-    
-    // 圧縮設定
-    reportCompressedSize: false, // ビルド時間短縮のため無効化
+    reportCompressedSize: false,
   },
 
   // CSS の設定
   css: {
-    devSourcemap: true, // 開発時の CSS ソースマップ
+    devSourcemap: true,
     preprocessorOptions: {
       scss: {
-        // SCSS の追加設定がある場合
+        additionalData: `@import "src/styles/variables.scss";`
       }
     },
     modules: {
-      // CSS Modules の設定
       localsConvention: 'camelCase'
     }
   },
 
   // 環境変数の設定
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
 
@@ -108,18 +115,25 @@ export default defineConfig({
       'date-fns',
       'lucide-react',
       'clsx',
-      'tailwind-merge'
+      'tailwind-merge',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-popover',
+      '@radix-ui/react-checkbox',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-label',
+      'react-day-picker'
     ],
-    exclude: [
-      // 最適化から除外するパッケージ
-    ]
+    exclude: []
   },
 
   // 開発時のESBuild設定
   esbuild: {
-    logOverride: { 'this-is-undefined-in-esm': 'silent' },
+    logOverride: { 
+      'this-is-undefined-in-esm': 'silent' 
+    },
     target: 'esnext',
-    jsxInject: `import React from 'react'` // JSX の自動 React インポート
+    jsxInject: `import React from 'react'`
   },
 
   // ワーカーの設定
@@ -147,17 +161,5 @@ export default defineConfig({
         '**/dist/**'
       ]
     }
-  },
-
-  // SSG/SSR の場合の設定（将来的な拡張用）
-  ssr: {
-    noExternal: [
-      // SSR 時に外部化しないパッケージ
-    ]
-  },
-
-  // 実験的機能
-  experimental: {
-    // 将来的な機能のテスト用
   }
 })

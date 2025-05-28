@@ -7,6 +7,7 @@
 
 @layer base {
   :root {
+    /* Light theme colors */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -27,9 +28,22 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    
+    /* カスタムプロパティの整理 */
+    --sidebar-width: 256px;
+    --detail-panel-width: 320px;
+    --header-height: 56px;
+    --timeline-header-height: 80px;
+    
+    /* アニメーション設定 */
+    --animation-duration-fast: 0.15s;
+    --animation-duration-normal: 0.25s;
+    --animation-duration-slow: 0.35s;
+    --animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
+    /* Dark theme colors */
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
@@ -56,14 +70,24 @@
   * {
     @apply border-border;
   }
+  
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* パフォーマンス向上 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* フォーカス可視性の改善 */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
 
-/* カスタムスクロールバー */
+/* カスタムスクロールバー（改善版） */
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -76,6 +100,7 @@
 
   .scrollbar-thin {
     scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -84,45 +109,54 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
-    @apply bg-muted;
+    @apply bg-transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
     @apply bg-muted-foreground/20 rounded-full;
+    transition: background-color var(--animation-duration-fast) var(--animation-easing);
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground/40;
   }
+
+  .scrollbar-thin::-webkit-scrollbar-corner {
+    @apply bg-transparent;
+  }
 }
 
-/* アニメーション関連 */
+/* アニメーション関連（最適化） */
 @layer utilities {
   .animate-fade-in {
-    animation: fadeIn 0.2s ease-in-out;
+    animation: fadeIn var(--animation-duration-normal) var(--animation-easing);
   }
 
   .animate-slide-in-right {
-    animation: slideInRight 0.3s ease-out;
+    animation: slideInRight var(--animation-duration-normal) var(--animation-easing);
   }
 
   .animate-slide-in-left {
-    animation: slideInLeft 0.3s ease-out;
+    animation: slideInLeft var(--animation-duration-normal) var(--animation-easing);
   }
 
   .animate-bounce-in {
-    animation: bounceIn 0.4s ease-out;
+    animation: bounceIn var(--animation-duration-slow) var(--animation-easing);
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { 
+      opacity: 0; 
+    }
+    to { 
+      opacity: 1; 
+    }
   }
 
   @keyframes slideInRight {
     from { 
       opacity: 0;
-      transform: translateX(20px);
+      transform: translateX(1rem);
     }
     to {
       opacity: 1;
@@ -133,7 +167,7 @@
   @keyframes slideInLeft {
     from {
       opacity: 0;
-      transform: translateX(-20px);
+      transform: translateX(-1rem);
     }
     to {
       opacity: 1;
@@ -159,60 +193,81 @@
   }
 }
 
-/* タスクの状態別スタイル */
+/* タスクの状態別スタイル（改善版） */
 @layer components {
   .task-completed {
     @apply opacity-70 line-through text-muted-foreground;
+    transition: all var(--animation-duration-fast) var(--animation-easing);
   }
 
   .task-overdue {
     @apply text-destructive;
+    position: relative;
+  }
+
+  .task-overdue::before {
+    content: '';
+    @apply absolute left-0 top-0 w-1 h-full bg-destructive rounded-r-sm;
   }
 
   .task-milestone {
     @apply font-semibold;
+    position: relative;
+  }
+
+  .task-milestone::after {
+    content: '💎';
+    position: absolute;
+    right: -1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
   }
 
   .task-high-priority {
-    @apply border-l-4 border-l-destructive;
+    @apply border-l-4 border-l-destructive bg-destructive/5;
   }
 
   .task-medium-priority {
-    @apply border-l-4 border-l-yellow-500;
+    @apply border-l-4 border-l-yellow-500 bg-yellow-500/5;
   }
 
   .task-low-priority {
-    @apply border-l-4 border-l-green-500;
+    @apply border-l-4 border-l-green-500 bg-green-500/5;
   }
 }
 
-/* プロジェクトカラー関連 */
-@layer components {
-  .project-border {
-    border-left-width: 4px;
-    border-left-style: solid;
-  }
-}
-
-/* 選択状態のスタイル */
+/* 選択状態のスタイル（改善版） */
 @layer components {
   .selected {
     @apply bg-accent ring-1 ring-primary;
+    transition: all var(--animation-duration-fast) var(--animation-easing);
   }
 
   .multi-selected {
     @apply bg-accent/80 ring-2 ring-primary;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
   }
 }
 
-/* タイムライン専用スタイル */
+/* タイムライン専用スタイル（最適化） */
 @layer components {
   .timeline-grid-line {
     @apply absolute inset-y-0 border-r pointer-events-none;
   }
 
   .timeline-today-indicator {
-    @apply absolute top-0 bg-destructive z-30 shadow-xl;
+    @apply absolute top-0 bg-destructive z-30;
+    box-shadow: 0 0 10px hsl(var(--destructive) / 0.5);
   }
 
   .timeline-weekend {
@@ -224,34 +279,51 @@
   }
 
   .task-bar {
-    @apply absolute rounded-lg shadow-lg flex items-center transition-all duration-200 hover:shadow-xl cursor-pointer;
+    @apply absolute rounded-lg shadow-lg flex items-center cursor-pointer;
+    transition: all var(--animation-duration-fast) var(--animation-easing);
+    will-change: transform, box-shadow;
   }
 
   .task-bar:hover {
     transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 8px 25px hsl(var(--foreground) / 0.15);
   }
 
   .task-connection-line {
     @apply absolute bg-muted-foreground/40 rounded-full;
+    transition: opacity var(--animation-duration-fast) var(--animation-easing);
   }
 }
 
-/* ドラッグ＆ドロップ関連 */
+/* ドラッグ＆ドロップ関連（将来実装用） */
 @layer components {
   .draggable {
     @apply cursor-move;
+    transition: opacity var(--animation-duration-fast) var(--animation-easing);
   }
 
   .dragging {
     @apply opacity-50 cursor-grabbing;
+    transform: rotate(2deg);
   }
 
   .drop-zone {
     @apply border-2 border-dashed border-primary/50 bg-primary/5;
+    transition: all var(--animation-duration-fast) var(--animation-easing);
   }
 
   .drop-zone-active {
     @apply border-primary bg-primary/10;
+    animation: dropZonePulse 1s infinite;
+  }
+
+  @keyframes dropZonePulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.02);
+    }
   }
 }
 
@@ -260,6 +332,11 @@
   @media (max-width: 768px) {
     .hide-on-mobile {
       @apply hidden;
+    }
+    
+    :root {
+      --sidebar-width: 100%;
+      --detail-panel-width: 100%;
     }
   }
 
@@ -287,15 +364,22 @@
   body {
     font-size: 12pt;
     line-height: 1.4;
+    color: black !important;
+    background: white !important;
   }
 
   .task-bar {
     box-shadow: none !important;
     border: 1px solid #ccc !important;
+    background: white !important;
+  }
+
+  .timeline-today-indicator {
+    box-shadow: none !important;
   }
 }
 
-/* アクセシビリティ対応 */
+/* アクセシビリティ対応（強化） */
 @layer utilities {
   .focus-visible-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
@@ -308,6 +392,16 @@
   .sr-only-focusable:focus {
     @apply not-sr-only;
   }
+
+  /* スキップリンク */
+  .skip-link {
+    @apply absolute -top-full left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground px-4 py-2 rounded-md z-50;
+    transition: top var(--animation-duration-fast) var(--animation-easing);
+  }
+
+  .skip-link:focus {
+    @apply top-4;
+  }
 }
 
 /* 高コントラストモード対応 */
@@ -319,6 +413,12 @@
 
   .dark {
     --border: 0 0% 80%;
+    --foreground: 0 0% 100%;
+    --background: 0 0% 0%;
+  }
+
+  .task-bar {
+    border: 2px solid hsl(var(--foreground)) !important;
   }
 }
 
@@ -330,13 +430,67 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .task-bar:hover {
+    transform: none !important;
   }
 }
 
-/* カスタムプロパティ */
-:root {
-  --sidebar-width: 256px;
-  --detail-panel-width: 320px;
-  --header-height: 56px;
-  --timeline-header-height: 80px;
+/* 低電力モード対応（実験的） */
+@media (prefers-reduced-data) {
+  .animate-fade-in,
+  .animate-slide-in-right,
+  .animate-slide-in-left,
+  .animate-bounce-in {
+    animation: none;
+  }
+}
+
+/* エラー状態のスタイル */
+@layer components {
+  .error-boundary {
+    @apply min-h-screen flex items-center justify-center bg-background text-foreground;
+  }
+
+  .error-message {
+    @apply text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-4;
+  }
+
+  .warning-message {
+    @apply text-yellow-600 bg-yellow-50 border border-yellow-200 rounded-lg p-4;
+  }
+
+  .info-message {
+    @apply text-blue-600 bg-blue-50 border border-blue-200 rounded-lg p-4;
+  }
+
+  .success-message {
+    @apply text-green-600 bg-green-50 border border-green-200 rounded-lg p-4;
+  }
+}
+
+/* パフォーマンス最適化 */
+@layer utilities {
+  .gpu-accelerate {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  .contain-layout {
+    contain: layout;
+  }
+
+  .contain-paint {
+    contain: paint;
+  }
+
+  .contain-size {
+    contain: size;
+  }
+
+  .contain-strict {
+    contain: strict;
+  }
 }
