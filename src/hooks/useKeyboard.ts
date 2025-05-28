@@ -323,6 +323,8 @@ export function useKeyboard() {
       }
     } catch (error) {
       console.error('Error setting up keyboard event listeners:', error)
+      // エラーが発生してもクリーンアップ関数は返す
+      return () => {}
     }
   }, [handleKeyDown])
 

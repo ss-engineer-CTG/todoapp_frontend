@@ -207,7 +207,9 @@ const TaskBar: React.FC<TaskBarProps> = ({ task, project }) => {
                   <div className="w-2 h-2 bg-blue-500 rounded-full" title="メモあり" />
                 )}
                 {taskInfo.hasAssignee && (
-                  <User size={10} className="text-muted-foreground" title={`担当: ${task.assignee}`} />
+                  <div title={`担当: ${task.assignee}`}>
+                    <User size={10} className="text-muted-foreground" />
+                  </div>
                 )}
                 {task.priority === 'high' && (
                   <div className="w-2 h-2 bg-red-500 rounded-full" title="高優先度" />

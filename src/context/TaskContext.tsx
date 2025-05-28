@@ -273,7 +273,7 @@ function taskReducer(state: TaskState, action: TaskAction): TaskState {
         return { ...state, copiedTasks: action.payload }
 
       case 'START_ADD_TASK':
-        if (!action.payload) {
+        if (!action.payload || typeof action.payload !== 'object') {
           console.warn('START_ADD_TASK: invalid payload:', action.payload)
           return state
         }
@@ -367,6 +367,8 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       
       return () => clearTimeout(timer)
     }
+    // 戻り値を統一
+    return undefined
   }, [state.error])
 
   return (

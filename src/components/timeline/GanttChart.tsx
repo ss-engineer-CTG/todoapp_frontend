@@ -179,8 +179,10 @@ const GanttChart: React.FC = () => {
         className="flex-1 relative overflow-auto scrollbar-thin"
         onScroll={handleScroll}
         ref={(ref) => {
-          timelineContentRef.current = ref
-          setTimelineRef(ref)
+          if (ref && ref !== timelineContentRef.current) {
+            timelineContentRef.current = ref
+            setTimelineRef(ref)
+          }
         }}
         style={{
           scrollbarGutter: 'stable'

@@ -142,6 +142,8 @@ export const ToastMessage: React.FC<ErrorMessageProps & {
       
       return () => clearTimeout(timer)
     }
+    // 戻り値を統一
+    return undefined
   }, [duration, onClose])
 
   if (!isVisible) return null

@@ -130,11 +130,14 @@ const TimelineGrid: React.FC = () => {
       return visibleDates.map((weekStart, weekIndex) => {
         if (!weekStart) return null
 
-        const weekDates = []
+        const weekDates: Date[] = []
+        const lastVisibleDate = visibleDates[visibleDates.length - 1]
+        if (!lastVisibleDate) return null
+
         for (let i = 0; i < 7; i++) {
           const currentDate = new Date(weekStart)
           currentDate.setDate(currentDate.getDate() + i)
-          if (currentDate <= new Date(visibleDates[visibleDates.length - 1]!.getTime() + 6 * 24 * 60 * 60 * 1000)) {
+          if (currentDate <= new Date(lastVisibleDate.getTime() + 6 * 24 * 60 * 60 * 1000)) {
             weekDates.push(currentDate)
           }
         }

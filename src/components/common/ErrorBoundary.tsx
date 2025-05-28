@@ -39,7 +39,7 @@ class ErrorBoundary extends Component<Props, State> {
     }
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const errorDetails = {
       message: error.message,
       stack: error.stack,
@@ -146,7 +146,7 @@ ${this.state.errorInfo?.componentStack || 'No component stack available'}
     }
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       // カスタムフォールバックUIが提供されている場合はそれを使用
       if (this.props.fallback) {
