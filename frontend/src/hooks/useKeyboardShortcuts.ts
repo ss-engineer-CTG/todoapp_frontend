@@ -5,7 +5,6 @@ interface UseKeyboardShortcutsProps {
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
   projects: Project[]
-  setProjects: (projects: Project[]) => void
   selectedProjectId: string
   setSelectedProjectId: (id: string) => void
   selectedTaskId: string | null
@@ -16,7 +15,6 @@ interface UseKeyboardShortcutsProps {
   activeArea: string
   setActiveArea: (area: "projects" | "tasks" | "details") => void
   isDetailPanelVisible: boolean
-  setIsDetailPanelVisible: (visible: boolean) => void
   isMultiSelectMode: boolean
   setIsMultiSelectMode: (mode: boolean) => void
   taskRelationMap: TaskRelationMap
@@ -28,7 +26,6 @@ export const useKeyboardShortcuts = ({
   tasks,
   setTasks,
   projects,
-  setProjects,
   selectedProjectId,
   setSelectedProjectId,
   selectedTaskId,
@@ -39,10 +36,8 @@ export const useKeyboardShortcuts = ({
   activeArea,
   setActiveArea,
   isDetailPanelVisible,
-  setIsDetailPanelVisible,
   isMultiSelectMode,
   setIsMultiSelectMode,
-  taskRelationMap,
   copiedTasks,
   setCopiedTasks
 }: UseKeyboardShortcutsProps) => {
@@ -61,7 +56,7 @@ export const useKeyboardShortcuts = ({
             const task = tasks.find((t) => t.id === selectedTaskId)
             if (task) {
               e.preventDefault()
-              // handleAddTask(task.parentId, task.level)
+              // 将来の実装: handleAddTask(task.parentId, task.level)
             }
           }
           break
@@ -69,7 +64,7 @@ export const useKeyboardShortcuts = ({
         case "Tab":
           if (activeArea === "tasks" && selectedTaskId) {
             e.preventDefault()
-            // handleAddTask(selectedTaskId, (tasks.find((t) => t.id === selectedTaskId)?.level || 0) + 1)
+            // 将来の実装: handleAddTask(selectedTaskId, (tasks.find((t) => t.id === selectedTaskId)?.level || 0) + 1)
           }
           break
 
@@ -77,7 +72,7 @@ export const useKeyboardShortcuts = ({
         case "Backspace":
           if (selectedTaskId) {
             e.preventDefault()
-            // handleDeleteTask(selectedTaskId)
+            // 将来の実装: handleDeleteTask(selectedTaskId)
           }
           break
 
@@ -94,7 +89,7 @@ export const useKeyboardShortcuts = ({
         case "v":
           if (e.ctrlKey && copiedTasks.length > 0) {
             e.preventDefault()
-            // handlePasteTask()
+            // 将来の実装: handlePasteTask()
           }
           break
 
@@ -204,7 +199,6 @@ export const useKeyboardShortcuts = ({
     projects,
     isDetailPanelVisible,
     isMultiSelectMode,
-    taskRelationMap,
     setTasks,
     setCopiedTasks,
     setSelectedTaskId,

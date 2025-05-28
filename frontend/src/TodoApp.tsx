@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Project, Task } from './types'
 import { ProjectPanel } from './components/ProjectPanel'
 import { TaskPanel } from './components/TaskPanel'
@@ -120,7 +120,7 @@ const TodoApp: React.FC = () => {
     if (!showCompleted && task.completed) return false
 
     if (task.parentId) {
-      let currentParentId = task.parentId
+      let currentParentId: string | null = task.parentId
       while (currentParentId) {
         const currentParent = tasks.find((t) => t.id === currentParentId)
         if (currentParent && currentParent.collapsed) return false
@@ -193,7 +193,6 @@ const TodoApp: React.FC = () => {
     tasks,
     setTasks: handleTaskUpdate,
     projects,
-    setProjects: handleProjectUpdate,
     selectedProjectId,
     setSelectedProjectId,
     selectedTaskId,
@@ -204,7 +203,6 @@ const TodoApp: React.FC = () => {
     activeArea,
     setActiveArea,
     isDetailPanelVisible,
-    setIsDetailPanelVisible,
     isMultiSelectMode,
     setIsMultiSelectMode,
     taskRelationMap,
@@ -239,7 +237,6 @@ const TodoApp: React.FC = () => {
         showCompleted={showCompleted}
         setShowCompleted={setShowCompleted}
         taskRelationMap={taskRelationMap}
-        copiedTasks={copiedTasks}
         setCopiedTasks={setCopiedTasks}
         allTasks={tasks}
       />

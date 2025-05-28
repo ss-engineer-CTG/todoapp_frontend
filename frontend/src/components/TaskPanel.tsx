@@ -34,7 +34,6 @@ interface TaskPanelProps {
   showCompleted: boolean
   setShowCompleted: (show: boolean) => void
   taskRelationMap: TaskRelationMap
-  copiedTasks: Task[]
   setCopiedTasks: (tasks: Task[]) => void
   allTasks: Task[]
 }
@@ -55,7 +54,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   showCompleted,
   setShowCompleted,
   taskRelationMap,
-  copiedTasks,
   setCopiedTasks,
   allTasks
 }) => {
@@ -356,7 +354,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                     className="p-1 hover:bg-accent rounded"
                     onClick={(e) => {
                       e.stopPropagation()
-                      // ドロップダウンメニューの表示処理
+                      // 将来の拡張用プレースホルダー
                     }}
                   >
                     <MoreHorizontal className="h-3 w-3" />

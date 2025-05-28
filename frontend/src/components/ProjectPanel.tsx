@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { Project, ProjectColor } from '../types'
-import { Plus, MoreHorizontal, Edit, Trash, Check } from 'lucide-react'
+import { Plus, MoreHorizontal, Check } from 'lucide-react'
 
 const PROJECT_COLORS: ProjectColor[] = [
   { name: "オレンジ", value: "#f97316" },
@@ -33,13 +33,8 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
   const [isAddingProject, setIsAddingProject] = useState(false)
   const [newProjectName, setNewProjectName] = useState("")
   const [newProjectColor, setNewProjectColor] = useState(getRandomColor())
-  const [isEditingProject, setIsEditingProject] = useState(false)
-  const [editingProjectId, setEditingProjectId] = useState<string | null>(null)
-  const [editingProjectName, setEditingProjectName] = useState("")
-  const [editingProjectColor, setEditingProjectColor] = useState("")
 
   const newProjectInputRef = useRef<HTMLInputElement>(null)
-  const editProjectInputRef = useRef<HTMLInputElement>(null)
 
   function getRandomColor() {
     return PROJECT_COLORS[Math.floor(Math.random() * PROJECT_COLORS.length)].value
@@ -71,44 +66,6 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
       onProjectSelect(newProject.id)
     } else {
       setIsAddingProject(false)
-    }
-  }
-
-  const handleEditProject = (projectId: string) => {
-    const project = projects.find((p) => p.id === projectId)
-    if (project) {
-      setEditingProjectId(projectId)
-      setEditingProjectName(project.name)
-      setEditingProjectColor(project.color)
-      setIsEditingProject(true)
-      setTimeout(() => {
-        editProjectInputRef.current?.focus()
-      }, 0)
-    }
-  }
-
-  const handleSaveEditProject = () => {
-    if (editingProjectName.trim() && editingProjectId) {
-      onProjectsUpdate(
-        projects.map((project) =>
-          project.id === editingProjectId
-            ? { ...project, name: editingProjectName, color: editingProjectColor }
-            : project
-        )
-      )
-      setIsEditingProject(false)
-      setEditingProjectId(null)
-    } else {
-      setIsEditingProject(false)
-      setEditingProjectId(null)
-    }
-  }
-
-  const handleDeleteProject = (projectId: string) => {
-    onProjectsUpdate(projects.filter((project) => project.id !== projectId))
-    if (selectedProjectId === projectId && projects.length > 1) {
-      const remainingProjects = projects.filter((p) => p.id !== projectId)
-      onProjectSelect(remainingProjects[0]?.id || "")
     }
   }
 
@@ -164,43 +121,6 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
         </div>
       )}
 
-      {isEditingProject && editingProjectId && (
-        <div className="mb-2 space-y-2">
-          <input
-            ref={editProjectInputRef}
-            value={editingProjectName}
-            onChange={(e) => setEditingProjectName(e.target.value)}
-            onBlur={handleSaveEditProject}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveEditProject()
-              if (e.key === "Escape") {
-                setIsEditingProject(false)
-                setEditingProjectId(null)
-              }
-            }}
-            placeholder="プロジェクト名"
-            className="w-full p-2 border rounded bg-background"
-          />
-          <div className="flex flex-wrap gap-1">
-            {PROJECT_COLORS.map((color) => (
-              <button
-                key={color.value}
-                className={`w-6 h-6 rounded-full border ${
-                  editingProjectColor === color.value ? "ring-2 ring-primary" : ""
-                }`}
-                style={{ backgroundColor: color.value }}
-                onClick={() => setEditingProjectColor(color.value)}
-                title={color.name}
-              >
-                {editingProjectColor === color.value && (
-                  <Check className="h-4 w-4 text-white mx-auto" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="space-y-1 overflow-y-auto flex-grow">
         {projects.map((project) => (
           <div
@@ -219,12 +139,11 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
                 className="p-1 opacity-0 group-hover:opacity-100 hover:bg-accent rounded"
                 onClick={(e) => {
                   e.stopPropagation()
-                  // ここでドロップダウンメニューを表示する処理
+                  // 将来の拡張用プレースホルダー
                 }}
               >
                 <MoreHorizontal className="h-4 w-4" />
               </button>
-              {/* ドロップダウンメニューはシンプルな実装で表示 */}
             </div>
           </div>
         ))}
