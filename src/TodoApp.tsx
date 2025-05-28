@@ -22,7 +22,7 @@ const LoadingScreen: React.FC = () => (
   </div>
 )
 
-// メインアプリケーションコンテンツ
+// メインアプリケーションコンテンツ（Context内で使用）
 const AppContent: React.FC = () => {
   const [isInitialized, setIsInitialized] = React.useState(false)
   const { state } = useAppContext()
@@ -31,6 +31,11 @@ const AppContent: React.FC = () => {
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setIsInitialized(true)
+      // 初期ローダーを確実に非表示にする
+      const loader = document.getElementById('initial-loader')
+      if (loader) {
+        loader.style.display = 'none'
+      }
     }, 100)
 
     return () => clearTimeout(timer)
@@ -73,23 +78,16 @@ const AppContent: React.FC = () => {
   )
 }
 
-// Contextプロバイダーラッパー
-const ContextProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// メインアプリケーション（Context Provider内でAppContentを使用）
+const MainApp: React.FC = () => {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
-      <AppProvider>
-        <ProjectProvider>
-          <TaskProvider>
-            {children}
-          </TaskProvider>
-        </ProjectProvider>
-      </AppProvider>
-    </ThemeProvider>
+    <AppProvider>
+      <ProjectProvider>
+        <TaskProvider>
+          <AppContent />
+        </TaskProvider>
+      </ProjectProvider>
+    </AppProvider>
   )
 }
 
@@ -97,9 +95,14 @@ const ContextProviders: React.FC<{ children: React.ReactNode }> = ({ children })
 const TodoApp: React.FC = () => {
   return (
     <ErrorBoundary>
-      <ContextProviders>
-        <AppContent />
-      </ContextProviders>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <MainApp />
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }

@@ -41,12 +41,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <!-- セキュリティヘッダー -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self';" />
-  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-  <meta http-equiv="X-Frame-Options" content="DENY" />
-  <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
-
   <title>統合プロジェクト管理</title>
 
   <!-- 初期テーマ設定スクリプト（フラッシュを防ぐため） -->
@@ -82,9 +76,8 @@
       transition: opacity 0.3s ease-out;
     }
 
-    .dark #initial-loader {
+    html.dark #initial-loader {
       background: #0f172a;
-      color: #f8fafc;
     }
 
     .loader-spinner {
@@ -96,7 +89,7 @@
       animation: spin 1s linear infinite;
     }
 
-    .dark .loader-spinner {
+    html.dark .loader-spinner {
       border-color: #374151;
       border-top-color: #3b82f6;
     }
@@ -112,7 +105,7 @@
       font-size: 14px;
     }
 
-    .dark .loader-text {
+    html.dark .loader-text {
       color: #9ca3af;
     }
   </style>
@@ -134,7 +127,8 @@
 
   <!-- ローダーを非表示にするスクリプト -->
   <script>
-    window.addEventListener('load', function() {
+    // DOMContentLoaded時にローダーを非表示
+    document.addEventListener('DOMContentLoaded', function() {
       setTimeout(function() {
         const loader = document.getElementById('initial-loader');
         if (loader) {
@@ -143,16 +137,16 @@
             loader.style.display = 'none';
           }, 300);
         }
-      }, 500);
+      }, 100);
     });
 
-    // フォールバック: 5秒後に強制的にローダーを非表示
+    // フォールバック: 3秒後に強制的にローダーを非表示
     setTimeout(function() {
       const loader = document.getElementById('initial-loader');
       if (loader) {
         loader.style.display = 'none';
       }
-    }, 5000);
+    }, 3000);
   </script>
 
   <!-- ノンスクリプト環境での代替メッセージ -->
