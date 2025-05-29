@@ -479,8 +479,9 @@ async def batch_update_tasks(operation: BatchOperation, db: sqlite3.Connection =
         raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
-# ヘルスチェック
+# ヘルスチェック（GETとHEADの両方に対応）
 @app.get("/api/health")
+@app.head("/api/health")
 async def health_check():
     """ヘルスチェック"""
     return {"status": "healthy", "timestamp": datetime.now()}
