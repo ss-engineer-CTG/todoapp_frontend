@@ -21,8 +21,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ShortcutGuideDialog } from './ShortcutGuideDialog'
 import { useTheme } from './ThemeProvider'
-import { useAutoScroll } from '../hooks/useAutoScroll' // 新規追加
-import { useLogger } from '../hooks/useLogger' // 新規追加
 import { cn } from '@/lib/utils'
 
 interface TaskPanelProps {
@@ -73,7 +71,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   onClearSelection
 }) => {
   const { theme, setTheme } = useTheme()
-  const logger = useLogger() // 新規追加
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskName, setNewTaskName] = useState("")
   const [newTaskParentId, setNewTaskParentId] = useState<string | null>(null)
@@ -81,16 +78,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
 
   const newTaskInputRef = useRef<HTMLInputElement>(null)
 
-  // 自動スクロール機能を追加
-  const { setItemRef } = useAutoScroll({
-    selectedItemId: selectedTaskId,
-    items: tasks,
-    behavior: 'smooth',
-    block: 'nearest'
-  })
-
   const handleAddTaskClick = (parentId: string | null = null, level = 0) => {
-    logger.info('Adding new task', { parentId, level }) // ログ追加
     setIsAddingTask(true)
     setNewTaskParentId(parentId)
     setNewTaskLevel(level)
@@ -118,7 +106,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         collapsed: false,
       }
 
-      logger.info('New task created', { taskId: newTask.id, name: newTask.name }) // ログ追加
       onTasksUpdate([...allTasks, newTask])
       setNewTaskName("")
       setIsAddingTask(false)
@@ -129,7 +116,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   }
 
   const toggleDetailPanel = () => {
-    logger.debug('Toggling detail panel', { isVisible: !isDetailPanelVisible }) // ログ追加
     setIsDetailPanelVisible(!isDetailPanelVisible)
     if (!isDetailPanelVisible && activeArea === "details") {
       setActiveArea("tasks")
@@ -137,7 +123,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   }
 
   const toggleMultiSelectMode = () => {
-    logger.debug('Toggling multi-select mode', { isActive: !isMultiSelectMode }) // ログ追加
     if (isMultiSelectMode) {
       setIsMultiSelectMode(false)
       if (selectedTaskIds.length > 0) {
@@ -262,7 +247,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             {tasks.map((task) => (
               <div
                 key={task.id}
-                ref={setItemRef(task.id)} // 自動スクロール用のref設定
                 className={cn(
                   "flex items-start p-2 rounded-md cursor-pointer group transition-colors",
                   selectedTaskId === task.id ? "bg-accent" : "hover:bg-accent/50",

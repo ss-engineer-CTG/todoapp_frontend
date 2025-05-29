@@ -1,5 +1,4 @@
 import sqlite3
-import logging
 import os
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -9,17 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
-# ログ設定（文字化け対策）
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
-
-# パス設定の一元管理
+# パス設定
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_PATH = os.path.join(BASE_DIR, "todo.db")
 SCHEMA_PATH = os.path.join(BASE_DIR, "schema.sql")
@@ -32,16 +21,15 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return conn
     except sqlite3.Error as e:
-        logger.error(f"Database connection error: {e}")
+        print(f"Database connection error: {e}")
         raise HTTPException(status_code=500, detail="Database connection error")
 
 
 def init_database():
     """データベース初期化"""
     try:
-        # スキーマファイルの存在確認
         if not os.path.exists(SCHEMA_PATH):
-            logger.error(f"Schema file not found: {SCHEMA_PATH}")
+            print(f"Schema file not found: {SCHEMA_PATH}")
             raise FileNotFoundError(f"Schema file not found: {SCHEMA_PATH}")
         
         with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
@@ -52,9 +40,9 @@ def init_database():
         conn.commit()
         conn.close()
         
-        logger.info(f"Database initialized successfully at: {DATABASE_PATH}")
+        print(f"Database initialized successfully at: {DATABASE_PATH}")
     except Exception as e:
-        logger.error(f"Database initialization error: {e}")
+        print(f"Database initialization error: {e}")
         raise
 
 
@@ -62,22 +50,22 @@ def init_database():
 async def lifespan(app: FastAPI):
     """アプリケーションのライフサイクル管理"""
     # 起動時の処理
-    logger.info("Starting application...")
-    logger.info(f"Base directory: {BASE_DIR}")
-    logger.info(f"Database path: {DATABASE_PATH}")
-    logger.info(f"Schema path: {SCHEMA_PATH}")
+    print("Starting application...")
+    print(f"Base directory: {BASE_DIR}")
+    print(f"Database path: {DATABASE_PATH}")
+    print(f"Schema path: {SCHEMA_PATH}")
     
     try:
         init_database()
-        logger.info("Application startup completed")
+        print("Application startup completed")
     except Exception as e:
-        logger.error(f"Application startup failed: {e}")
+        print(f"Application startup failed: {e}")
         raise
     
     yield
     
     # 終了時の処理
-    logger.info("Shutting down application...")
+    print("Shutting down application...")
 
 
 # FastAPIアプリケーションの作成
@@ -175,7 +163,7 @@ def generate_id(prefix: str) -> str:
     return f"{prefix}{int(time.time() * 1000)}"
 
 
-# ルートエンドポイント（ヘルスチェック用）
+# ルートエンドポイント
 @app.get("/")
 async def root():
     """ルートエンドポイント"""
@@ -187,16 +175,13 @@ async def root():
 async def get_projects(db: sqlite3.Connection = Depends(get_db)):
     """プロジェクト一覧取得"""
     try:
-        cursor = db.execute(
-            "SELECT * FROM projects ORDER BY created_at"
-        )
+        cursor = db.execute("SELECT * FROM projects ORDER BY created_at")
         projects = [row_to_dict(row) for row in cursor.fetchall()]
         db.close()
-        
-        logger.info(f"Retrieved {len(projects)} projects")
+        print(f"Retrieved {len(projects)} projects")
         return projects
     except Exception as e:
-        logger.error(f"Error retrieving projects: {e}")
+        print(f"Error retrieving projects: {e}")
         db.close()
         raise HTTPException(status_code=500, detail="Failed to retrieve projects")
 
@@ -215,15 +200,14 @@ async def create_project(project: ProjectCreate, db: sqlite3.Connection = Depend
         )
         db.commit()
         
-        # 作成されたプロジェクトを取得
         cursor = db.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
         created_project = row_to_dict(cursor.fetchone())
         db.close()
         
-        logger.info(f"Created project: {created_project['name']}")
+        print(f"Created project: {created_project['name']}")
         return created_project
     except Exception as e:
-        logger.error(f"Error creating project: {e}")
+        print(f"Error creating project: {e}")
         db.close()
         raise HTTPException(status_code=500, detail="Failed to create project")
 
@@ -243,7 +227,7 @@ async def get_project(project_id: str, db: sqlite3.Connection = Depends(get_db))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error retrieving project: {e}")
+        print(f"Error retrieving project: {e}")
         db.close()
         raise HTTPException(status_code=500, detail="Failed to retrieve project")
 
@@ -252,13 +236,11 @@ async def get_project(project_id: str, db: sqlite3.Connection = Depends(get_db))
 async def update_project(project_id: str, project: ProjectUpdate, db: sqlite3.Connection = Depends(get_db)):
     """プロジェクト更新"""
     try:
-        # 存在確認
         cursor = db.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
         if not cursor.fetchone():
             db.close()
             raise HTTPException(status_code=404, detail="Project not found")
         
-        # 更新フィールドを構築
         update_fields = []
         values = []
         
@@ -275,17 +257,16 @@ async def update_project(project_id: str, project: ProjectUpdate, db: sqlite3.Co
             db.execute(query, values)
             db.commit()
         
-        # 更新されたプロジェクトを取得
         cursor = db.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
         updated_project = row_to_dict(cursor.fetchone())
         db.close()
         
-        logger.info(f"Updated project: {updated_project['name']}")
+        print(f"Updated project: {updated_project['name']}")
         return updated_project
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating project: {e}")
+        print(f"Error updating project: {e}")
         db.close()
         raise HTTPException(status_code=500, detail="Failed to update project")
 
@@ -294,23 +275,21 @@ async def update_project(project_id: str, project: ProjectUpdate, db: sqlite3.Co
 async def delete_project(project_id: str, db: sqlite3.Connection = Depends(get_db)):
     """プロジェクト削除"""
     try:
-        # 存在確認
         cursor = db.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
         if not cursor.fetchone():
             db.close()
             raise HTTPException(status_code=404, detail="Project not found")
         
-        # プロジェクトを削除（関連タスクも自動削除される）
         db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
         db.commit()
         db.close()
         
-        logger.info(f"Deleted project: {project_id}")
+        print(f"Deleted project: {project_id}")
         return {"message": "Project deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting project: {e}")
+        print(f"Error deleting project: {e}")
         db.close()
         raise HTTPException(status_code=500, detail="Failed to delete project")
 
@@ -331,10 +310,10 @@ async def get_tasks(project_id: Optional[str] = None, db: sqlite3.Connection = D
         tasks = [row_to_dict(row) for row in cursor.fetchall()]
         db.close()
         
-        logger.info(f"Retrieved {len(tasks)} tasks")
+        print(f"Retrieved {len(tasks)} tasks")
         return tasks
     except Exception as e:
-        logger.error(f"Error retrieving tasks: {e}")
+        print(f"Error retrieving tasks: {e}")
         db.close()
         raise HTTPException(status_code=500, detail="Failed to retrieve tasks")
 
@@ -356,15 +335,14 @@ async def create_task(task: TaskCreate, db: sqlite3.Connection = Depends(get_db)
         )
         db.commit()
         
-        # 作成されたタスクを取得
         cursor = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
         created_task = row_to_dict(cursor.fetchone())
         db.close()
         
-        logger.info(f"Created task: {created_task['name']}")
+        print(f"Created task: {created_task['name']}")
         return created_task
     except Exception as e:
-        logger.error(f"Error creating task: {e}")
+        print(f"Error creating task: {e}")
         db.close()
         raise HTTPException(status_code=500, detail="Failed to create task")
 
@@ -384,7 +362,7 @@ async def get_task(task_id: str, db: sqlite3.Connection = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error retrieving task: {e}")
+        print(f"Error retrieving task: {e}")
         db.close()
         raise HTTPException(status_code=500, detail="Failed to retrieve task")
 
@@ -393,13 +371,11 @@ async def get_task(task_id: str, db: sqlite3.Connection = Depends(get_db)):
 async def update_task(task_id: str, task: TaskUpdate, db: sqlite3.Connection = Depends(get_db)):
     """タスク更新"""
     try:
-        # 存在確認
         cursor = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
         if not cursor.fetchone():
             db.close()
             raise HTTPException(status_code=404, detail="Task not found")
         
-        # 更新フィールドを構築
         update_fields = []
         values = []
         
@@ -416,16 +392,16 @@ async def update_task(task_id: str, task: TaskUpdate, db: sqlite3.Connection = D
             db.execute(query, values)
             db.commit()
         
-        # 更新されたタスクを取得
         cursor = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
         updated_task = row_to_dict(cursor.fetchone())
         db.close()
-        logger.info(f"Updated task: {updated_task['name']}")
+        
+        print(f"Updated task: {updated_task['name']}")
         return updated_task
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating task: {e}")
+        print(f"Error updating task: {e}")
         db.close()
         raise HTTPException(status_code=500, detail="Failed to update task")
 
@@ -434,23 +410,21 @@ async def update_task(task_id: str, task: TaskUpdate, db: sqlite3.Connection = D
 async def delete_task(task_id: str, db: sqlite3.Connection = Depends(get_db)):
     """タスク削除"""
     try:
-        # 存在確認
         cursor = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
         if not cursor.fetchone():
             db.close()
             raise HTTPException(status_code=404, detail="Task not found")
         
-        # タスクを削除（子タスクも自動削除される）
         db.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
         db.commit()
         db.close()
         
-        logger.info(f"Deleted task: {task_id}")
+        print(f"Deleted task: {task_id}")
         return {"message": "Task deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting task: {e}")
+        print(f"Error deleting task: {e}")
         db.close()
         raise HTTPException(status_code=500, detail="Failed to delete task")
 
@@ -460,7 +434,6 @@ async def batch_update_tasks(operation: BatchOperation, db: sqlite3.Connection =
     """複数タスクの一括操作"""
     try:
         if operation.operation == "complete":
-            # タスクを完了状態にする
             now = datetime.now()
             placeholders = ",".join(["?" for _ in operation.task_ids])
             db.execute(
@@ -468,14 +441,12 @@ async def batch_update_tasks(operation: BatchOperation, db: sqlite3.Connection =
                 [True, now, now] + operation.task_ids
             )
         elif operation.operation == "incomplete":
-            # タスクを未完了状態にする
             placeholders = ",".join(["?" for _ in operation.task_ids])
             db.execute(
                 f"UPDATE tasks SET completed = ?, completion_date = ?, updated_at = ? WHERE id IN ({placeholders})",
                 [False, None, datetime.now()] + operation.task_ids
             )
         elif operation.operation == "delete":
-            # タスクを削除
             placeholders = ",".join(["?" for _ in operation.task_ids])
             db.execute(f"DELETE FROM tasks WHERE id IN ({placeholders})", operation.task_ids)
         else:
@@ -485,17 +456,17 @@ async def batch_update_tasks(operation: BatchOperation, db: sqlite3.Connection =
         db.commit()
         db.close()
         
-        logger.info(f"Batch operation executed: {operation.operation}, targets: {len(operation.task_ids)}")
+        print(f"Batch operation executed: {operation.operation}, targets: {len(operation.task_ids)}")
         return {"message": f"{operation.operation} operation executed successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Batch operation error: {e}")
+        print(f"Batch operation error: {e}")
         db.close()
         raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
-# ヘルスチェック（GETとHEADの両方に対応）
+# ヘルスチェック
 @app.get("/api/health")
 @app.head("/api/health")
 async def health_check():

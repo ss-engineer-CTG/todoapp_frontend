@@ -68,9 +68,9 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: true
     },
-    icon: path.join(__dirname, 'assets', 'icon.png'), // アイコンファイルがある場合
+    icon: path.join(__dirname, 'assets', 'icon.png'),
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    show: false // 起動時は非表示にして、準備完了後に表示
+    show: false
   })
 
   // フロントエンドのURLを設定
@@ -89,7 +89,6 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
     
-    // 開発環境でのフォーカス設定
     if (isDev) {
       mainWindow.focus()
     }
@@ -106,7 +105,7 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-  // ナビゲーション制御（セキュリティ強化）
+  // ナビゲーション制御
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl)
     
@@ -122,19 +121,14 @@ app.whenReady().then(async () => {
   console.log('Electronアプリケーションの準備が完了しました')
   
   try {
-    // Pythonバックエンドを起動
     await startPythonBackend()
-    
-    // メインウィンドウを作成
     createWindow()
-    
     console.log('アプリケーションの起動が完了しました')
   } catch (error) {
     console.error('アプリケーションの起動に失敗しました:', error)
     app.quit()
   }
 
-  // macOSでアプリケーションがアクティブになったときの処理
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
@@ -146,7 +140,6 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   stopPythonBackend()
   
-  // macOS以外では、すべてのウィンドウが閉じられたらアプリケーションを終了
   if (process.platform !== 'darwin') {
     app.quit()
   }
@@ -157,23 +150,3 @@ app.on('before-quit', () => {
   console.log('アプリケーションを終了しています...')
   stopPythonBackend()
 })
-
-// セキュリティ強化：証明書エラーを処理
-app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
-  if (isDev && url.startsWith('http://localhost:')) {
-    // 開発環境ではlocalhostの証明書エラーを許可
-    event.preventDefault()
-    callback(true)
-  } else {
-    // 本番環境では厳格に処理
-    callback(false)
-  }
-})
-
-// GPU関連の問題を回避（必要に応じて）
-if (!isDev) {
-  app.disableHardwareAcceleration()
-}
-
-// ファイルプロトコルの許可設定
-app.setAsDefaultProtocolClient('todoapp')

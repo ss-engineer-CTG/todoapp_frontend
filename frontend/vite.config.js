@@ -8,13 +8,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      // 新規追加：パスエイリアス拡張
-      "@components": path.resolve(__dirname, "./src/components"),
-      "@hooks": path.resolve(__dirname, "./src/hooks"),
-      "@utils": path.resolve(__dirname, "./src/utils"),
-      "@config": path.resolve(__dirname, "./src/config"),
-      "@types": path.resolve(__dirname, "./src/types"),
-      "@shared": path.resolve(__dirname, "../shared"),
     },
   },
   server: {

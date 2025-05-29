@@ -1,7 +1,6 @@
 import { ProjectColor, KeyboardShortcut } from '../types'
-import { FRONTEND_CONFIG } from '../config/app' // 設定統合
 
-// プロジェクトカラー（既存）
+// プロジェクトカラー
 export const PROJECT_COLORS: ProjectColor[] = [
   { name: "オレンジ", value: "#f97316" },
   { name: "紫", value: "#8b5cf6" },
@@ -13,7 +12,7 @@ export const PROJECT_COLORS: ProjectColor[] = [
   { name: "ティール", value: "#14b8a6" },
 ]
 
-// キーボードショートカット（既存）
+// キーボードショートカット
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Enter", description: "同じレベルで新規タスク追加" },
   { key: "Tab", description: "選択したタスクの子タスクを追加" },
@@ -32,48 +31,5 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Escape", description: "複数選択モードを解除" },
 ]
 
-// テーマストレージキー（既存）
-export const THEME_STORAGE_KEY = FRONTEND_CONFIG.STORAGE_KEYS.THEME
-
-// 新規追加：DRY原則適用
-export const APP_CONSTANTS = {
-  // アプリケーション情報
-  APP_NAME: FRONTEND_CONFIG.NAME,
-  APP_VERSION: FRONTEND_CONFIG.VERSION,
-  
-  // デフォルト値
-  DEFAULT_PROJECT_COLOR: FRONTEND_CONFIG.DEFAULTS.PROJECT_COLOR,
-  DEFAULT_ASSIGNEE: FRONTEND_CONFIG.DEFAULTS.ASSIGNEE,
-  DEFAULT_TASK_LEVEL: FRONTEND_CONFIG.DEFAULTS.TASK_LEVEL,
-  
-  // UI設定
-  SCROLL_BEHAVIOR: FRONTEND_CONFIG.UI.SCROLL.BEHAVIOR,
-  SCROLL_BLOCK: FRONTEND_CONFIG.UI.SCROLL.BLOCK,
-  ANIMATION_DURATION: FRONTEND_CONFIG.UI.ANIMATION.DURATION,
-  
-  // API設定
-  API_TIMEOUT: FRONTEND_CONFIG.API.TIMEOUT,
-  
-  // ストレージキー
-  STORAGE_KEYS: FRONTEND_CONFIG.STORAGE_KEYS
-} as const
-
-// エラーメッセージ（統一化）
-export const ERROR_MESSAGES = {
-  TASK_NOT_FOUND: 'タスクが見つかりません',
-  PROJECT_NOT_FOUND: 'プロジェクトが見つかりません',
-  INVALID_INPUT: '入力内容が正しくありません',
-  NETWORK_ERROR: 'ネットワークエラーが発生しました',
-  UNEXPECTED_ERROR: '予期しないエラーが発生しました',
-  VALIDATION_ERROR: 'バリデーションエラーが発生しました'
-} as const
-
-// 成功メッセージ（統一化）
-export const SUCCESS_MESSAGES = {
-  TASK_CREATED: 'タスクを作成しました',
-  TASK_UPDATED: 'タスクを更新しました',
-  TASK_DELETED: 'タスクを削除しました',
-  PROJECT_CREATED: 'プロジェクトを作成しました',
-  PROJECT_UPDATED: 'プロジェクトを更新しました',
-  PROJECT_DELETED: 'プロジェクトを削除しました'
-} as const
+// テーマストレージキー
+export const THEME_STORAGE_KEY = 'vite-ui-theme'

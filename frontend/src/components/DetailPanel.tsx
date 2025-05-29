@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React from 'react'
 import { Task, Project } from '../types'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -8,8 +8,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
-import { useTabNavigation } from '../hooks/useTabNavigation' // 新規追加
-import { useLogger } from '../hooks/useLogger' // 新規追加
 import { cn } from '@/lib/utils'
 
 interface DetailPanelProps {
@@ -31,42 +29,12 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   isVisible,
   setIsVisible
 }) => {
-  const logger = useLogger() // 新規追加
-  
-  // Tab順序ナビゲーション用のref
-  const taskNameInputRef = useRef<HTMLInputElement>(null)
-  const startDateButtonRef = useRef<HTMLButtonElement>(null)
-  const dueDateButtonRef = useRef<HTMLButtonElement>(null)
-  const taskNotesRef = useRef<HTMLTextAreaElement>(null)
-
-  // Tab順序ナビゲーション機能を追加
-  const { focusFirst } = useTabNavigation({
-    isActive: activeArea === "details",
-    refs: {
-      taskName: taskNameInputRef,
-      startDate: startDateButtonRef,
-      dueDate: dueDateButtonRef,
-      notes: taskNotesRef
-    }
-  })
-
   const toggleDetailPanel = () => {
-    logger.debug('Toggling detail panel', { isVisible: !isVisible }) // ログ追加
     setIsVisible(!isVisible)
     if (!isVisible && activeArea === "details") {
       setActiveArea("tasks")
     }
   }
-
-  // エリアがアクティブになった際に最初のフィールドにフォーカス
-  React.useEffect(() => {
-    if (activeArea === "details" && selectedTask) {
-      // 少し遅延させてフォーカスを確実に当てる
-      setTimeout(() => {
-        focusFirst()
-      }, 100)
-    }
-  }, [activeArea, selectedTask, focusFirst])
 
   if (!selectedTask) {
     return (
@@ -111,12 +79,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           <div>
             <label className="text-sm font-medium mb-1 block">タスク名</label>
             <Input
-              ref={taskNameInputRef}
               value={selectedTask.name}
-              onChange={(e) => {
-                logger.debug('Task name updated', { taskId: selectedTask.id, newName: e.target.value })
-                onTaskUpdate(selectedTask.id, { name: e.target.value })
-              }}
+              onChange={(e) => onTaskUpdate(selectedTask.id, { name: e.target.value })}
             />
           </div>
 
@@ -127,7 +91,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    ref={startDateButtonRef}
                     variant="outline"
                     className="w-full justify-start text-left font-normal"
                   >
@@ -139,10 +102,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                   <Calendar
                     mode="single"
                     selected={selectedTask.startDate}
-                    onSelect={(date) => {
-                      logger.debug('Start date updated', { taskId: selectedTask.id, newDate: date })
-                      onTaskUpdate(selectedTask.id, { startDate: date || new Date() })
-                    }}
+                    onSelect={(date) => onTaskUpdate(selectedTask.id, { startDate: date || new Date() })}
                     initialFocus
                     locale={ja}
                   />
@@ -155,7 +115,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    ref={dueDateButtonRef}
                     variant="outline"
                     className="w-full justify-start text-left font-normal"
                   >
@@ -167,10 +126,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                   <Calendar
                     mode="single"
                     selected={selectedTask.dueDate}
-                    onSelect={(date) => {
-                      logger.debug('Due date updated', { taskId: selectedTask.id, newDate: date })
-                      onTaskUpdate(selectedTask.id, { dueDate: date || new Date() })
-                    }}
+                    onSelect={(date) => onTaskUpdate(selectedTask.id, { dueDate: date || new Date() })}
                     initialFocus
                     locale={ja}
                   />
@@ -208,10 +164,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <label className="text-sm font-medium mb-1 block">担当者</label>
             <Input
               value={selectedTask.assignee}
-              onChange={(e) => {
-                logger.debug('Assignee updated', { taskId: selectedTask.id, newAssignee: e.target.value })
-                onTaskUpdate(selectedTask.id, { assignee: e.target.value })
-              }}
+              onChange={(e) => onTaskUpdate(selectedTask.id, { assignee: e.target.value })}
             />
           </div>
 
@@ -219,12 +172,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           <div>
             <label className="text-sm font-medium mb-1 block">メモ</label>
             <Textarea
-              ref={taskNotesRef}
               value={selectedTask.notes}
-              onChange={(e) => {
-                logger.debug('Notes updated', { taskId: selectedTask.id, notesLength: e.target.value.length })
-                onTaskUpdate(selectedTask.id, { notes: e.target.value })
-              }}
+              onChange={(e) => onTaskUpdate(selectedTask.id, { notes: e.target.value })}
               className="min-h-[100px] resize-none"
               placeholder="メモを追加..."
             />
