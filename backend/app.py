@@ -2,31 +2,25 @@ import sqlite3
 import logging
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
-# ログ設定
+# ログ設定（文字化け対策）
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="階層型ToDoリストAPI", version="1.0.0")
-
-# CORS設定
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # データベース設定
 DATABASE_PATH = "todo.db"
+
 
 def get_db():
     """データベース接続を取得"""
@@ -35,8 +29,9 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return conn
     except sqlite3.Error as e:
-        logger.error(f"データベース接続エラー: {e}")
-        raise HTTPException(status_code=500, detail="データベース接続エラー")
+        logger.error(f"Database connection error: {e}")
+        raise HTTPException(status_code=500, detail="Database connection error")
+
 
 def init_database():
     """データベース初期化"""
@@ -49,10 +44,42 @@ def init_database():
         conn.commit()
         conn.close()
         
-        logger.info("データベースを初期化しました")
+        logger.info("Database initialized successfully")
     except Exception as e:
-        logger.error(f"データベース初期化エラー: {e}")
+        logger.error(f"Database initialization error: {e}")
         raise
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """アプリケーションのライフサイクル管理"""
+    # 起動時の処理
+    logger.info("Starting application...")
+    init_database()
+    logger.info("Application startup completed")
+    
+    yield
+    
+    # 終了時の処理
+    logger.info("Shutting down application...")
+
+
+# FastAPIアプリケーションの作成
+app = FastAPI(
+    title="Hierarchical Todo List API", 
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# CORS設定
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Pydanticモデル
 class ProjectBase(BaseModel):
@@ -60,18 +87,22 @@ class ProjectBase(BaseModel):
     color: str
     collapsed: bool = False
 
+
 class ProjectCreate(ProjectBase):
     pass
+
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     color: Optional[str] = None
     collapsed: Optional[bool] = None
 
+
 class Project(ProjectBase):
     id: str
     created_at: datetime
     updated_at: datetime
+
 
 class TaskBase(BaseModel):
     name: str
@@ -86,8 +117,10 @@ class TaskBase(BaseModel):
     level: int = 0
     collapsed: bool = False
 
+
 class TaskCreate(TaskBase):
     pass
+
 
 class TaskUpdate(BaseModel):
     name: Optional[str] = None
@@ -102,24 +135,36 @@ class TaskUpdate(BaseModel):
     level: Optional[int] = None
     collapsed: Optional[bool] = None
 
+
 class Task(TaskBase):
     id: str
     created_at: datetime
     updated_at: datetime
 
+
 class BatchOperation(BaseModel):
     operation: str
     task_ids: List[str]
+
 
 # ユーティリティ関数
 def row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
     """sqlite3.Rowを辞書に変換"""
     return dict(row)
 
+
 def generate_id(prefix: str) -> str:
     """IDを生成"""
     import time
     return f"{prefix}{int(time.time() * 1000)}"
+
+
+# ルートエンドポイント（ヘルスチェック用）
+@app.get("/")
+async def root():
+    """ルートエンドポイント"""
+    return {"message": "Hierarchical Todo List API", "status": "running"}
+
 
 # プロジェクト関連API
 @app.get("/api/projects", response_model=List[Project])
@@ -132,12 +177,13 @@ async def get_projects(db: sqlite3.Connection = Depends(get_db)):
         projects = [row_to_dict(row) for row in cursor.fetchall()]
         db.close()
         
-        logger.info(f"プロジェクト一覧取得: {len(projects)}件")
+        logger.info(f"Retrieved {len(projects)} projects")
         return projects
     except Exception as e:
-        logger.error(f"プロジェクト一覧取得エラー: {e}")
+        logger.error(f"Error retrieving projects: {e}")
         db.close()
-        raise HTTPException(status_code=500, detail="プロジェクト取得に失敗しました")
+        raise HTTPException(status_code=500, detail="Failed to retrieve projects")
+
 
 @app.post("/api/projects", response_model=Project)
 async def create_project(project: ProjectCreate, db: sqlite3.Connection = Depends(get_db)):
@@ -158,12 +204,13 @@ async def create_project(project: ProjectCreate, db: sqlite3.Connection = Depend
         created_project = row_to_dict(cursor.fetchone())
         db.close()
         
-        logger.info(f"プロジェクト作成: {created_project['name']}")
+        logger.info(f"Created project: {created_project['name']}")
         return created_project
     except Exception as e:
-        logger.error(f"プロジェクト作成エラー: {e}")
+        logger.error(f"Error creating project: {e}")
         db.close()
-        raise HTTPException(status_code=500, detail="プロジェクト作成に失敗しました")
+        raise HTTPException(status_code=500, detail="Failed to create project")
+
 
 @app.get("/api/projects/{project_id}", response_model=Project)
 async def get_project(project_id: str, db: sqlite3.Connection = Depends(get_db)):
@@ -174,15 +221,16 @@ async def get_project(project_id: str, db: sqlite3.Connection = Depends(get_db))
         db.close()
         
         if not project:
-            raise HTTPException(status_code=404, detail="プロジェクトが見つかりません")
+            raise HTTPException(status_code=404, detail="Project not found")
         
         return row_to_dict(project)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"プロジェクト取得エラー: {e}")
+        logger.error(f"Error retrieving project: {e}")
         db.close()
-        raise HTTPException(status_code=500, detail="プロジェクト取得に失敗しました")
+        raise HTTPException(status_code=500, detail="Failed to retrieve project")
+
 
 @app.put("/api/projects/{project_id}", response_model=Project)
 async def update_project(project_id: str, project: ProjectUpdate, db: sqlite3.Connection = Depends(get_db)):
@@ -192,7 +240,7 @@ async def update_project(project_id: str, project: ProjectUpdate, db: sqlite3.Co
         cursor = db.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
         if not cursor.fetchone():
             db.close()
-            raise HTTPException(status_code=404, detail="プロジェクトが見つかりません")
+            raise HTTPException(status_code=404, detail="Project not found")
         
         # 更新フィールドを構築
         update_fields = []
@@ -216,14 +264,15 @@ async def update_project(project_id: str, project: ProjectUpdate, db: sqlite3.Co
         updated_project = row_to_dict(cursor.fetchone())
         db.close()
         
-        logger.info(f"プロジェクト更新: {updated_project['name']}")
+        logger.info(f"Updated project: {updated_project['name']}")
         return updated_project
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"プロジェクト更新エラー: {e}")
+        logger.error(f"Error updating project: {e}")
         db.close()
-        raise HTTPException(status_code=500, detail="プロジェクト更新に失敗しました")
+        raise HTTPException(status_code=500, detail="Failed to update project")
+
 
 @app.delete("/api/projects/{project_id}")
 async def delete_project(project_id: str, db: sqlite3.Connection = Depends(get_db)):
@@ -233,21 +282,22 @@ async def delete_project(project_id: str, db: sqlite3.Connection = Depends(get_d
         cursor = db.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
         if not cursor.fetchone():
             db.close()
-            raise HTTPException(status_code=404, detail="プロジェクトが見つかりません")
+            raise HTTPException(status_code=404, detail="Project not found")
         
         # プロジェクトを削除（関連タスクも自動削除される）
         db.execute("DELETE FROM projects WHERE id = ?", (project_id,))
         db.commit()
         db.close()
         
-        logger.info(f"プロジェクト削除: {project_id}")
-        return {"message": "プロジェクトを削除しました"}
+        logger.info(f"Deleted project: {project_id}")
+        return {"message": "Project deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"プロジェクト削除エラー: {e}")
+        logger.error(f"Error deleting project: {e}")
         db.close()
-        raise HTTPException(status_code=500, detail="プロジェクト削除に失敗しました")
+        raise HTTPException(status_code=500, detail="Failed to delete project")
+
 
 # タスク関連API
 @app.get("/api/tasks", response_model=List[Task])
@@ -265,12 +315,13 @@ async def get_tasks(project_id: Optional[str] = None, db: sqlite3.Connection = D
         tasks = [row_to_dict(row) for row in cursor.fetchall()]
         db.close()
         
-        logger.info(f"タスク一覧取得: {len(tasks)}件")
+        logger.info(f"Retrieved {len(tasks)} tasks")
         return tasks
     except Exception as e:
-        logger.error(f"タスク一覧取得エラー: {e}")
+        logger.error(f"Error retrieving tasks: {e}")
         db.close()
-        raise HTTPException(status_code=500, detail="タスク取得に失敗しました")
+        raise HTTPException(status_code=500, detail="Failed to retrieve tasks")
+
 
 @app.post("/api/tasks", response_model=Task)
 async def create_task(task: TaskCreate, db: sqlite3.Connection = Depends(get_db)):
@@ -294,12 +345,13 @@ async def create_task(task: TaskCreate, db: sqlite3.Connection = Depends(get_db)
         created_task = row_to_dict(cursor.fetchone())
         db.close()
         
-        logger.info(f"タスク作成: {created_task['name']}")
+        logger.info(f"Created task: {created_task['name']}")
         return created_task
     except Exception as e:
-        logger.error(f"タスク作成エラー: {e}")
+        logger.error(f"Error creating task: {e}")
         db.close()
-        raise HTTPException(status_code=500, detail="タスク作成に失敗しました")
+        raise HTTPException(status_code=500, detail="Failed to create task")
+
 
 @app.get("/api/tasks/{task_id}", response_model=Task)
 async def get_task(task_id: str, db: sqlite3.Connection = Depends(get_db)):
@@ -310,15 +362,16 @@ async def get_task(task_id: str, db: sqlite3.Connection = Depends(get_db)):
         db.close()
         
         if not task:
-            raise HTTPException(status_code=404, detail="タスクが見つかりません")
+            raise HTTPException(status_code=404, detail="Task not found")
         
         return row_to_dict(task)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"タスク取得エラー: {e}")
+        logger.error(f"Error retrieving task: {e}")
         db.close()
-        raise HTTPException(status_code=500, detail="タスク取得に失敗しました")
+        raise HTTPException(status_code=500, detail="Failed to retrieve task")
+
 
 @app.put("/api/tasks/{task_id}", response_model=Task)
 async def update_task(task_id: str, task: TaskUpdate, db: sqlite3.Connection = Depends(get_db)):
@@ -328,7 +381,7 @@ async def update_task(task_id: str, task: TaskUpdate, db: sqlite3.Connection = D
         cursor = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
         if not cursor.fetchone():
             db.close()
-            raise HTTPException(status_code=404, detail="タスクが見つかりません")
+            raise HTTPException(status_code=404, detail="Task not found")
         
         # 更新フィールドを構築
         update_fields = []
@@ -351,14 +404,15 @@ async def update_task(task_id: str, task: TaskUpdate, db: sqlite3.Connection = D
         cursor = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
         updated_task = row_to_dict(cursor.fetchone())
         db.close()
-        logger.info(f"タスク更新: {updated_task['name']}")
+        logger.info(f"Updated task: {updated_task['name']}")
         return updated_task
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"タスク更新エラー: {e}")
+        logger.error(f"Error updating task: {e}")
         db.close()
-        raise HTTPException(status_code=500, detail="タスク更新に失敗しました")
+        raise HTTPException(status_code=500, detail="Failed to update task")
+
 
 @app.delete("/api/tasks/{task_id}")
 async def delete_task(task_id: str, db: sqlite3.Connection = Depends(get_db)):
@@ -368,21 +422,22 @@ async def delete_task(task_id: str, db: sqlite3.Connection = Depends(get_db)):
         cursor = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
         if not cursor.fetchone():
             db.close()
-            raise HTTPException(status_code=404, detail="タスクが見つかりません")
+            raise HTTPException(status_code=404, detail="Task not found")
         
         # タスクを削除（子タスクも自動削除される）
         db.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
         db.commit()
         db.close()
         
-        logger.info(f"タスク削除: {task_id}")
-        return {"message": "タスクを削除しました"}
+        logger.info(f"Deleted task: {task_id}")
+        return {"message": "Task deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"タスク削除エラー: {e}")
+        logger.error(f"Error deleting task: {e}")
         db.close()
-        raise HTTPException(status_code=500, detail="タスク削除に失敗しました")
+        raise HTTPException(status_code=500, detail="Failed to delete task")
+
 
 @app.post("/api/tasks/batch")
 async def batch_update_tasks(operation: BatchOperation, db: sqlite3.Connection = Depends(get_db)):
@@ -409,19 +464,20 @@ async def batch_update_tasks(operation: BatchOperation, db: sqlite3.Connection =
             db.execute(f"DELETE FROM tasks WHERE id IN ({placeholders})", operation.task_ids)
         else:
             db.close()
-            raise HTTPException(status_code=400, detail="無効な操作です")
+            raise HTTPException(status_code=400, detail="Invalid operation")
         
         db.commit()
         db.close()
         
-        logger.info(f"一括操作実行: {operation.operation}, 対象: {len(operation.task_ids)}件")
-        return {"message": f"{operation.operation}操作を実行しました"}
+        logger.info(f"Batch operation executed: {operation.operation}, targets: {len(operation.task_ids)}")
+        return {"message": f"{operation.operation} operation executed successfully"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"一括操作エラー: {e}")
+        logger.error(f"Batch operation error: {e}")
         db.close()
-        raise HTTPException(status_code=500, detail="一括操作に失敗しました")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
+
 
 # ヘルスチェック
 @app.get("/api/health")
@@ -429,13 +485,6 @@ async def health_check():
     """ヘルスチェック"""
     return {"status": "healthy", "timestamp": datetime.now()}
 
-# アプリケーション起動時の処理
-@app.on_event("startup")
-async def startup_event():
-    """アプリケーション起動時の初期化処理"""
-    logger.info("アプリケーションを起動しています...")
-    init_database()
-    logger.info("アプリケーションの起動が完了しました")
 
 if __name__ == "__main__":
     uvicorn.run(

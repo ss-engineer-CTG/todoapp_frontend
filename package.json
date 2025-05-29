@@ -1,112 +1,112 @@
 {
-    "name": "todo-app",
-    "version": "1.0.0",
-    "description": "階層型ToDoリストアプリケーション",
-    "main": "electron/main.js",
-    "scripts": {
-      "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" \"wait-on http://localhost:3000 http://localhost:8000 && npm run dev:electron\"",
-      "dev:frontend": "cd frontend && npm run dev",
-      "dev:backend": "cd backend && python app.py",
-      "dev:electron": "electron .",
-      "build": "npm run build:frontend && npm run build:backend",
-      "build:frontend": "cd frontend && npm run build",
-      "build:backend": "echo 'Backend build complete'",
-      "build:electron": "electron-builder",
-      "package": "npm run build && npm run build:electron",
-      "dist": "npm run package",
-      "clean": "rimraf dist build frontend/dist backend/__pycache__",
-      "lint": "cd frontend && npm run lint",
-      "test": "npm run test:frontend && npm run test:backend",
-      "test:frontend": "cd frontend && npm test",
-      "test:backend": "cd backend && python -m pytest",
-      "postinstall": "cd frontend && npm install"
+  "name": "todo-app",
+  "version": "1.0.0",
+  "description": "階層型ToDoリストアプリケーション",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" \"wait-on http://localhost:3000 http://localhost:8000/api/health && npm run dev:electron\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python app.py",
+    "dev:electron": "electron .",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "echo 'Backend build complete'",
+    "build:electron": "electron-builder",
+    "package": "npm run build && npm run build:electron",
+    "dist": "npm run package",
+    "clean": "rimraf dist build frontend/dist backend/__pycache__",
+    "lint": "cd frontend && npm run lint",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "cd frontend && npm test",
+    "test:backend": "cd backend && python -m pytest",
+    "postinstall": "cd frontend && npm install"
+  },
+  "keywords": [
+    "todo",
+    "task-management",
+    "hierarchy",
+    "electron",
+    "react",
+    "python"
+  ],
+  "author": "Todo App Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.0.1",
+    "rimraf": "^5.0.5"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  },
+  "build": {
+    "appId": "com.todoapp.hierarchical",
+    "productName": "階層型ToDoリスト",
+    "directories": {
+      "output": "dist"
     },
-    "keywords": [
-      "todo",
-      "task-management",
-      "hierarchy",
-      "electron",
-      "react",
-      "python"
+    "files": [
+      "electron/**/*",
+      "frontend/dist/**/*",
+      "backend/**/*",
+      "!backend/__pycache__",
+      "!backend/*.pyc",
+      "!backend/venv",
+      "!backend/.env"
     ],
-    "author": "Todo App Team",
-    "license": "MIT",
-    "devDependencies": {
-      "electron": "^27.0.0",
-      "electron-builder": "^24.6.4",
-      "concurrently": "^8.2.2",
-      "wait-on": "^7.0.1",
-      "rimraf": "^5.0.5"
-    },
-    "dependencies": {
-      "electron-store": "^8.1.0"
-    },
-    "build": {
-      "appId": "com.todoapp.hierarchical",
-      "productName": "階層型ToDoリスト",
-      "directories": {
-        "output": "dist"
-      },
-      "files": [
-        "electron/**/*",
-        "frontend/dist/**/*",
-        "backend/**/*",
-        "!backend/__pycache__",
-        "!backend/*.pyc",
-        "!backend/venv",
-        "!backend/.env"
-      ],
-      "extraResources": [
-        {
-          "from": "backend",
-          "to": "backend",
-          "filter": [
-            "**/*",
-            "!__pycache__",
-            "!*.pyc",
-            "!venv",
-            "!.env"
-          ]
-        }
-      ],
-      "mac": {
-        "category": "public.app-category.productivity",
-        "icon": "electron/assets/icon.icns",
-        "target": [
-          {
-            "target": "dmg",
-            "arch": ["x64", "arm64"]
-          }
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!__pycache__",
+          "!*.pyc",
+          "!venv",
+          "!.env"
         ]
-      },
-      "win": {
-        "icon": "electron/assets/icon.ico",
-        "target": [
-          {
-            "target": "nsis",
-            "arch": ["x64"]
-          }
-        ]
-      },
-      "linux": {
-        "icon": "electron/assets/icon.png",
-        "category": "Office",
-        "target": [
-          {
-            "target": "AppImage",
-            "arch": ["x64"]
-          }
-        ]
-      },
-      "nsis": {
-        "oneClick": false,
-        "allowToChangeInstallationDirectory": true,
-        "createDesktopShortcut": true,
-        "createStartMenuShortcut": true
       }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "electron/assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ]
     },
-    "engines": {
-      "node": ">=16.0.0",
-      "npm": ">=8.0.0"
+    "win": {
+      "icon": "electron/assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "electron/assets/icon.png",
+      "category": "Office",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
   }
+}
