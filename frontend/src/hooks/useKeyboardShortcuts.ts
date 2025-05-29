@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Task, Project, TaskRelationMap, AreaType } from '../types'
 
 interface UseKeyboardShortcutsProps {
@@ -60,6 +60,48 @@ export const useKeyboardShortcuts = ({
   isEditingProject
 }: UseKeyboardShortcutsProps) => {
   
+  // 詳細パネル内のフォーカス管理用ref
+  const taskNameInputRef = useRef<HTMLInputElement>(null)
+  const startDateButtonRef = useRef<HTMLButtonElement>(null)
+  const dueDateButtonRef = useRef<HTMLButtonElement>(null)
+  const taskNotesRef = useRef<HTMLTextAreaElement>(null)
+
+  // 詳細パネル内のTab navigation
+  const handleDetailTabNavigation = (e: KeyboardEvent) => {
+    if (!selectedTaskId) return
+
+    const isShiftTab = e.shiftKey
+    const activeElement = document.activeElement
+
+    if (activeElement === taskNameInputRef.current) {
+      if (!isShiftTab) {
+        e.preventDefault()
+        startDateButtonRef.current?.focus()
+      }
+    } else if (activeElement === startDateButtonRef.current) {
+      if (isShiftTab) {
+        e.preventDefault()
+        taskNameInputRef.current?.focus()
+      } else {
+        e.preventDefault()
+        dueDateButtonRef.current?.focus()
+      }
+    } else if (activeElement === dueDateButtonRef.current) {
+      if (isShiftTab) {
+        e.preventDefault()
+        startDateButtonRef.current?.focus()
+      } else {
+        e.preventDefault()
+        taskNotesRef.current?.focus()
+      }
+    } else if (activeElement === taskNotesRef.current) {
+      if (isShiftTab) {
+        e.preventDefault()
+        dueDateButtonRef.current?.focus()
+      }
+    }
+  }
+  
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // 入力フィールド中やモーダル処理中はスキップ
@@ -68,6 +110,12 @@ export const useKeyboardShortcuts = ({
           isAddingProject || 
           isAddingTask || 
           isEditingProject) {
+        return
+      }
+
+      // 詳細パネル内でのTabキー処理
+      if (activeArea === "details" && e.key === "Tab") {
+        handleDetailTabNavigation(e)
         return
       }
 
@@ -207,6 +255,10 @@ export const useKeyboardShortcuts = ({
               }
             } else if (activeArea === "tasks" && isDetailPanelVisible && selectedTaskId) {
               setActiveArea("details")
+              // 詳細パネルの最初の要素にフォーカス
+              setTimeout(() => {
+                taskNameInputRef.current?.focus()
+              }, 0)
             }
           }
           break
@@ -286,4 +338,12 @@ export const useKeyboardShortcuts = ({
     setActiveArea,
     setIsMultiSelectMode
   ])
+
+  // 詳細パネル用のrefを返す
+  return {
+    taskNameInputRef,
+    startDateButtonRef,
+    dueDateButtonRef,
+    taskNotesRef
+  }
 }

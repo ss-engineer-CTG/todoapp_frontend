@@ -104,6 +104,7 @@ export const useMultiSelect = <T>({
     }
 
     setSelectedId(newItemId)
+    setLastSelectedIndex(newIndex)
   }, [items, getItemId, selectedId, selectedIds, isMultiSelectMode, lastSelectedIndex])
 
   const selectAll = useCallback(() => {
@@ -147,6 +148,7 @@ export const useMultiSelect = <T>({
     selectedId,
     selectedIds,
     isMultiSelectMode,
+    lastSelectedIndex,
     handleSelect,
     handleKeyboardRangeSelect,
     selectAll,

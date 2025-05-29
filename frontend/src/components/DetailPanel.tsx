@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { RefObject } from 'react'
 import { Task, Project } from '../types'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -18,6 +18,10 @@ interface DetailPanelProps {
   setActiveArea: (area: "projects" | "tasks" | "details") => void
   isVisible: boolean
   setIsVisible: (visible: boolean) => void
+  taskNameInputRef: RefObject<HTMLInputElement>
+  startDateButtonRef: RefObject<HTMLButtonElement>
+  dueDateButtonRef: RefObject<HTMLButtonElement>
+  taskNotesRef: RefObject<HTMLTextAreaElement>
 }
 
 export const DetailPanel: React.FC<DetailPanelProps> = ({
@@ -27,7 +31,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   activeArea,
   setActiveArea,
   isVisible,
-  setIsVisible
+  setIsVisible,
+  taskNameInputRef,
+  startDateButtonRef,
+  dueDateButtonRef,
+  taskNotesRef
 }) => {
   const toggleDetailPanel = () => {
     setIsVisible(!isVisible)
@@ -79,6 +87,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           <div>
             <label className="text-sm font-medium mb-1 block">タスク名</label>
             <Input
+              ref={taskNameInputRef}
               value={selectedTask.name}
               onChange={(e) => onTaskUpdate(selectedTask.id, { name: e.target.value })}
             />
@@ -91,6 +100,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
+                    ref={startDateButtonRef}
                     variant="outline"
                     className="w-full justify-start text-left font-normal"
                   >
@@ -115,6 +125,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
+                    ref={dueDateButtonRef}
                     variant="outline"
                     className="w-full justify-start text-left font-normal"
                   >
@@ -172,6 +183,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           <div>
             <label className="text-sm font-medium mb-1 block">メモ</label>
             <Textarea
+              ref={taskNotesRef}
               value={selectedTask.notes}
               onChange={(e) => onTaskUpdate(selectedTask.id, { notes: e.target.value })}
               className="min-h-[100px] resize-none"

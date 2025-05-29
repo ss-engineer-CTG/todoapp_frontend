@@ -6,6 +6,7 @@ import { DetailPanel } from './components/DetailPanel'
 import { useTaskRelations } from './hooks/useTaskRelations'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useMultiSelect } from './hooks/useMultiSelect'
+import { useScrollToTask } from './hooks/useScrollToTask'
 
 const TodoApp: React.FC = () => {
   // 初期データ
@@ -110,30 +111,12 @@ const TodoApp: React.FC = () => {
   const [copiedTasks, setCopiedTasks] = useState<Task[]>([])
 
   // 編集状態管理
-  const [isAddingProject] = useState<boolean>(false)
-  const [isAddingTask] = useState<boolean>(false)
-  const [isEditingProject] = useState<boolean>(false)
+  const [isAddingProject, setIsAddingProject] = useState<boolean>(false)
+  const [isAddingTask, setIsAddingTask] = useState<boolean>(false)
+  const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
 
   // カスタムフック
   const { taskRelationMap, updateTaskRelationMap } = useTaskRelations(tasks)
-
-  // 複数選択機能
-  const {
-    selectedId: selectedTaskId,
-    selectedIds: selectedTaskIds,
-    isMultiSelectMode,
-    handleSelect: handleTaskSelect,
-    handleKeyboardRangeSelect,
-    selectAll,
-    clearSelection,
-    setSelectedId: setSelectedTaskId,
-    setSelectedIds: setSelectedTaskIds,
-    setIsMultiSelectMode
-  } = useMultiSelect({
-    items: tasks.filter(task => task.projectId === selectedProjectId),
-    getItemId: (task) => task.id,
-    initialSelectedId: "t1"
-  })
 
   // フィルタリングされたタスク
   const filteredTasks = tasks.filter((task) => {
@@ -150,6 +133,31 @@ const TodoApp: React.FC = () => {
     }
 
     return true
+  })
+
+  // 複数選択機能
+  const {
+    selectedId: selectedTaskId,
+    selectedIds: selectedTaskIds,
+    isMultiSelectMode,
+    lastSelectedIndex,
+    handleSelect: handleTaskSelect,
+    handleKeyboardRangeSelect,
+    selectAll,
+    clearSelection,
+    setSelectedId: setSelectedTaskId,
+    setSelectedIds: setSelectedTaskIds,
+    setIsMultiSelectMode
+  } = useMultiSelect({
+    items: filteredTasks,
+    getItemId: (task) => task.id,
+    initialSelectedId: "t1"
+  })
+
+  // スクロール管理
+  const { setTaskRef } = useScrollToTask({
+    selectedTaskId,
+    taskList: filteredTasks
   })
 
   // 選択されたタスク
@@ -397,7 +405,7 @@ const TodoApp: React.FC = () => {
   }, [selectedProjectId])
 
   // キーボードショートカット
-  useKeyboardShortcuts({
+  const { taskNameInputRef, startDateButtonRef, dueDateButtonRef, taskNotesRef } = useKeyboardShortcuts({
     tasks,
     projects,
     selectedProjectId,
@@ -436,6 +444,10 @@ const TodoApp: React.FC = () => {
         onProjectSelect={handleProjectSelect}
         activeArea={activeArea}
         setActiveArea={setActiveArea}
+        isAddingProject={isAddingProject}
+        setIsAddingProject={setIsAddingProject}
+        isEditingProject={isEditingProject}
+        setIsEditingProject={setIsEditingProject}
       />
 
       <TaskPanel
@@ -460,6 +472,10 @@ const TodoApp: React.FC = () => {
         onToggleTaskCompletion={handleToggleTaskCompletion}
         onToggleTaskCollapse={handleToggleTaskCollapse}
         onClearSelection={clearSelection}
+        setTaskRef={setTaskRef}
+        isAddingTask={isAddingTask}
+        setIsAddingTask={setIsAddingTask}
+        lastSelectedIndex={lastSelectedIndex}
       />
 
       {isDetailPanelVisible && (
@@ -476,6 +492,10 @@ const TodoApp: React.FC = () => {
           setActiveArea={setActiveArea}
           isVisible={isDetailPanelVisible}
           setIsVisible={setIsDetailPanelVisible}
+          taskNameInputRef={taskNameInputRef}
+          startDateButtonRef={startDateButtonRef}
+          dueDateButtonRef={dueDateButtonRef}
+          taskNotesRef={taskNotesRef}
         />
       )}
     </div>
