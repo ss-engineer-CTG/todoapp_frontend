@@ -1,5 +1,6 @@
 import sqlite3
 import logging
+import os
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from contextlib import asynccontextmanager
@@ -18,8 +19,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# データベース設定
-DATABASE_PATH = "todo.db"
+# パス設定の一元管理
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_PATH = os.path.join(BASE_DIR, "todo.db")
+SCHEMA_PATH = os.path.join(BASE_DIR, "schema.sql")
 
 
 def get_db():
@@ -36,7 +39,12 @@ def get_db():
 def init_database():
     """データベース初期化"""
     try:
-        with open("schema.sql", "r", encoding="utf-8") as f:
+        # スキーマファイルの存在確認
+        if not os.path.exists(SCHEMA_PATH):
+            logger.error(f"Schema file not found: {SCHEMA_PATH}")
+            raise FileNotFoundError(f"Schema file not found: {SCHEMA_PATH}")
+        
+        with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
             schema = f.read()
         
         conn = get_db()
@@ -44,7 +52,7 @@ def init_database():
         conn.commit()
         conn.close()
         
-        logger.info("Database initialized successfully")
+        logger.info(f"Database initialized successfully at: {DATABASE_PATH}")
     except Exception as e:
         logger.error(f"Database initialization error: {e}")
         raise
@@ -55,8 +63,16 @@ async def lifespan(app: FastAPI):
     """アプリケーションのライフサイクル管理"""
     # 起動時の処理
     logger.info("Starting application...")
-    init_database()
-    logger.info("Application startup completed")
+    logger.info(f"Base directory: {BASE_DIR}")
+    logger.info(f"Database path: {DATABASE_PATH}")
+    logger.info(f"Schema path: {SCHEMA_PATH}")
+    
+    try:
+        init_database()
+        logger.info("Application startup completed")
+    except Exception as e:
+        logger.error(f"Application startup failed: {e}")
+        raise
     
     yield
     
