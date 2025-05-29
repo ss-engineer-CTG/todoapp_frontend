@@ -1,0 +1,32 @@
+{
+    "app": {
+      "name": "階層型ToDoリストアプリケーション",
+      "version": "1.0.0",
+      "description": "プロジェクトベースの階層的なタスク管理アプリケーション"
+    },
+    "ports": {
+      "frontend": 3000,
+      "backend": 8000
+    },
+    "database": {
+      "type": "sqlite",
+      "file": "todo.db",
+      "backup_interval": 3600
+    },
+    "ui": {
+      "theme": {
+        "default": "system",
+        "storage_key": "vite-ui-theme"
+      },
+      "animation": {
+        "duration": 200,
+        "easing": "ease-in-out"
+      }
+    },
+    "features": {
+      "auto_save": true,
+      "auto_backup": true,
+      "keyboard_shortcuts": true,
+      "multi_select": true
+    }
+  }

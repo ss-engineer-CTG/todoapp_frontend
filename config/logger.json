@@ -1,0 +1,47 @@
+{
+    "levels": {
+      "ERROR": 0,
+      "WARN": 1,
+      "INFO": 2,
+      "DEBUG": 3,
+      "TRACE": 4
+    },
+    "default_level": "INFO",
+    "environments": {
+      "development": {
+        "level": "TRACE",
+        "console": true,
+        "file": true,
+        "format": "text"
+      },
+      "production": {
+        "level": "WARN",
+        "console": false,
+        "file": true,
+        "format": "json"
+      },
+      "test": {
+        "level": "ERROR",
+        "console": false,
+        "file": false,
+        "format": "json"
+      }
+    },
+    "output": {
+      "console": {
+        "enabled": true,
+        "colors": true
+      },
+      "file": {
+        "enabled": true,
+        "max_size": "10MB",
+        "max_files": 5,
+        "rotation": "daily"
+      }
+    },
+    "format": {
+      "timestamp": "ISO",
+      "include_transaction_id": true,
+      "include_context": true
+    }
+  }
