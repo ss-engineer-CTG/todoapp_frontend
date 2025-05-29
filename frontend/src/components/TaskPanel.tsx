@@ -39,9 +39,7 @@ interface TaskPanelProps {
   showCompleted: boolean
   setShowCompleted: (show: boolean) => void
   taskRelationMap: TaskRelationMap
-  setCopiedTasks: (tasks: Task[]) => void
   allTasks: Task[]
-  onAddTask: (parentId: string | null, level: number) => void
   onDeleteTask: (taskId: string) => void
   onCopyTask: (taskId: string) => void
   onToggleTaskCompletion: (taskId: string) => void
@@ -65,9 +63,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   showCompleted,
   setShowCompleted,
   taskRelationMap,
-  setCopiedTasks,
   allTasks,
-  onAddTask,
   onDeleteTask,
   onCopyTask,
   onToggleTaskCompletion,

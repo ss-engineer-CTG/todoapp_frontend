@@ -110,9 +110,9 @@ const TodoApp: React.FC = () => {
   const [copiedTasks, setCopiedTasks] = useState<Task[]>([])
 
   // 編集状態管理
-  const [isAddingProject, setIsAddingProject] = useState<boolean>(false)
-  const [isAddingTask, setIsAddingTask] = useState<boolean>(false)
-  const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
+  const [isAddingProject] = useState<boolean>(false)
+  const [isAddingTask] = useState<boolean>(false)
+  const [isEditingProject] = useState<boolean>(false)
 
   // カスタムフック
   const { taskRelationMap, updateTaskRelationMap } = useTaskRelations(tasks)
@@ -126,7 +126,6 @@ const TodoApp: React.FC = () => {
     handleKeyboardRangeSelect,
     selectAll,
     clearSelection,
-    toggleMultiSelectMode,
     setSelectedId: setSelectedTaskId,
     setSelectedIds: setSelectedTaskIds,
     setIsMultiSelectMode
@@ -199,10 +198,9 @@ const TodoApp: React.FC = () => {
     return allChildren
   }
 
-  // タスク追加
-  const handleAddTask = (parentId: string | null = null, level = 0) => {
-    setIsAddingTask(true)
-    // TaskPanelで実際の追加処理を行う
+  // タスク追加（プレースホルダー関数）
+  const handleAddTask = (_parentId: string | null = null, _level = 0) => {
+    // TaskPanelで実際の追加処理を行うため、ここでは何もしない
   }
 
   // タスク削除
@@ -414,7 +412,6 @@ const TodoApp: React.FC = () => {
   // キーボードショートカット
   useKeyboardShortcuts({
     tasks,
-    setTasks: handleTaskUpdate,
     projects,
     selectedProjectId,
     setSelectedProjectId,
@@ -430,7 +427,6 @@ const TodoApp: React.FC = () => {
     setIsMultiSelectMode,
     taskRelationMap,
     copiedTasks,
-    setCopiedTasks,
     onAddTask: handleAddTask,
     onDeleteTask: handleDeleteTask,
     onCopyTask: handleCopyTask,
@@ -471,9 +467,7 @@ const TodoApp: React.FC = () => {
         showCompleted={showCompleted}
         setShowCompleted={setShowCompleted}
         taskRelationMap={taskRelationMap}
-        setCopiedTasks={setCopiedTasks}
         allTasks={tasks}
-        onAddTask={handleAddTask}
         onDeleteTask={handleDeleteTask}
         onCopyTask={handleCopyTask}
         onToggleTaskCompletion={handleToggleTaskCompletion}

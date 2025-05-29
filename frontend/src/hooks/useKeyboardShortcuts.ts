@@ -3,7 +3,6 @@ import { Task, Project, TaskRelationMap, AreaType } from '../types'
 
 interface UseKeyboardShortcutsProps {
   tasks: Task[]
-  setTasks: (tasks: Task[]) => void
   projects: Project[]
   selectedProjectId: string
   setSelectedProjectId: (id: string) => void
@@ -19,7 +18,6 @@ interface UseKeyboardShortcutsProps {
   setIsMultiSelectMode: (mode: boolean) => void
   taskRelationMap: TaskRelationMap
   copiedTasks: Task[]
-  setCopiedTasks: (tasks: Task[]) => void
   onAddTask: (parentId: string | null, level: number) => void
   onDeleteTask: (taskId: string) => void
   onCopyTask: (taskId: string) => void
@@ -35,7 +33,6 @@ interface UseKeyboardShortcutsProps {
 
 export const useKeyboardShortcuts = ({
   tasks,
-  setTasks,
   projects,
   selectedProjectId,
   setSelectedProjectId,
@@ -50,7 +47,6 @@ export const useKeyboardShortcuts = ({
   isMultiSelectMode,
   setIsMultiSelectMode,
   copiedTasks,
-  setCopiedTasks,
   onAddTask,
   onDeleteTask,
   onCopyTask,
