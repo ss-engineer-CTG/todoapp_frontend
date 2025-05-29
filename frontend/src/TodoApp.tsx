@@ -382,19 +382,6 @@ const TodoApp: React.FC = () => {
     )
   }
 
-  // 全選択
-  const handleSelectAll = () => {
-    if (filteredTasks.length === 0) return
-
-    setIsMultiSelectMode(true)
-    const allIds = filteredTasks.map((task) => task.id)
-    setSelectedTaskIds(allIds)
-
-    if (!selectedTaskId && filteredTasks.length > 0) {
-      setSelectedTaskId(filteredTasks[0].id)
-    }
-  }
-
   // プロジェクト変更時のタスク選択リセット
   useEffect(() => {
     const projectTasks = tasks.filter(task => task.projectId === selectedProjectId)
@@ -433,7 +420,7 @@ const TodoApp: React.FC = () => {
     onPasteTask: handlePasteTask,
     onToggleTaskCompletion: handleToggleTaskCompletion,
     onToggleTaskCollapse: handleToggleTaskCollapse,
-    onSelectAll: handleSelectAll,
+    onSelectAll: selectAll,
     onHandleKeyboardRangeSelect: handleKeyboardRangeSelect,
     isAddingProject,
     isAddingTask,
