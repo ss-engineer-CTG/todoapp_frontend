@@ -22,7 +22,8 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "react-day-picker": "^8.9.1",
-    "tailwind-merge": "^2.0.0"
+    "tailwind-merge": "^2.0.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
