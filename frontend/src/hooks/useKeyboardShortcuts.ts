@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Task, Project, TaskRelationMap } from '../types'
+import { Task, Project, TaskRelationMap, AreaType } from '../types'
 
 interface UseKeyboardShortcutsProps {
   tasks: Task[]
@@ -12,14 +12,25 @@ interface UseKeyboardShortcutsProps {
   selectedTaskIds: string[]
   setSelectedTaskIds: (ids: string[]) => void
   filteredTasks: Task[]
-  activeArea: string
-  setActiveArea: (area: "projects" | "tasks" | "details") => void
+  activeArea: AreaType
+  setActiveArea: (area: AreaType) => void
   isDetailPanelVisible: boolean
   isMultiSelectMode: boolean
   setIsMultiSelectMode: (mode: boolean) => void
   taskRelationMap: TaskRelationMap
   copiedTasks: Task[]
   setCopiedTasks: (tasks: Task[]) => void
+  onAddTask: (parentId: string | null, level: number) => void
+  onDeleteTask: (taskId: string) => void
+  onCopyTask: (taskId: string) => void
+  onPasteTask: () => void
+  onToggleTaskCompletion: (taskId: string) => void
+  onToggleTaskCollapse: (taskId: string) => void
+  onSelectAll: () => void
+  onHandleKeyboardRangeSelect: (direction: 'up' | 'down') => void
+  isAddingProject: boolean
+  isAddingTask: boolean
+  isEditingProject: boolean
 }
 
 export const useKeyboardShortcuts = ({
@@ -39,83 +50,111 @@ export const useKeyboardShortcuts = ({
   isMultiSelectMode,
   setIsMultiSelectMode,
   copiedTasks,
-  setCopiedTasks
+  setCopiedTasks,
+  onAddTask,
+  onDeleteTask,
+  onCopyTask,
+  onPasteTask,
+  onToggleTaskCompletion,
+  onToggleTaskCollapse,
+  onSelectAll,
+  onHandleKeyboardRangeSelect,
+  isAddingProject,
+  isAddingTask,
+  isEditingProject
 }: UseKeyboardShortcutsProps) => {
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 入力フィールドの場合はスキップ
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      // 入力フィールド中やモーダル処理中はスキップ
+      if (e.target instanceof HTMLInputElement || 
+          e.target instanceof HTMLTextAreaElement ||
+          isAddingProject || 
+          isAddingTask || 
+          isEditingProject) {
         return
       }
 
       switch (e.key) {
         case "Enter":
           // 同じレベルで新規タスク追加
-          if (selectedTaskId) {
-            const task = tasks.find((t) => t.id === selectedTaskId)
-            if (task) {
-              e.preventDefault()
-              // 将来の実装: handleAddTask(task.parentId, task.level)
+          if (activeArea === "tasks") {
+            e.preventDefault()
+            if (selectedTaskId) {
+              const task = tasks.find((t) => t.id === selectedTaskId)
+              if (task) {
+                onAddTask(task.parentId, task.level)
+              }
+            } else {
+              onAddTask(null, 0)
             }
           }
           break
 
         case "Tab":
+          // 詳細エリアでは通常のTab動作を許可
+          if (activeArea === "details") {
+            return
+          }
+          
+          // タスクエリアでのみ子タスク追加
           if (activeArea === "tasks" && selectedTaskId) {
             e.preventDefault()
-            // 将来の実装: handleAddTask(selectedTaskId, (tasks.find((t) => t.id === selectedTaskId)?.level || 0) + 1)
+            const task = tasks.find((t) => t.id === selectedTaskId)
+            const level = task ? task.level + 1 : 1
+            onAddTask(selectedTaskId, level)
           }
           break
 
         case "Delete":
         case "Backspace":
-          if (selectedTaskId) {
+          if (activeArea === "tasks" && selectedTaskId) {
             e.preventDefault()
-            // 将来の実装: handleDeleteTask(selectedTaskId)
+            onDeleteTask(selectedTaskId)
           }
           break
 
         case "c":
-          if (e.ctrlKey && selectedTaskId) {
+          if (e.ctrlKey && activeArea === "tasks" && selectedTaskId) {
             e.preventDefault()
-            const taskToCopy = tasks.find((task) => task.id === selectedTaskId)
-            if (taskToCopy) {
-              setCopiedTasks([taskToCopy])
-            }
+            onCopyTask(selectedTaskId)
           }
           break
 
         case "v":
-          if (e.ctrlKey && copiedTasks.length > 0) {
+          if (e.ctrlKey && activeArea === "tasks" && copiedTasks.length > 0) {
             e.preventDefault()
-            // 将来の実装: handlePasteTask()
+            onPasteTask()
           }
           break
 
         case " ":
-          if (selectedTaskId) {
+          if (activeArea === "tasks" && selectedTaskId) {
             e.preventDefault()
-            const updatedTasks = tasks.map((task) =>
-              task.id === selectedTaskId
-                ? { ...task, completed: !task.completed, completionDate: !task.completed ? new Date() : null }
-                : task
-            )
-            setTasks(updatedTasks)
+            onToggleTaskCompletion(selectedTaskId)
           }
           break
 
         case "ArrowUp":
           e.preventDefault()
           if (activeArea === "tasks" && filteredTasks.length > 0) {
-            if (selectedTaskId) {
-              const currentIndex = filteredTasks.findIndex((t) => t.id === selectedTaskId)
-              if (currentIndex > 0) {
-                const prevTaskId = filteredTasks[currentIndex - 1].id
-                setSelectedTaskId(prevTaskId)
-                if (!isMultiSelectMode) {
-                  setSelectedTaskIds([prevTaskId])
+            if (e.shiftKey && selectedTaskId) {
+              // Shift+矢印キーでの範囲選択
+              onHandleKeyboardRangeSelect('up')
+            } else {
+              // 通常の移動
+              if (selectedTaskId) {
+                const currentIndex = filteredTasks.findIndex((t) => t.id === selectedTaskId)
+                if (currentIndex > 0) {
+                  const prevTaskId = filteredTasks[currentIndex - 1].id
+                  setSelectedTaskId(prevTaskId)
+                  if (!isMultiSelectMode) {
+                    setSelectedTaskIds([prevTaskId])
+                  }
                 }
+              } else if (filteredTasks.length > 0) {
+                setSelectedTaskId(filteredTasks[0].id)
+                setSelectedTaskIds([filteredTasks[0].id])
               }
             }
           } else if (activeArea === "projects" && projects.length > 0) {
@@ -129,14 +168,23 @@ export const useKeyboardShortcuts = ({
         case "ArrowDown":
           e.preventDefault()
           if (activeArea === "tasks" && filteredTasks.length > 0) {
-            if (selectedTaskId) {
-              const currentIndex = filteredTasks.findIndex((t) => t.id === selectedTaskId)
-              if (currentIndex < filteredTasks.length - 1) {
-                const nextTaskId = filteredTasks[currentIndex + 1].id
-                setSelectedTaskId(nextTaskId)
-                if (!isMultiSelectMode) {
-                  setSelectedTaskIds([nextTaskId])
+            if (e.shiftKey && selectedTaskId) {
+              // Shift+矢印キーでの範囲選択
+              onHandleKeyboardRangeSelect('down')
+            } else {
+              // 通常の移動
+              if (selectedTaskId) {
+                const currentIndex = filteredTasks.findIndex((t) => t.id === selectedTaskId)
+                if (currentIndex < filteredTasks.length - 1) {
+                  const nextTaskId = filteredTasks[currentIndex + 1].id
+                  setSelectedTaskId(nextTaskId)
+                  if (!isMultiSelectMode) {
+                    setSelectedTaskIds([nextTaskId])
+                  }
                 }
+              } else if (filteredTasks.length > 0) {
+                setSelectedTaskId(filteredTasks[0].id)
+                setSelectedTaskIds([filteredTasks[0].id])
               }
             }
           } else if (activeArea === "projects" && projects.length > 0) {
@@ -148,11 +196,20 @@ export const useKeyboardShortcuts = ({
           break
 
         case "ArrowRight":
-          if (activeArea === "projects" || (activeArea === "tasks" && isDetailPanelVisible)) {
+          if (e.ctrlKey && activeArea === "tasks" && selectedTaskId) {
+            // 折りたたみ切り替え
+            e.preventDefault()
+            onToggleTaskCollapse(selectedTaskId)
+          } else {
+            // エリア間移動
             e.preventDefault()
             if (activeArea === "projects") {
               setActiveArea("tasks")
-            } else if (activeArea === "tasks") {
+              if (filteredTasks.length > 0 && !selectedTaskId) {
+                setSelectedTaskId(filteredTasks[0].id)
+                setSelectedTaskIds([filteredTasks[0].id])
+              }
+            } else if (activeArea === "tasks" && isDetailPanelVisible && selectedTaskId) {
               setActiveArea("details")
             }
           }
@@ -160,7 +217,17 @@ export const useKeyboardShortcuts = ({
 
         case "ArrowLeft":
           e.preventDefault()
-          if (activeArea === "details") {
+          if (activeArea === "tasks" && selectedTaskId) {
+            // 親タスクに移動するか、左のエリアに移動
+            const task = tasks.find((t) => t.id === selectedTaskId)
+            if (task && task.parentId) {
+              setSelectedTaskId(task.parentId)
+              setSelectedTaskIds([task.parentId])
+              setIsMultiSelectMode(false)
+            } else {
+              setActiveArea("projects")
+            }
+          } else if (activeArea === "details") {
             setActiveArea("tasks")
           } else if (activeArea === "tasks") {
             setActiveArea("projects")
@@ -179,6 +246,13 @@ export const useKeyboardShortcuts = ({
           }
           break
 
+        case "a":
+          if (e.ctrlKey && activeArea === "tasks" && filteredTasks.length > 0) {
+            e.preventDefault()
+            onSelectAll()
+          }
+          break
+
         default:
           break
       }
@@ -189,18 +263,27 @@ export const useKeyboardShortcuts = ({
       window.removeEventListener("keydown", handleKeyDown)
     }
   }, [
+    activeArea,
     selectedTaskId,
     selectedTaskIds,
     tasks,
-    copiedTasks,
     filteredTasks,
-    selectedProjectId,
-    activeArea,
     projects,
+    selectedProjectId,
     isDetailPanelVisible,
     isMultiSelectMode,
-    setTasks,
-    setCopiedTasks,
+    copiedTasks,
+    isAddingProject,
+    isAddingTask,
+    isEditingProject,
+    onAddTask,
+    onDeleteTask,
+    onCopyTask,
+    onPasteTask,
+    onToggleTaskCompletion,
+    onToggleTaskCollapse,
+    onSelectAll,
+    onHandleKeyboardRangeSelect,
     setSelectedTaskId,
     setSelectedTaskIds,
     setSelectedProjectId,

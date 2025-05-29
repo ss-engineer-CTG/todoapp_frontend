@@ -3,6 +3,12 @@ import { Task, Project } from '../types'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { CalendarIcon, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { cn } from '@/lib/utils'
 
 interface DetailPanelProps {
   selectedTask: Task | undefined
@@ -24,8 +30,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   setIsVisible
 }) => {
   const taskNameInputRef = useRef<HTMLInputElement>(null)
-  const startDateButtonRef = useRef<HTMLButtonElement>(null)
-  const dueDateButtonRef = useRef<HTMLButtonElement>(null)
   const taskNotesRef = useRef<HTMLTextAreaElement>(null)
 
   const toggleDetailPanel = () => {
@@ -38,7 +42,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   if (!selectedTask) {
     return (
       <div
-        className={`w-80 border-l h-full ${activeArea === "details" ? "bg-accent/40" : ""}`}
+        className={cn(
+          "w-80 border-l h-full",
+          activeArea === "details" ? "bg-accent/40" : ""
+        )}
         onClick={() => setActiveArea("details")}
       >
         <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -50,56 +57,93 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
   return (
     <div
-      className={`w-80 border-l h-full ${activeArea === "details" ? "bg-accent/40" : ""}`}
+      className={cn(
+        "w-80 border-l h-full",
+        activeArea === "details" ? "bg-accent/40" : ""
+      )}
       onClick={() => setActiveArea("details")}
     >
       <div className="p-4 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">タスク詳細</h2>
-          <button
-            className="p-1 hover:bg-accent rounded"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={toggleDetailPanel}
             title="詳細パネルを非表示"
+            className="h-6 w-6"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="space-y-4 flex-grow overflow-y-auto">
+          {/* タスク名 */}
           <div>
             <label className="text-sm font-medium mb-1 block">タスク名</label>
-            <input
+            <Input
               ref={taskNameInputRef}
               value={selectedTask.name}
               onChange={(e) => onTaskUpdate(selectedTask.id, { name: e.target.value })}
-              className="w-full p-2 border rounded bg-background"
             />
           </div>
 
+          {/* 開始日・期限日 */}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-sm font-medium mb-1 block">開始日</label>
-              <button
-                ref={startDateButtonRef}
-                className="w-full flex items-center justify-start text-left font-normal p-2 border rounded hover:bg-accent"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(selectedTask.startDate, "yyyy年M月d日", { locale: ja })}
-              </button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {format(selectedTask.startDate, "yyyy年M月d日", { locale: ja })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedTask.startDate}
+                    onSelect={(date) => 
+                      onTaskUpdate(selectedTask.id, { startDate: date || new Date() })
+                    }
+                    initialFocus
+                    locale={ja}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div>
               <label className="text-sm font-medium mb-1 block">期限日</label>
-              <button
-                ref={dueDateButtonRef}
-                className="w-full flex items-center justify-start text-left font-normal p-2 border rounded hover:bg-accent"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(selectedTask.dueDate, "yyyy年M月d日", { locale: ja })}
-              </button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {format(selectedTask.dueDate, "yyyy年M月d日", { locale: ja })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedTask.dueDate}
+                    onSelect={(date) => 
+                      onTaskUpdate(selectedTask.id, { dueDate: date || new Date() })
+                    }
+                    initialFocus
+                    locale={ja}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
+          {/* 完了日 */}
           {selectedTask.completionDate && (
             <div>
               <label className="text-sm font-medium mb-1 block">完了日</label>
@@ -109,6 +153,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             </div>
           )}
 
+          {/* プロジェクト */}
           <div>
             <label className="text-sm font-medium mb-1 block">プロジェクト</label>
             <div className="text-sm p-2 border rounded-md flex items-center">
@@ -122,18 +167,23 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             </div>
           </div>
 
+          {/* 担当者 */}
           <div>
             <label className="text-sm font-medium mb-1 block">担当者</label>
-            <div className="text-sm p-2 border rounded-md">{selectedTask.assignee}</div>
+            <Input
+              value={selectedTask.assignee}
+              onChange={(e) => onTaskUpdate(selectedTask.id, { assignee: e.target.value })}
+            />
           </div>
 
+          {/* メモ */}
           <div>
             <label className="text-sm font-medium mb-1 block">メモ</label>
-            <textarea
+            <Textarea
               ref={taskNotesRef}
               value={selectedTask.notes}
               onChange={(e) => onTaskUpdate(selectedTask.id, { notes: e.target.value })}
-              className="w-full min-h-[100px] p-2 border rounded bg-background resize-none"
+              className="min-h-[100px] resize-none"
               placeholder="メモを追加..."
             />
           </div>
