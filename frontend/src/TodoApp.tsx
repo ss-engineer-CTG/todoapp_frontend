@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Project, Task, AreaType } from './types'
+import { Project, Task, AreaType, BatchOperation } from './types'
 import { ProjectPanel } from './components/ProjectPanel'
 import { TaskPanel } from './components/TaskPanel'
 import { DetailPanel } from './components/DetailPanel'
@@ -344,15 +344,15 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // TaskApiActions用のラッパー関数
+  // TaskApiActions用のラッパー関数（修正）
   const taskApiActions = {
     createTask,
     updateTask,
     loadTasks: async () => {
-      await loadTasks(selectedProjectId)
-      return []
+      const result = await loadTasks(selectedProjectId)
+      return result
     },
-    batchUpdateTasks: async (operation: string, taskIds: string[]) => {
+    batchUpdateTasks: async (operation: BatchOperation, taskIds: string[]) => {
       const result = await batchUpdateTasks(operation, taskIds)
       await loadTasks(selectedProjectId) // 操作後に再読み込み
       return result

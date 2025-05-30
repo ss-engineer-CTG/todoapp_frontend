@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { apiService } from '../services/apiService'
 import { logger } from '../utils/logger'
 import { handleError } from '../utils/errorHandler'
-import { Project, Task } from '../types'
+import { Project, Task, BatchOperationResult } from '../types'
 
 interface ApiState<T> {
   data: T | null
@@ -149,11 +149,15 @@ export const useApi = () => {
     }
   }, [])
 
-  const batchUpdateTasks = useCallback(async (operation: string, taskIds: string[]) => {
+  const batchUpdateTasks = useCallback(async (operation: string, taskIds: string[]): Promise<BatchOperationResult> => {
     try {
-      await apiService.batchUpdateTasks(operation, taskIds)
-      // 楽観的更新を避け、データを再取得
-      logger.info('Batch task operation completed', { operation, count: taskIds.length })
+      const result = await apiService.batchUpdateTasks(operation, taskIds)
+      logger.info('Batch task operation completed', { 
+        operation, 
+        count: taskIds.length,
+        affectedCount: result.affected_count
+      })
+      return result
     } catch (error) {
       const errorMessage = 'タスクの一括操作に失敗しました'
       handleError(error, errorMessage)

@@ -1,6 +1,6 @@
 import { PROJECT_API_ENDPOINTS, TASK_API_ENDPOINTS } from '../config/constants'
 import { logger } from '../utils/logger'
-import { Project, Task } from '../types'
+import { Project, Task, BatchOperationResult } from '../types'
 
 class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -84,11 +84,22 @@ class ApiService {
     })
   }
 
-  async batchUpdateTasks(operation: string, taskIds: string[]): Promise<void> {
-    return this.request<void>(TASK_API_ENDPOINTS.BATCH, {
+  async batchUpdateTasks(operation: string, taskIds: string[]): Promise<BatchOperationResult> {
+    const response = await this.request<{
+      message: string
+      affected_count: number
+      task_ids: string[]
+    }>(TASK_API_ENDPOINTS.BATCH, {
       method: 'POST',
       body: JSON.stringify({ operation, task_ids: taskIds }),
     })
+
+    return {
+      success: true,
+      message: response.message,
+      affected_count: response.affected_count,
+      task_ids: response.task_ids
+    }
   }
 
   // ヘルスチェック

@@ -58,7 +58,9 @@ export type BatchOperation = 'complete' | 'incomplete' | 'delete' | 'copy'
 
 export type BatchOperationResult = {
   success: boolean
-  affectedCount: number
+  message: string
+  affected_count: number
+  task_ids: string[]
   errors?: string[]
 }
 
