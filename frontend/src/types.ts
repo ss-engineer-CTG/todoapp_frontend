@@ -56,3 +56,35 @@ export type MultiSelectActions = {
   delete: (taskIds: string[]) => void
   toggleCompletion: (taskIds: string[]) => void
 }
+
+// API関連の型定義
+export interface ApiResponse<T> {
+  data: T
+  success: boolean
+  message?: string
+}
+
+export interface ApiError {
+  message: string
+  code?: string
+  details?: any
+}
+
+export interface PaginationParams {
+  page?: number
+  limit?: number
+  sort?: string
+  order?: 'asc' | 'desc'
+}
+
+export interface ProjectApiActions {
+  createProject: (project: Omit<Project, 'id'>) => Promise<Project>
+  updateProject: (id: string, updates: Partial<Project>) => Promise<Project>
+  deleteProject: (id: string) => Promise<void>
+}
+
+export interface TaskApiActions {
+  createTask: (task: Omit<Task, 'id'>) => Promise<Task>
+  updateTask: (id: string, updates: Partial<Task>) => Promise<Task>
+  loadTasks: () => Promise<Task[]>
+}

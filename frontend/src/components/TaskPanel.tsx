@@ -49,7 +49,6 @@ interface TaskPanelProps {
   setTaskRef: (taskId: string, element: HTMLDivElement | null) => void
   isAddingTask: boolean
   setIsAddingTask: (adding: boolean) => void
-  lastSelectedIndex: number
   apiActions: TaskApiActions
 }
 
@@ -78,7 +77,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   setTaskRef,
   isAddingTask,
   setIsAddingTask,
-  lastSelectedIndex,
   apiActions
 }) => {
   const { theme, setTheme } = useTheme()

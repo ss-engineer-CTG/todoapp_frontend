@@ -70,7 +70,6 @@ const TodoApp: React.FC = () => {
     selectedId: selectedTaskId,
     selectedIds: selectedTaskIds,
     isMultiSelectMode,
-    lastSelectedIndex,
     handleSelect: handleTaskSelect,
     handleKeyboardRangeSelect,
     selectAll,
@@ -86,8 +85,7 @@ const TodoApp: React.FC = () => {
 
   // スクロール管理
   const { setTaskRef } = useScrollToTask({
-    selectedTaskId,
-    taskList: filteredTasks
+    selectedTaskId
   })
 
   // 選択されたタスク
@@ -299,6 +297,16 @@ const TodoApp: React.FC = () => {
     }
   }
 
+  // TaskApiActions用のラッパー関数（型整合性のため）
+  const taskApiActions = {
+    createTask,
+    updateTask,
+    loadTasks: async () => {
+      await loadTasks(selectedProjectId)
+      return []
+    }
+  }
+
   // キーボードショートカット
   const { taskNameInputRef, startDateButtonRef, dueDateButtonRef, taskNotesRef } = useKeyboardShortcuts({
     tasks: currentTasks,
@@ -385,12 +393,7 @@ const TodoApp: React.FC = () => {
           setTaskRef={setTaskRef}
           isAddingTask={isAddingTask}
           setIsAddingTask={setIsAddingTask}
-          lastSelectedIndex={lastSelectedIndex}
-          apiActions={{
-            createTask,
-            updateTask,
-            loadTasks: () => loadTasks(selectedProjectId)
-          }}
+          apiActions={taskApiActions}
         />
 
         {isDetailPanelVisible && (
