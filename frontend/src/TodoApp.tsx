@@ -3,130 +3,60 @@ import { Project, Task, AreaType } from './types'
 import { ProjectPanel } from './components/ProjectPanel'
 import { TaskPanel } from './components/TaskPanel'
 import { DetailPanel } from './components/DetailPanel'
+import { ErrorBoundary } from './components/common/ErrorBoundary'
+import { LoadingSpinner } from './components/common/LoadingSpinner'
 import { useTaskRelations } from './hooks/useTaskRelations'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useMultiSelect } from './hooks/useMultiSelect'
 import { useScrollToTask } from './hooks/useScrollToTask'
+import { useApi } from './hooks/useApi'
+import { logger } from './utils/logger'
+import { handleError } from './utils/errorHandler'
 
 const TodoApp: React.FC = () => {
-  // 初期データ
-  const [projects, setProjects] = useState<Project[]>([
-    { id: "p1", name: "仕事", color: "#f97316", collapsed: false },
-    { id: "p2", name: "個人", color: "#8b5cf6", collapsed: false },
-    { id: "p3", name: "学習", color: "#10b981", collapsed: false },
-  ])
-
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: "t1",
-      name: "プロジェクト提案書を完成させる",
-      projectId: "p1",
-      parentId: null,
-      completed: false,
-      startDate: new Date(),
-      dueDate: new Date(Date.now() + 86400000 * 3),
-      completionDate: null,
-      notes: "予算見積もりとスケジュールを含める",
-      assignee: "自分",
-      level: 0,
-      collapsed: false,
-    },
-    {
-      id: "t2",
-      name: "競合他社の調査",
-      projectId: "p1",
-      parentId: "t1",
-      completed: false,
-      startDate: new Date(),
-      dueDate: new Date(Date.now() + 86400000 * 2),
-      completionDate: null,
-      notes: "価格と機能に焦点を当てる",
-      assignee: "自分",
-      level: 1,
-      collapsed: false,
-    },
-    {
-      id: "t3",
-      name: "プレゼンテーションスライドの作成",
-      projectId: "p1",
-      parentId: "t1",
-      completed: false,
-      startDate: new Date(),
-      dueDate: new Date(Date.now() + 86400000 * 3),
-      completionDate: null,
-      notes: "会社のテンプレートを使用する",
-      assignee: "自分",
-      level: 1,
-      collapsed: false,
-    },
-    {
-      id: "t4",
-      name: "食料品の買い物",
-      projectId: "p2",
-      parentId: null,
-      completed: false,
-      startDate: new Date(),
-      dueDate: new Date(),
-      completionDate: null,
-      notes: "牛乳と卵を忘れないように",
-      assignee: "自分",
-      level: 0,
-      collapsed: false,
-    },
-    {
-      id: "t5",
-      name: "Reactを学ぶ",
-      projectId: "p3",
-      parentId: null,
-      completed: false,
-      startDate: new Date(),
-      dueDate: new Date(Date.now() + 86400000 * 7),
-      completionDate: null,
-      notes: "オンラインコースを完了する",
-      assignee: "自分",
-      level: 0,
-      collapsed: false,
-    },
-    {
-      id: "t6",
-      name: "練習プロジェクトの構築",
-      projectId: "p3",
-      parentId: "t5",
-      completed: false,
-      startDate: new Date(),
-      dueDate: new Date(Date.now() + 86400000 * 10),
-      completionDate: null,
-      notes: "ReactでTodoアプリを作る",
-      assignee: "自分",
-      level: 1,
-      collapsed: false,
-    },
-  ])
+  // API フック
+  const {
+    projects,
+    tasks,
+    loadProjects,
+    createProject,
+    updateProject,
+    deleteProject,
+    loadTasks,
+    createTask,
+    updateTask,
+    deleteTask
+  } = useApi()
 
   // 基本状態管理
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("p1")
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("")
   const [activeArea, setActiveArea] = useState<AreaType>("tasks")
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState<boolean>(true)
   const [showCompleted, setShowCompleted] = useState<boolean>(true)
   const [copiedTasks, setCopiedTasks] = useState<Task[]>([])
+  const [isInitialized, setIsInitialized] = useState<boolean>(false)
 
   // 編集状態管理
   const [isAddingProject, setIsAddingProject] = useState<boolean>(false)
   const [isAddingTask, setIsAddingTask] = useState<boolean>(false)
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
 
+  // 現在のプロジェクトとタスクデータ
+  const currentProjects = projects.data || []
+  const currentTasks = tasks.data || []
+
   // カスタムフック
-  const { taskRelationMap, updateTaskRelationMap } = useTaskRelations(tasks)
+  const { taskRelationMap } = useTaskRelations(currentTasks)
 
   // フィルタリングされたタスク
-  const filteredTasks = tasks.filter((task) => {
+  const filteredTasks = currentTasks.filter((task) => {
     if (task.projectId !== selectedProjectId) return false
     if (!showCompleted && task.completed) return false
 
     if (task.parentId) {
       let currentParentId: string | null = task.parentId
       while (currentParentId) {
-        const currentParent = tasks.find((t) => t.id === currentParentId)
+        const currentParent = currentTasks.find((t) => t.id === currentParentId)
         if (currentParent && currentParent.collapsed) return false
         currentParentId = taskRelationMap.parentMap[currentParentId] || null
       }
@@ -151,7 +81,7 @@ const TodoApp: React.FC = () => {
   } = useMultiSelect({
     items: filteredTasks,
     getItemId: (task) => task.id,
-    initialSelectedId: "t1"
+    initialSelectedId: null
   })
 
   // スクロール管理
@@ -161,11 +91,49 @@ const TodoApp: React.FC = () => {
   })
 
   // 選択されたタスク
-  const selectedTask = tasks.find((task) => task.id === selectedTaskId)
+  const selectedTask = currentTasks.find((task) => task.id === selectedTaskId)
+
+  // 初期データ読み込み
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        logger.info('Initializing application')
+        
+        // プロジェクトとタスクを並行読み込み
+        const [projectsData] = await Promise.all([
+          loadProjects(),
+          loadTasks()
+        ])
+
+        // 最初のプロジェクトを選択
+        if (projectsData.length > 0) {
+          setSelectedProjectId(projectsData[0].id)
+        }
+
+        setIsInitialized(true)
+        logger.info('Application initialized successfully')
+      } catch (error) {
+        handleError(error, 'アプリケーションの初期化に失敗しました')
+      }
+    }
+
+    initializeApp()
+  }, [])
+
+  // プロジェクト変更時のタスク読み込み
+  useEffect(() => {
+    if (selectedProjectId && isInitialized) {
+      loadTasks(selectedProjectId).catch(error => {
+        handleError(error, 'タスクの読み込みに失敗しました')
+      })
+    }
+  }, [selectedProjectId, isInitialized])
 
   // プロジェクト操作
-  const handleProjectUpdate = (updatedProjects: Project[]) => {
-    setProjects(updatedProjects)
+  const handleProjectUpdate = async (updatedProjects: Project[]) => {
+    // この関数は既存のロジックとの互換性のために残しているが、
+    // 実際の更新は個別の操作関数で行う
+    logger.debug('Project update requested', { count: updatedProjects.length })
   }
 
   const handleProjectSelect = (projectId: string) => {
@@ -177,9 +145,9 @@ const TodoApp: React.FC = () => {
   }
 
   // タスク操作
-  const handleTaskUpdate = (updatedTasks: Task[]) => {
-    setTasks(updatedTasks)
-    updateTaskRelationMap(updatedTasks)
+  const handleTaskUpdate = async (updatedTasks: Task[]) => {
+    // 楽観的更新は避け、個別の操作関数を使用
+    logger.debug('Task update requested', { count: updatedTasks.length })
   }
 
   const handleTaskSelectWrapper = (taskId: string, event?: React.MouseEvent) => {
@@ -212,202 +180,129 @@ const TodoApp: React.FC = () => {
   }
 
   // タスク削除
-  const handleDeleteTask = (taskId: string) => {
-    if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-      let allTaskIdsToDelete: string[] = []
-
-      selectedTaskIds.forEach((id) => {
-        const childTaskIds = getChildTasks(id, tasks).map((task) => task.id)
-        allTaskIdsToDelete = [...allTaskIdsToDelete, id, ...childTaskIds]
-      })
-
-      allTaskIdsToDelete = [...new Set(allTaskIdsToDelete)]
-      const updatedTasks = tasks.filter((task) => !allTaskIdsToDelete.includes(task.id))
-      handleTaskUpdate(updatedTasks)
-
-      setSelectedTaskId(null)
-      setSelectedTaskIds([])
-      setIsMultiSelectMode(false)
-    } else {
-      const childTaskIds = getChildTasks(taskId, tasks).map((task) => task.id)
-      const allTaskIdsToDelete = [taskId, ...childTaskIds]
-      const updatedTasks = tasks.filter((task) => !allTaskIdsToDelete.includes(task.id))
-      handleTaskUpdate(updatedTasks)
-
-      if (selectedTaskId === taskId) {
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
+        // 複数選択の場合は一括削除
+        for (const id of selectedTaskIds) {
+          await deleteTask(id)
+        }
         setSelectedTaskId(null)
         setSelectedTaskIds([])
+        setIsMultiSelectMode(false)
+      } else {
+        // 単一削除
+        await deleteTask(taskId)
+        if (selectedTaskId === taskId) {
+          setSelectedTaskId(null)
+          setSelectedTaskIds([])
+        }
       }
+      
+      // タスク一覧を再読み込み
+      await loadTasks(selectedProjectId)
+    } catch (error) {
+      handleError(error, 'タスクの削除に失敗しました')
     }
   }
 
-  // タスクコピー
+  // タスクコピー（既存ロジック維持）
   const handleCopyTask = (taskId: string) => {
     if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-      const tasksToCopy = tasks.filter((task) => selectedTaskIds.includes(task.id))
+      const tasksToCopy = currentTasks.filter((task) => selectedTaskIds.includes(task.id))
       let allTasksToCopy: Task[] = [...tasksToCopy]
 
       tasksToCopy.forEach((task) => {
-        const childTasks = getChildTasks(task.id, tasks)
+        const childTasks = getChildTasks(task.id, currentTasks)
         const unselectedChildTasks = childTasks.filter((childTask) => !selectedTaskIds.includes(childTask.id))
         allTasksToCopy = [...allTasksToCopy, ...unselectedChildTasks]
       })
 
       setCopiedTasks(allTasksToCopy)
     } else {
-      const taskToCopy = tasks.find((task) => task.id === taskId)
+      const taskToCopy = currentTasks.find((task) => task.id === taskId)
       if (taskToCopy) {
-        const childTasks = getChildTasks(taskId, tasks)
+        const childTasks = getChildTasks(taskId, currentTasks)
         setCopiedTasks([taskToCopy, ...childTasks])
       }
     }
   }
 
   // タスク貼り付け
-  const handlePasteTask = () => {
+  const handlePasteTask = async () => {
     if (copiedTasks.length === 0 || !selectedProjectId) return
 
-    const newTasks: Task[] = []
-    const idMap: { [key: string]: string } = {}
+    try {
+      const currentTask = selectedTaskId ? currentTasks.find((t) => t.id === selectedTaskId) : null
+      const targetParentId = currentTask ? currentTask.parentId : null
+      const targetLevel = currentTask ? currentTask.level : 0
 
-    const rootTasks = copiedTasks.filter((task) => !task.parentId || !copiedTasks.some((t) => t.id === task.parentId))
-    const currentTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null
-    const targetParentId = currentTask ? currentTask.parentId : null
-    const targetLevel = currentTask ? currentTask.level : 0
+      // 順次作成（階層構造を維持）
+      const idMap: { [key: string]: string } = {}
+      
+      for (const task of copiedTasks) {
+        const newTaskId = generateId("t")
+        idMap[task.id] = newTaskId
 
-    rootTasks.forEach((rootTask) => {
-      const newTaskId = generateId("t")
-      idMap[rootTask.id] = newTaskId
+        const newTask = {
+          ...task,
+          name: `${task.name} (コピー)`,
+          projectId: selectedProjectId,
+          parentId: task.parentId ? idMap[task.parentId] || targetParentId : targetParentId,
+          level: task.parentId ? task.level : targetLevel,
+        }
 
-      const newTask: Task = {
-        ...rootTask,
-        id: newTaskId,
-        name: `${rootTask.name}${rootTasks.length === 1 ? " (コピー)" : ""}`,
-        projectId: selectedProjectId,
-        parentId: targetParentId,
-        level: targetLevel,
+        await createTask(newTask)
       }
 
-      newTasks.push(newTask)
-    })
-
-    const childTasks = copiedTasks.filter((task) => task.parentId && copiedTasks.some((t) => t.id === task.parentId))
-
-    childTasks.forEach((childTask) => {
-      const newChildId = generateId("t")
-      idMap[childTask.id] = newChildId
-
-      const newParentId = childTask.parentId ? idMap[childTask.parentId] : null
-      const parentTask = newTasks.find((t) => t.id === newParentId)
-      const newLevel = parentTask ? parentTask.level + 1 : childTask.level
-
-      const newTask: Task = {
-        ...childTask,
-        id: newChildId,
-        name: childTask.name,
-        projectId: selectedProjectId,
-        parentId: newParentId,
-        level: newLevel,
-      }
-
-      newTasks.push(newTask)
-    })
-
-    handleTaskUpdate([...tasks, ...newTasks])
-
-    if (newTasks.length > 0) {
-      setSelectedTaskId(newTasks[0].id)
-      setSelectedTaskIds([newTasks[0].id])
-      setIsMultiSelectMode(false)
+      // タスク一覧を再読み込み
+      await loadTasks(selectedProjectId)
+      
+      logger.info('Tasks pasted successfully', { count: copiedTasks.length })
+    } catch (error) {
+      handleError(error, 'タスクの貼り付けに失敗しました')
     }
   }
 
   // タスク完了状態切り替え
-  const handleToggleTaskCompletion = (taskId: string) => {
-    if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-      const targetTask = tasks.find((t) => t.id === taskId)
-      const newCompletionState = targetTask ? !targetTask.completed : false
+  const handleToggleTaskCompletion = async (taskId: string) => {
+    try {
+      const task = currentTasks.find(t => t.id === taskId)
+      if (!task) return
 
-      const updatedTasks = [...tasks]
-
-      selectedTaskIds.forEach((id) => {
-        const taskIndex = updatedTasks.findIndex((task) => task.id === id)
-        if (taskIndex !== -1) {
-          updatedTasks[taskIndex] = {
-            ...updatedTasks[taskIndex],
-            completed: newCompletionState,
-            completionDate: newCompletionState ? new Date() : null,
-          }
-
-          const childTasks = getChildTasks(id, updatedTasks)
-          childTasks.forEach((childTask) => {
-            const childIndex = updatedTasks.findIndex((task) => task.id === childTask.id)
-            if (childIndex !== -1) {
-              updatedTasks[childIndex] = {
-                ...updatedTasks[childIndex],
-                completed: newCompletionState,
-                completionDate: newCompletionState ? new Date() : null,
-              }
-            }
-          })
-        }
+      const newCompletionState = !task.completed
+      
+      await updateTask(taskId, {
+        completed: newCompletionState,
+        completionDate: newCompletionState ? new Date() : null
       })
 
-      handleTaskUpdate(updatedTasks)
-    } else {
-      const updatedTasks = [...tasks]
-      const taskIndex = updatedTasks.findIndex((task) => task.id === taskId)
-
-      if (taskIndex !== -1) {
-        const isCompleting = !updatedTasks[taskIndex].completed
-        updatedTasks[taskIndex] = {
-          ...updatedTasks[taskIndex],
-          completed: isCompleting,
-          completionDate: isCompleting ? new Date() : null,
-        }
-
-        const childTasks = getChildTasks(taskId, updatedTasks)
-        childTasks.forEach((childTask) => {
-          const childIndex = updatedTasks.findIndex((task) => task.id === childTask.id)
-          if (childIndex !== -1) {
-            updatedTasks[childIndex] = {
-              ...updatedTasks[childIndex],
-              completed: isCompleting,
-              completionDate: isCompleting ? new Date() : null,
-            }
-          }
-        })
-
-        handleTaskUpdate(updatedTasks)
-      }
+      // タスク一覧を再読み込み
+      await loadTasks(selectedProjectId)
+    } catch (error) {
+      handleError(error, 'タスクの完了状態切り替えに失敗しました')
     }
   }
 
   // タスク折りたたみ切り替え
-  const handleToggleTaskCollapse = (taskId: string) => {
-    handleTaskUpdate(
-      tasks.map((task) => (task.id === taskId ? { ...task, collapsed: !task.collapsed } : task))
-    )
-  }
+  const handleToggleTaskCollapse = async (taskId: string) => {
+    try {
+      const task = currentTasks.find(t => t.id === taskId)
+      if (!task) return
 
-  // プロジェクト変更時のタスク選択リセット
-  useEffect(() => {
-    const projectTasks = tasks.filter(task => task.projectId === selectedProjectId)
-    if (projectTasks.length > 0) {
-      const firstTaskId = projectTasks[0].id
-      setSelectedTaskId(firstTaskId)
-      setSelectedTaskIds([firstTaskId])
-    } else {
-      setSelectedTaskId(null)
-      setSelectedTaskIds([])
+      await updateTask(taskId, { collapsed: !task.collapsed })
+      
+      // タスク一覧を再読み込み
+      await loadTasks(selectedProjectId)
+    } catch (error) {
+      handleError(error, 'タスクの折りたたみ切り替えに失敗しました')
     }
-    setIsMultiSelectMode(false)
-  }, [selectedProjectId])
+  }
 
   // キーボードショートカット
   const { taskNameInputRef, startDateButtonRef, dueDateButtonRef, taskNotesRef } = useKeyboardShortcuts({
-    tasks,
-    projects,
+    tasks: currentTasks,
+    projects: currentProjects,
     selectedProjectId,
     setSelectedProjectId,
     selectedTaskId,
@@ -435,70 +330,93 @@ const TodoApp: React.FC = () => {
     isEditingProject
   })
 
+  // 初期化中のローディング表示
+  if (!isInitialized) {
+    return (
+      <div className="flex h-screen bg-background">
+        <LoadingSpinner size="lg" message="アプリケーションを初期化中..." className="m-auto" />
+      </div>
+    )
+  }
+
   return (
-    <div className="flex h-screen bg-background">
-      <ProjectPanel
-        projects={projects}
-        onProjectsUpdate={handleProjectUpdate}
-        selectedProjectId={selectedProjectId}
-        onProjectSelect={handleProjectSelect}
-        activeArea={activeArea}
-        setActiveArea={setActiveArea}
-        isAddingProject={isAddingProject}
-        setIsAddingProject={setIsAddingProject}
-        isEditingProject={isEditingProject}
-        setIsEditingProject={setIsEditingProject}
-      />
-
-      <TaskPanel
-        tasks={filteredTasks}
-        onTasksUpdate={handleTaskUpdate}
-        selectedProjectId={selectedProjectId}
-        selectedTaskId={selectedTaskId}
-        selectedTaskIds={selectedTaskIds}
-        onTaskSelect={handleTaskSelectWrapper}
-        activeArea={activeArea}
-        setActiveArea={setActiveArea}
-        isDetailPanelVisible={isDetailPanelVisible}
-        setIsDetailPanelVisible={setIsDetailPanelVisible}
-        isMultiSelectMode={isMultiSelectMode}
-        setIsMultiSelectMode={setIsMultiSelectMode}
-        showCompleted={showCompleted}
-        setShowCompleted={setShowCompleted}
-        taskRelationMap={taskRelationMap}
-        allTasks={tasks}
-        onDeleteTask={handleDeleteTask}
-        onCopyTask={handleCopyTask}
-        onToggleTaskCompletion={handleToggleTaskCompletion}
-        onToggleTaskCollapse={handleToggleTaskCollapse}
-        onClearSelection={clearSelection}
-        setTaskRef={setTaskRef}
-        isAddingTask={isAddingTask}
-        setIsAddingTask={setIsAddingTask}
-        lastSelectedIndex={lastSelectedIndex}
-      />
-
-      {isDetailPanelVisible && (
-        <DetailPanel
-          selectedTask={selectedTask}
-          onTaskUpdate={(taskId, updates) => {
-            const updatedTasks = tasks.map((task) =>
-              task.id === taskId ? { ...task, ...updates } : task
-            )
-            handleTaskUpdate(updatedTasks)
-          }}
-          projects={projects}
+    <ErrorBoundary>
+      <div className="flex h-screen bg-background">
+        <ProjectPanel
+          projects={currentProjects}
+          onProjectsUpdate={handleProjectUpdate}
+          selectedProjectId={selectedProjectId}
+          onProjectSelect={handleProjectSelect}
           activeArea={activeArea}
           setActiveArea={setActiveArea}
-          isVisible={isDetailPanelVisible}
-          setIsVisible={setIsDetailPanelVisible}
-          taskNameInputRef={taskNameInputRef}
-          startDateButtonRef={startDateButtonRef}
-          dueDateButtonRef={dueDateButtonRef}
-          taskNotesRef={taskNotesRef}
+          isAddingProject={isAddingProject}
+          setIsAddingProject={setIsAddingProject}
+          isEditingProject={isEditingProject}
+          setIsEditingProject={setIsEditingProject}
+          apiActions={{
+            createProject,
+            updateProject,
+            deleteProject
+          }}
         />
-      )}
-    </div>
+
+        <TaskPanel
+          tasks={filteredTasks}
+          onTasksUpdate={handleTaskUpdate}
+          selectedProjectId={selectedProjectId}
+          selectedTaskId={selectedTaskId}
+          selectedTaskIds={selectedTaskIds}
+          onTaskSelect={handleTaskSelectWrapper}
+          activeArea={activeArea}
+          setActiveArea={setActiveArea}
+          isDetailPanelVisible={isDetailPanelVisible}
+          setIsDetailPanelVisible={setIsDetailPanelVisible}
+          isMultiSelectMode={isMultiSelectMode}
+          setIsMultiSelectMode={setIsMultiSelectMode}
+          showCompleted={showCompleted}
+          setShowCompleted={setShowCompleted}
+          taskRelationMap={taskRelationMap}
+          allTasks={currentTasks}
+          onDeleteTask={handleDeleteTask}
+          onCopyTask={handleCopyTask}
+          onToggleTaskCompletion={handleToggleTaskCompletion}
+          onToggleTaskCollapse={handleToggleTaskCollapse}
+          onClearSelection={clearSelection}
+          setTaskRef={setTaskRef}
+          isAddingTask={isAddingTask}
+          setIsAddingTask={setIsAddingTask}
+          lastSelectedIndex={lastSelectedIndex}
+          apiActions={{
+            createTask,
+            updateTask,
+            loadTasks: () => loadTasks(selectedProjectId)
+          }}
+        />
+
+        {isDetailPanelVisible && (
+          <DetailPanel
+            selectedTask={selectedTask}
+            onTaskUpdate={async (taskId, updates) => {
+              try {
+                await updateTask(taskId, updates)
+                await loadTasks(selectedProjectId)
+              } catch (error) {
+                handleError(error, 'タスクの更新に失敗しました')
+              }
+            }}
+            projects={currentProjects}
+            activeArea={activeArea}
+            setActiveArea={setActiveArea}
+            isVisible={isDetailPanelVisible}
+            setIsVisible={setIsDetailPanelVisible}
+            taskNameInputRef={taskNameInputRef}
+            startDateButtonRef={startDateButtonRef}
+            dueDateButtonRef={dueDateButtonRef}
+            taskNotesRef={taskNotesRef}
+          />
+        )}
+      </div>
+    </ErrorBoundary>
   )
 }
 

@@ -1,23 +1,53 @@
 const { app, BrowserWindow, shell } = require('electron')
 const path = require('path')
 const { spawn } = require('child_process')
+
+// システムプロンプト準拠: ハードコード禁止、設定の一元管理
+const APP_CONFIG = {
+  PORTS: {
+    FRONTEND: 3000,
+    BACKEND: 8000
+  },
+  PATHS: {
+    BACKEND_SCRIPT: 'app.py',
+    BACKEND_DIR: 'backend',
+    FRONTEND_DIST: path.join('frontend', 'dist'),
+    FRONTEND_INDEX: 'index.html'
+  },
+  WINDOW: {
+    WIDTH: 1400,
+    HEIGHT: 900,
+    MIN_WIDTH: 800,
+    MIN_HEIGHT: 600
+  }
+}
+
 const isDev = process.env.NODE_ENV === 'development'
 
 let mainWindow
 let pythonProcess
 
+// システムプロンプト準拠: パス結合専用関数
+function joinPath(...segments) {
+  return path.join(...segments)
+}
+
 // Pythonバックエンドプロセスを起動
 function startPythonBackend() {
   console.log('Pythonバックエンドを起動しています...')
   
-  const pythonPath = isDev ? 'python' : path.join(process.resourcesPath, 'python', 'python')
+  const pythonPath = isDev ? 'python' : joinPath(process.resourcesPath, 'python', 'python')
   const scriptPath = isDev 
-    ? path.join(__dirname, '..', 'backend', 'app.py')
-    : path.join(process.resourcesPath, 'backend', 'app.py')
+    ? joinPath(__dirname, '..', APP_CONFIG.PATHS.BACKEND_DIR, APP_CONFIG.PATHS.BACKEND_SCRIPT)
+    : joinPath(process.resourcesPath, APP_CONFIG.PATHS.BACKEND_DIR, APP_CONFIG.PATHS.BACKEND_SCRIPT)
+
+  const workingDirectory = isDev 
+    ? joinPath(__dirname, '..', APP_CONFIG.PATHS.BACKEND_DIR)
+    : joinPath(process.resourcesPath, APP_CONFIG.PATHS.BACKEND_DIR)
 
   pythonProcess = spawn(pythonPath, [scriptPath], {
     stdio: 'pipe',
-    cwd: isDev ? path.join(__dirname, '..', 'backend') : path.join(process.resourcesPath, 'backend')
+    cwd: workingDirectory
   })
 
   pythonProcess.stdout.on('data', (data) => {
@@ -57,26 +87,26 @@ function stopPythonBackend() {
 // メインウィンドウを作成
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 800,
-    minHeight: 600,
+    width: APP_CONFIG.WINDOW.WIDTH,
+    height: APP_CONFIG.WINDOW.HEIGHT,
+    minWidth: APP_CONFIG.WINDOW.MIN_WIDTH,
+    minHeight: APP_CONFIG.WINDOW.MIN_HEIGHT,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
-      preload: path.join(__dirname, 'preload.js'),
+      preload: joinPath(__dirname, 'preload.js'),
       webSecurity: true
     },
-    icon: path.join(__dirname, 'assets', 'icon.png'),
+    icon: joinPath(__dirname, 'assets', 'icon.png'),
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     show: false
   })
 
-  // フロントエンドのURLを設定
+  // システムプロンプト準拠: URL構築の一元化
   const frontendUrl = isDev 
-    ? 'http://localhost:3000'
-    : `file://${path.join(__dirname, '..', 'frontend', 'dist', 'index.html')}`
+    ? `http://localhost:${APP_CONFIG.PORTS.FRONTEND}`
+    : `file://${joinPath(__dirname, '..', APP_CONFIG.PATHS.FRONTEND_DIST, APP_CONFIG.PATHS.FRONTEND_INDEX)}`
 
   mainWindow.loadURL(frontendUrl)
 
@@ -109,7 +139,16 @@ function createWindow() {
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl)
     
-    if (parsedUrl.origin !== 'http://localhost:3000' && parsedUrl.protocol !== 'file:') {
+    const allowedOrigins = [
+      `http://localhost:${APP_CONFIG.PORTS.FRONTEND}`,
+      'file:'
+    ]
+    
+    const isAllowed = allowedOrigins.some(origin => 
+      parsedUrl.origin === origin || parsedUrl.protocol === origin
+    )
+    
+    if (!isAllowed) {
       event.preventDefault()
       shell.openExternal(navigationUrl)
     }

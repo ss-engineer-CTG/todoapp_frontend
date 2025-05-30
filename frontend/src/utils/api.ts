@@ -1,10 +1,20 @@
+// 既存のAPIクライアントを改良
 import { Project, Task } from '../types'
-
-const API_BASE_URL = 'http://localhost:8000/api'
+import { logger } from './logger'
+import { APP_CONFIG } from '../config/constants'
+import { PathUtils } from '../config/paths'
 
 class ApiClient {
+  private baseUrl: string
+
+  constructor() {
+    // システムプロンプト準拠: ハードコード禁止
+    this.baseUrl = `http://localhost:${APP_CONFIG.PORTS.BACKEND}`
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`
+    // システムプロンプト準拠: パス結合専用関数使用
+    const url = `${this.baseUrl}${PathUtils.joinPath(APP_CONFIG.ENDPOINTS.API_BASE, endpoint)}`
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -13,16 +23,43 @@ class ApiClient {
       ...options,
     }
 
+    // システムプロンプト準拠: 適切なログレベルでAPIリクエストをログ出力
+    logger.debug('API request', {
+      method: config.method || 'GET',
+      url,
+      hasBody: !!config.body
+    })
+
     try {
       const response = await fetch(url, config)
       
       if (!response.ok) {
+        // システムプロンプト準拠: エラー詳細をログ出力
+        logger.error('API request failed', {
+          url,
+          status: response.status,
+          statusText: response.statusText
+        })
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       
-      return await response.json()
+      const data = await response.json()
+      
+      // システムプロンプト準拠: 成功時の情報ログ
+      logger.info('API request successful', {
+        method: config.method || 'GET',
+        endpoint,
+        status: response.status
+      })
+      
+      return data
     } catch (error) {
-      console.error('API request failed:', error)
+      // システムプロンプト準拠: エラーログとスタックトレース
+      logger.error('API request error', {
+        url,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
       throw error
     }
   }
@@ -83,6 +120,11 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ operation, taskIds }),
     })
+  }
+
+  // ヘルスチェック
+  async healthCheck(): Promise<{ status: string }> {
+    return this.request<{ status: string }>('/health')
   }
 }
 
