@@ -3,7 +3,7 @@
 システムプロンプト準拠：統一例外処理、適切なログ出力
 """
 from typing import Dict, Any, Optional
-from .logger import get_logger
+from core.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -4,7 +4,25 @@
 """
 import os
 from pathlib import Path
-from utils.paths import get_base_dir, get_database_path, get_schema_path, get_log_file_path
+
+# システムプロンプト準拠：パス管理関数を直接定義（循環依存回避）
+def get_base_dir() -> Path:
+    """ベースディレクトリを取得"""
+    return Path(__file__).parent.parent
+
+def get_database_path() -> Path:
+    """データベースファイルパスを取得"""
+    return get_base_dir() / "todo.db"
+
+def get_schema_path() -> Path:
+    """スキーマファイルパスを取得"""
+    return get_base_dir() / "schema.sql"
+
+def get_log_file_path() -> Path:
+    """ログファイルパスを取得"""
+    log_dir = get_base_dir() / "logs"
+    log_dir.mkdir(exist_ok=True)
+    return log_dir / "app.log"
 
 class Config:
     """アプリケーション設定クラス"""

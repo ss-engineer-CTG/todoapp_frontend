@@ -2,6 +2,15 @@
 階層型ToDoリストアプリケーション メインAPI
 システムプロンプト準拠：KISS原則、DRY原則、統一ログ・例外処理
 """
+import sys
+import os
+from pathlib import Path
+
+# システムプロンプト準拠：パス管理の一元化
+# バックエンドディレクトリをPythonパスに追加
+backend_dir = Path(__file__).parent
+sys.path.insert(0, str(backend_dir))
+
 import sqlite3
 from datetime import datetime
 from typing import List, Optional
@@ -13,13 +22,13 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
 
-# コア機能
+# コア機能（絶対インポートに変更）
 from core.config import config
 from core.logger import setup_logging, get_logger
 from core.database import DatabaseManager, init_database
 from core.exceptions import TodoAppError, handle_exception
 
-# サービス
+# サービス（絶対インポートに変更）
 from services.project_service import ProjectService
 from services.task_service import TaskService
 

@@ -6,9 +6,9 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Dict, Any
-from .config import config
-from .logger import get_logger
-from .exceptions import DatabaseError
+from core.config import config
+from core.logger import get_logger
+from core.exceptions import DatabaseError
 
 logger = get_logger(__name__)
 
