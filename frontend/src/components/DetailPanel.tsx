@@ -1,4 +1,4 @@
-import React, { RefObject } from 'react'
+import React, { RefObject, useEffect } from 'react'
 import { Task, Project } from '../types'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
@@ -44,6 +44,47 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
+  // フォーカス管理（page.tsx準拠）
+  useEffect(() => {
+    if (activeArea === "details" && selectedTask) {
+      // 詳細パネルがアクティブになった時、最初の要素にフォーカス
+      setTimeout(() => {
+        taskNameInputRef.current?.focus()
+      }, 0)
+    }
+  }, [activeArea, selectedTask, taskNameInputRef])
+
+  // Tabキー処理の支援（page.tsx準拠）
+  useEffect(() => {
+    const handleTabInDetailPanel = (e: KeyboardEvent) => {
+      if (activeArea !== "details" || !selectedTask) return
+      
+      // カスタムTabキー処理は useKeyboardShortcuts で行うため、
+      // ここでは基本的なフォーカス管理のみ
+      if (e.key === "Tab") {
+        const focusableElements = [
+          taskNameInputRef.current,
+          startDateButtonRef.current,
+          dueDateButtonRef.current,
+          taskNotesRef.current
+        ].filter(Boolean)
+
+        const currentIndex = focusableElements.indexOf(document.activeElement as any)
+        
+        // フォーカス可能要素が見つからない場合は最初の要素にフォーカス
+        if (currentIndex === -1 && focusableElements.length > 0) {
+          e.preventDefault()
+          focusableElements[0]?.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleTabInDetailPanel)
+    return () => {
+      document.removeEventListener('keydown', handleTabInDetailPanel)
+    }
+  }, [activeArea, selectedTask, taskNameInputRef, startDateButtonRef, dueDateButtonRef, taskNotesRef])
+
   if (!selectedTask) {
     return (
       <div
@@ -83,17 +124,18 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         </div>
 
         <div className="space-y-4 flex-grow overflow-y-auto">
-          {/* タスク名 */}
+          {/* タスク名 - Tab順序1番目 */}
           <div>
             <label className="text-sm font-medium mb-1 block">タスク名</label>
             <Input
               ref={taskNameInputRef}
               value={selectedTask.name}
               onChange={(e) => onTaskUpdate(selectedTask.id, { name: e.target.value })}
+              tabIndex={activeArea === "details" ? 1 : -1}
             />
           </div>
 
-          {/* 開始日・期限日 */}
+          {/* 開始日・期限日 - Tab順序2番目、3番目 */}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-sm font-medium mb-1 block">開始日</label>
@@ -103,6 +145,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                     ref={startDateButtonRef}
                     variant="outline"
                     className="w-full justify-start text-left font-normal"
+                    tabIndex={activeArea === "details" ? 2 : -1}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {format(selectedTask.startDate, "yyyy年M月d日", { locale: ja })}
@@ -128,6 +171,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                     ref={dueDateButtonRef}
                     variant="outline"
                     className="w-full justify-start text-left font-normal"
+                    tabIndex={activeArea === "details" ? 3 : -1}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {format(selectedTask.dueDate, "yyyy年M月d日", { locale: ja })}
@@ -176,10 +220,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <Input
               value={selectedTask.assignee}
               onChange={(e) => onTaskUpdate(selectedTask.id, { assignee: e.target.value })}
+              tabIndex={activeArea === "details" ? 4 : -1}
             />
           </div>
 
-          {/* メモ */}
+          {/* メモ - Tab順序4番目（最後） */}
           <div>
             <label className="text-sm font-medium mb-1 block">メモ</label>
             <Textarea
@@ -188,6 +233,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               onChange={(e) => onTaskUpdate(selectedTask.id, { notes: e.target.value })}
               className="min-h-[100px] resize-none"
               placeholder="メモを追加..."
+              tabIndex={activeArea === "details" ? 5 : -1}
             />
           </div>
         </div>

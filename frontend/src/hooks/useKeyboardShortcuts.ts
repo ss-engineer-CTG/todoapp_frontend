@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { Task, Project, TaskRelationMap, AreaType } from '../types'
 
 interface UseKeyboardShortcutsProps {
@@ -60,19 +60,20 @@ export const useKeyboardShortcuts = ({
   isEditingProject
 }: UseKeyboardShortcutsProps) => {
   
-  // 詳細パネル内のフォーカス管理用ref
+  // 詳細パネル内のフォーカス管理用ref（page.tsx準拠）
   const taskNameInputRef = useRef<HTMLInputElement>(null)
   const startDateButtonRef = useRef<HTMLButtonElement>(null)
   const dueDateButtonRef = useRef<HTMLButtonElement>(null)
   const taskNotesRef = useRef<HTMLTextAreaElement>(null)
 
-  // 詳細パネル内のTab navigation
-  const handleDetailTabNavigation = (e: KeyboardEvent) => {
+  // 詳細パネル内のTab navigation（page.tsx完全準拠）
+  const handleDetailTabNavigation = useCallback((e: KeyboardEvent) => {
     if (!selectedTaskId) return
 
     const isShiftTab = e.shiftKey
     const activeElement = document.activeElement
 
+    // タスク名 → 開始日 → 期限日 → メモ の順序でTab移動
     if (activeElement === taskNameInputRef.current) {
       if (!isShiftTab) {
         e.preventDefault()
@@ -100,7 +101,7 @@ export const useKeyboardShortcuts = ({
         dueDateButtonRef.current?.focus()
       }
     }
-  }
+  }, [selectedTaskId])
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -113,7 +114,7 @@ export const useKeyboardShortcuts = ({
         return
       }
 
-      // 詳細パネル内でのTabキー処理
+      // 詳細パネル内でのTabキー処理（page.tsx準拠）
       if (activeArea === "details" && e.key === "Tab") {
         handleDetailTabNavigation(e)
         return
@@ -183,7 +184,7 @@ export const useKeyboardShortcuts = ({
           e.preventDefault()
           if (activeArea === "tasks" && filteredTasks.length > 0) {
             if (e.shiftKey && selectedTaskId) {
-              // Shift+矢印キーでの範囲選択
+              // Shift+矢印キーでの範囲選択（page.tsx準拠）
               onHandleKeyboardRangeSelect('up')
             } else {
               // 通常の移動
@@ -213,7 +214,7 @@ export const useKeyboardShortcuts = ({
           e.preventDefault()
           if (activeArea === "tasks" && filteredTasks.length > 0) {
             if (e.shiftKey && selectedTaskId) {
-              // Shift+矢印キーでの範囲選択
+              // Shift+矢印キーでの範囲選択（page.tsx準拠）
               onHandleKeyboardRangeSelect('down')
             } else {
               // 通常の移動
@@ -245,7 +246,7 @@ export const useKeyboardShortcuts = ({
             e.preventDefault()
             onToggleTaskCollapse(selectedTaskId)
           } else {
-            // エリア間移動
+            // エリア間移動（page.tsx準拠）
             e.preventDefault()
             if (activeArea === "projects") {
               setActiveArea("tasks")
@@ -266,7 +267,7 @@ export const useKeyboardShortcuts = ({
         case "ArrowLeft":
           e.preventDefault()
           if (activeArea === "tasks" && selectedTaskId) {
-            // 親タスクに移動するか、左のエリアに移動
+            // 親タスクに移動するか、左のエリアに移動（page.tsx準拠）
             const task = tasks.find((t) => t.id === selectedTaskId)
             if (task && task.parentId) {
               setSelectedTaskId(task.parentId)
@@ -336,10 +337,11 @@ export const useKeyboardShortcuts = ({
     setSelectedTaskIds,
     setSelectedProjectId,
     setActiveArea,
-    setIsMultiSelectMode
+    setIsMultiSelectMode,
+    handleDetailTabNavigation
   ])
 
-  // 詳細パネル用のrefを返す
+  // 詳細パネル用のrefを返す（page.tsx準拠）
   return {
     taskNameInputRef,
     startDateButtonRef,

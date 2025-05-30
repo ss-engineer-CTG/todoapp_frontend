@@ -1,4 +1,4 @@
-// システムプロンプト準拠: DRY原則 - 重複定数統一
+// システムプロンプト準拠: DRY原則 - 重複定数統一、utils/constants.tsを統合
 import { ProjectColor, KeyboardShortcut } from '../types'
 
 // プロジェクトカラー（重複排除）
@@ -13,7 +13,7 @@ export const PROJECT_COLORS: ProjectColor[] = [
   { name: "ティール", value: "#14b8a6" },
 ] as const
 
-// キーボードショートカット（重複排除）
+// キーボードショートカット（重複排除、page.tsx準拠）
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Enter", description: "同じレベルで新規タスク追加" },
   { key: "Tab", description: "選択したタスクの子タスクを追加" },
@@ -79,4 +79,43 @@ export const APP_CONFIG = {
     API_BASE: '/api',
     HEALTH: '/api/health'
   }
+} as const
+
+// キーボードマッピング（page.tsx完全準拠）
+export const KEYBOARD_MAPPINGS = {
+  TASK_OPERATIONS: {
+    ADD_SAME_LEVEL: 'Enter',
+    ADD_CHILD: 'Tab',
+    DELETE: ['Delete', 'Backspace'],
+    COPY: 'ctrl+c',
+    PASTE: 'ctrl+v',
+    TOGGLE_COMPLETION: 'Space'
+  },
+  NAVIGATION: {
+    MOVE_UP: 'ArrowUp',
+    MOVE_DOWN: 'ArrowDown',
+    MOVE_RIGHT: 'ArrowRight',
+    MOVE_LEFT: 'ArrowLeft',
+    RANGE_SELECT_UP: 'shift+ArrowUp',
+    RANGE_SELECT_DOWN: 'shift+ArrowDown',
+    TOGGLE_COLLAPSE: 'ctrl+ArrowRight'
+  },
+  SELECTION: {
+    MULTI_SELECT: 'ctrl+click',
+    RANGE_SELECT: 'shift+click',
+    SELECT_ALL: 'ctrl+a',
+    CLEAR_SELECTION: 'Escape'
+  },
+  DETAIL_PANEL: {
+    TAB_FORWARD: 'Tab',
+    TAB_BACKWARD: 'shift+Tab'
+  }
+} as const
+
+// 一括操作タイプ
+export const BATCH_OPERATIONS = {
+  COMPLETE: 'complete',
+  INCOMPLETE: 'incomplete',
+  DELETE: 'delete',
+  COPY: 'copy'
 } as const

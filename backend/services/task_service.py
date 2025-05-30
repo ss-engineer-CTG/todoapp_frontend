@@ -155,30 +155,111 @@ class TaskService:
             logger.error(f"Failed to delete task {task_id}: {e}")
             raise
     
-    def batch_update_tasks(self, operation: str, task_ids: List[str]) -> None:
-        """タスク一括操作"""
+    def batch_update_tasks(self, operation: str, task_ids: List[str]) -> Dict[str, Any]:
+        """タスク一括操作（page.tsx準拠の詳細実装）"""
         try:
             if not task_ids:
                 raise ValidationError("Task IDs are required")
             
             placeholders = ",".join(["?" for _ in task_ids])
             now = datetime.now()
+            affected_rows = 0
+            
+            logger.info(f"Starting batch operation: {operation}", {
+                'task_count': len(task_ids),
+                'task_ids': task_ids
+            })
             
             if operation == "complete":
-                query = f"UPDATE tasks SET completed = ?, completion_date = ?, updated_at = ? WHERE id IN ({placeholders})"
+                # 一括完了
+                query = f"""UPDATE tasks SET 
+                           completed = ?, 
+                           completion_date = ?, 
+                           updated_at = ? 
+                           WHERE id IN ({placeholders})"""
                 params = [True, now, now] + task_ids
+                affected_rows = self.db_manager.execute_update(query, tuple(params))
+                
+                # 子タスクも一括完了（page.tsx準拠）
+                child_query = f"""UPDATE tasks SET 
+                                completed = ?, 
+                                completion_date = ?, 
+                                updated_at = ? 
+                                WHERE parent_id IN ({placeholders})"""
+                child_affected = self.db_manager.execute_update(child_query, tuple(params))
+                affected_rows += child_affected
+                
+                logger.info(f"Batch complete: {affected_rows} tasks affected")
+                
             elif operation == "incomplete":
-                query = f"UPDATE tasks SET completed = ?, completion_date = ?, updated_at = ? WHERE id IN ({placeholders})"
+                # 一括未完了
+                query = f"""UPDATE tasks SET 
+                           completed = ?, 
+                           completion_date = ?, 
+                           updated_at = ? 
+                           WHERE id IN ({placeholders})"""
                 params = [False, None, now] + task_ids
+                affected_rows = self.db_manager.execute_update(query, tuple(params))
+                
+                # 子タスクも一括未完了
+                child_query = f"""UPDATE tasks SET 
+                                completed = ?, 
+                                completion_date = ?, 
+                                updated_at = ? 
+                                WHERE parent_id IN ({placeholders})"""
+                child_affected = self.db_manager.execute_update(child_query, tuple(params))
+                affected_rows += child_affected
+                
+                logger.info(f"Batch incomplete: {affected_rows} tasks affected")
+                
             elif operation == "delete":
+                # 一括削除（CASCADE により子タスクも自動削除）
                 query = f"DELETE FROM tasks WHERE id IN ({placeholders})"
                 params = task_ids
+                affected_rows = self.db_manager.execute_update(query, tuple(params))
+                
+                logger.info(f"Batch delete: {affected_rows} tasks affected")
+                
             else:
                 raise ValidationError(f"Invalid operation: {operation}")
             
-            affected_rows = self.db_manager.execute_update(query, tuple(params))
-            logger.info(f"Batch operation '{operation}' executed on {affected_rows} tasks")
+            return {
+                'success': True,
+                'operation': operation,
+                'affected_count': affected_rows,
+                'task_ids': task_ids
+            }
             
         except Exception as e:
             logger.error(f"Failed to execute batch operation '{operation}': {e}")
+            return {
+                'success': False,
+                'operation': operation,
+                'affected_count': 0,
+                'error': str(e)
+            }
+    
+    def get_task_hierarchy(self, task_id: str) -> List[Dict[str, Any]]:
+        """タスクの階層構造取得（子タスク含む）"""
+        try:
+            # 再帰的に子タスクを取得
+            def get_children(parent_id: str) -> List[Dict[str, Any]]:
+                children = self.db_manager.execute_query(
+                    "SELECT * FROM tasks WHERE parent_id = ? ORDER BY created_at",
+                    (parent_id,)
+                )
+                result = []
+                for child in children:
+                    child['children'] = get_children(child['id'])
+                    result.append(child)
+                return result
+            
+            # ルートタスクとその子タスクを取得
+            root_task = self.get_task_by_id(task_id)
+            root_task['children'] = get_children(task_id)
+            
+            return [root_task]
+            
+        except Exception as e:
+            logger.error(f"Failed to get task hierarchy for {task_id}: {e}")
             raise

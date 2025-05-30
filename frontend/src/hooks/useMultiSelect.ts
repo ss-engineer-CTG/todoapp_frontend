@@ -24,7 +24,7 @@ export const useMultiSelect = <T>({
   ) => {
     const currentIndex = items.findIndex(item => getItemId(item) === itemId)
 
-    // Ctrl/Cmd + クリック: 個別選択/選択解除
+    // Ctrl/Cmd + クリック: 個別選択/選択解除（page.tsx準拠）
     if (event && (event.ctrlKey || event.metaKey)) {
       setIsMultiSelectMode(true)
 
@@ -33,6 +33,7 @@ export const useMultiSelect = <T>({
         const newSelectedIds = selectedIds.filter(id => id !== itemId)
         setSelectedIds(newSelectedIds)
         
+        // 選択解除されたタスクが現在のフォーカスタスクだった場合
         if (selectedId === itemId) {
           setSelectedId(newSelectedIds.length > 0 ? newSelectedIds[0] : null)
         }
@@ -44,7 +45,7 @@ export const useMultiSelect = <T>({
       
       setLastSelectedIndex(currentIndex)
     }
-    // Shift + クリック: 範囲選択
+    // Shift + クリック: 範囲選択（page.tsx準拠）
     else if (event && event.shiftKey && selectedId && items.length > 0) {
       setIsMultiSelectMode(true)
       
@@ -72,6 +73,7 @@ export const useMultiSelect = <T>({
     }
   }, [items, getItemId, selectedId, selectedIds])
 
+  // page.tsx準拠の範囲選択ロジック
   const handleKeyboardRangeSelect = useCallback((direction: 'up' | 'down') => {
     if (!selectedId || items.length === 0) return
 
@@ -87,7 +89,7 @@ export const useMultiSelect = <T>({
     const newItemId = getItemId(items[newIndex])
 
     if (isMultiSelectMode) {
-      // 範囲選択の拡張/縮小
+      // 範囲選択の拡張/縮小（page.tsx完全準拠）
       if (selectedIds.includes(newItemId)) {
         // 縮小: 現在のアイテムを選択解除
         if ((direction === 'up' && lastSelectedIndex < currentIndex) ||

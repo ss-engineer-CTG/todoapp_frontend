@@ -12,6 +12,7 @@ import { useScrollToTask } from './hooks/useScrollToTask'
 import { useApi } from './hooks/useApi'
 import { logger } from './utils/logger'
 import { handleError } from './utils/errorHandler'
+import { BATCH_OPERATIONS } from './config/constants'
 
 const TodoApp: React.FC = () => {
   // API フック
@@ -25,7 +26,8 @@ const TodoApp: React.FC = () => {
     loadTasks,
     createTask,
     updateTask,
-    deleteTask
+    deleteTask,
+    batchUpdateTasks
   } = useApi()
 
   // 基本状態管理
@@ -65,7 +67,7 @@ const TodoApp: React.FC = () => {
     return true
   })
 
-  // 複数選択機能
+  // 複数選択機能（page.tsx準拠）
   const {
     selectedId: selectedTaskId,
     selectedIds: selectedTaskIds,
@@ -129,8 +131,6 @@ const TodoApp: React.FC = () => {
 
   // プロジェクト操作
   const handleProjectUpdate = async (updatedProjects: Project[]) => {
-    // この関数は既存のロジックとの互換性のために残しているが、
-    // 実際の更新は個別の操作関数で行う
     logger.debug('Project update requested', { count: updatedProjects.length })
   }
 
@@ -144,7 +144,6 @@ const TodoApp: React.FC = () => {
 
   // タスク操作
   const handleTaskUpdate = async (updatedTasks: Task[]) => {
-    // 楽観的更新は避け、個別の操作関数を使用
     logger.debug('Task update requested', { count: updatedTasks.length })
   }
 
@@ -159,7 +158,7 @@ const TodoApp: React.FC = () => {
     return `${prefix}${Date.now()}`
   }
 
-  // すべての子タスクを取得
+  // すべての子タスクを取得（page.tsx準拠）
   const getChildTasks = (parentId: string, taskList: Task[]): Task[] => {
     const childIds = taskRelationMap.childrenMap[parentId] || []
     const directChildren = childIds.map((id) => taskList.find((task) => task.id === id)).filter(Boolean) as Task[]
@@ -172,22 +171,21 @@ const TodoApp: React.FC = () => {
     return allChildren
   }
 
-  // タスク追加（プレースホルダー関数）
+  // タスク追加
   const handleAddTask = (_parentId: string | null = null, _level = 0) => {
     // TaskPanelで実際の追加処理を行うため、ここでは何もしない
   }
 
-  // タスク削除
+  // タスク削除（一括削除対応、page.tsx準拠）
   const handleDeleteTask = async (taskId: string) => {
     try {
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
         // 複数選択の場合は一括削除
-        for (const id of selectedTaskIds) {
-          await deleteTask(id)
-        }
+        await batchUpdateTasks(BATCH_OPERATIONS.DELETE, selectedTaskIds)
         setSelectedTaskId(null)
         setSelectedTaskIds([])
         setIsMultiSelectMode(false)
+        logger.info('Batch delete completed', { taskCount: selectedTaskIds.length })
       } else {
         // 単一削除
         await deleteTask(taskId)
@@ -195,6 +193,7 @@ const TodoApp: React.FC = () => {
           setSelectedTaskId(null)
           setSelectedTaskIds([])
         }
+        logger.info('Single task deleted', { taskId })
       }
       
       // タスク一覧を再読み込み
@@ -204,7 +203,7 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // タスクコピー（既存ロジック維持）
+  // タスクコピー（page.tsx準拠）
   const handleCopyTask = (taskId: string) => {
     if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
       const tasksToCopy = currentTasks.filter((task) => selectedTaskIds.includes(task.id))
@@ -217,16 +216,18 @@ const TodoApp: React.FC = () => {
       })
 
       setCopiedTasks(allTasksToCopy)
+      logger.info('Multiple tasks copied', { taskCount: allTasksToCopy.length })
     } else {
       const taskToCopy = currentTasks.find((task) => task.id === taskId)
       if (taskToCopy) {
         const childTasks = getChildTasks(taskId, currentTasks)
         setCopiedTasks([taskToCopy, ...childTasks])
+        logger.info('Single task copied', { taskId, childCount: childTasks.length })
       }
     }
   }
 
-  // タスク貼り付け
+  // タスク貼り付け（page.tsx準拠）
   const handlePasteTask = async () => {
     if (copiedTasks.length === 0 || !selectedProjectId) return
 
@@ -235,19 +236,48 @@ const TodoApp: React.FC = () => {
       const targetParentId = currentTask ? currentTask.parentId : null
       const targetLevel = currentTask ? currentTask.level : 0
 
+      // ルートタスクを処理（page.tsx準拠）
+      const rootTasks = copiedTasks.filter((task) => 
+        !task.parentId || !copiedTasks.some((t) => t.id === task.parentId)
+      )
+
       // 順次作成（階層構造を維持）
       const idMap: { [key: string]: string } = {}
       
-      for (const task of copiedTasks) {
+      // ルートタスクを先に作成
+      for (const rootTask of rootTasks) {
         const newTaskId = generateId("t")
-        idMap[task.id] = newTaskId
+        idMap[rootTask.id] = newTaskId
 
         const newTask = {
-          ...task,
-          name: `${task.name} (コピー)`,
+          ...rootTask,
+          name: `${rootTask.name}${rootTasks.length === 1 ? " (コピー)" : ""}`,
           projectId: selectedProjectId,
-          parentId: task.parentId ? idMap[task.parentId] || targetParentId : targetParentId,
-          level: task.parentId ? task.level : targetLevel,
+          parentId: targetParentId,
+          level: targetLevel,
+        }
+
+        await createTask(newTask)
+      }
+
+      // 子タスクを作成
+      const childTasks = copiedTasks.filter((task) => 
+        task.parentId && copiedTasks.some((t) => t.id === task.parentId)
+      )
+
+      for (const childTask of childTasks) {
+        const newChildId = generateId("t")
+        idMap[childTask.id] = newChildId
+
+        const newParentId = childTask.parentId ? idMap[childTask.parentId] : null
+        const parentLevel = rootTasks.find(t => idMap[t.id] === newParentId)?.level || 0
+
+        const newTask = {
+          ...childTask,
+          name: childTask.name,
+          projectId: selectedProjectId,
+          parentId: newParentId,
+          level: parentLevel + 1,
         }
 
         await createTask(newTask)
@@ -262,18 +292,35 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // タスク完了状態切り替え
+  // タスク完了状態切り替え（一括対応、page.tsx準拠）
   const handleToggleTaskCompletion = async (taskId: string) => {
     try {
-      const task = currentTasks.find(t => t.id === taskId)
-      if (!task) return
+      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
+        // 複数選択の場合は一括切り替え
+        const targetTask = currentTasks.find(t => t.id === taskId)
+        const newCompletionState = targetTask ? !targetTask.completed : false
+        
+        const operation = newCompletionState ? BATCH_OPERATIONS.COMPLETE : BATCH_OPERATIONS.INCOMPLETE
+        await batchUpdateTasks(operation, selectedTaskIds)
+        
+        logger.info('Batch completion toggle', { 
+          taskCount: selectedTaskIds.length, 
+          newState: newCompletionState 
+        })
+      } else {
+        // 単一タスクの場合
+        const task = currentTasks.find(t => t.id === taskId)
+        if (!task) return
 
-      const newCompletionState = !task.completed
-      
-      await updateTask(taskId, {
-        completed: newCompletionState,
-        completionDate: newCompletionState ? new Date() : null
-      })
+        const newCompletionState = !task.completed
+        
+        await updateTask(taskId, {
+          completed: newCompletionState,
+          completionDate: newCompletionState ? new Date() : null
+        })
+        
+        logger.info('Single task completion toggle', { taskId, newState: newCompletionState })
+      }
 
       // タスク一覧を再読み込み
       await loadTasks(selectedProjectId)
@@ -297,17 +344,22 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // TaskApiActions用のラッパー関数（型整合性のため）
+  // TaskApiActions用のラッパー関数
   const taskApiActions = {
     createTask,
     updateTask,
     loadTasks: async () => {
       await loadTasks(selectedProjectId)
       return []
+    },
+    batchUpdateTasks: async (operation: string, taskIds: string[]) => {
+      const result = await batchUpdateTasks(operation, taskIds)
+      await loadTasks(selectedProjectId) // 操作後に再読み込み
+      return result
     }
   }
 
-  // キーボードショートカット
+  // キーボードショートカット（page.tsx準拠）
   const { taskNameInputRef, startDateButtonRef, dueDateButtonRef, taskNotesRef } = useKeyboardShortcuts({
     tasks: currentTasks,
     projects: currentProjects,

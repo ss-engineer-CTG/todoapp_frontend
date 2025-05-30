@@ -271,14 +271,73 @@ async def delete_task(task_id: str):
 
 @app.post("/api/tasks/batch")
 async def batch_update_tasks(operation: BatchTaskOperation):
-    """タスク一括操作"""
+    """タスク一括操作（page.tsx準拠の拡張実装）"""
     try:
-        task_service.batch_update_tasks(operation.operation, operation.task_ids)
-        logger.info(f"Batch operation '{operation.operation}' completed for {len(operation.task_ids)} tasks")
-        return {"message": f"Batch operation '{operation.operation}' completed successfully"}
+        result = task_service.batch_update_tasks(operation.operation, operation.task_ids)
+        
+        if result['success']:
+            logger.info(f"Batch operation '{operation.operation}' completed successfully", {
+                'affected_count': result['affected_count'],
+                'task_count': len(operation.task_ids)
+            })
+            return {
+                "message": f"Batch operation '{operation.operation}' completed successfully",
+                "affected_count": result['affected_count'],
+                "task_ids": operation.task_ids
+            }
+        else:
+            logger.error(f"Batch operation '{operation.operation}' failed", {
+                'error': result.get('error'),
+                'task_count': len(operation.task_ids)
+            })
+            raise HTTPException(status_code=400, detail=result.get('error', 'Batch operation failed'))
+            
     except Exception as e:
         logger.error(f"Failed to execute batch operation '{operation.operation}': {e}")
         raise HTTPException(status_code=400, detail=str(e))
+
+# 新規追加：タスク階層取得エンドポイント
+@app.get("/api/tasks/{task_id}/hierarchy")
+async def get_task_hierarchy(task_id: str):
+    """タスクの階層構造取得（子タスク含む）"""
+    try:
+        hierarchy = task_service.get_task_hierarchy(task_id)
+        logger.debug(f"Retrieved hierarchy for task: {task_id}")
+        return hierarchy
+    except Exception as e:
+        logger.error(f"Failed to get task hierarchy {task_id}: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+
+# 新規追加：パフォーマンス情報取得エンドポイント
+@app.get("/api/stats")
+async def get_application_stats():
+    """アプリケーション統計情報取得"""
+    try:
+        stats = {}
+        
+        # プロジェクト統計
+        projects = project_service.get_all_projects()
+        stats['projects'] = {
+            'total': len(projects),
+            'active': len([p for p in projects if not p.get('collapsed', False)])
+        }
+        
+        # タスク統計
+        tasks = task_service.get_tasks()
+        stats['tasks'] = {
+            'total': len(tasks),
+            'completed': len([t for t in tasks if t.get('completed', False)]),
+            'pending': len([t for t in tasks if not t.get('completed', False)]),
+            'root_tasks': len([t for t in tasks if not t.get('parent_id')]),
+            'child_tasks': len([t for t in tasks if t.get('parent_id')])
+        }
+        
+        logger.debug("Retrieved application statistics")
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Failed to get application stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     # システムプロンプト準拠：統一設定による起動

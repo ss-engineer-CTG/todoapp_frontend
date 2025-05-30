@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { Task, TaskRelationMap, TaskApiActions } from '../types'
+import { Task, TaskRelationMap, TaskApiActions, BatchOperation } from '../types'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import {
@@ -23,6 +23,8 @@ import { ShortcutGuideDialog } from './ShortcutGuideDialog'
 import { useTheme } from './ThemeProvider'
 import { cn } from '@/lib/utils'
 import { handleError } from '../utils/errorHandler'
+import { logger } from '../utils/logger'
+import { BATCH_OPERATIONS } from '../config/constants'
 
 interface TaskPanelProps {
   tasks: Task[]
@@ -122,6 +124,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         
         // タスク一覧を再読み込み
         await apiActions.loadTasks()
+        logger.info('Task created successfully', { taskId: createdTask.id, taskName: createdTask.name })
       } catch (error) {
         handleError(error, 'タスクの作成に失敗しました')
         setIsAddingTask(false)
@@ -146,6 +149,33 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
       }
     } else {
       setIsMultiSelectMode(true)
+    }
+  }
+
+  // 一括操作ハンドラー（page.tsx準拠）
+  const handleBatchOperation = async (operation: BatchOperation) => {
+    if (!isMultiSelectMode || selectedTaskIds.length === 0) return
+
+    try {
+      logger.info(`Starting batch operation: ${operation}`, { 
+        taskCount: selectedTaskIds.length,
+        taskIds: selectedTaskIds 
+      })
+
+      await apiActions.batchUpdateTasks(operation, selectedTaskIds)
+      
+      // 操作後にタスク一覧を再読み込み
+      await apiActions.loadTasks()
+      
+      logger.info(`Batch operation completed: ${operation}`, { 
+        taskCount: selectedTaskIds.length 
+      })
+      
+      // 成功時は選択をクリア
+      onClearSelection()
+      
+    } catch (error) {
+      handleError(error, `一括${operation}操作に失敗しました`)
     }
   }
 
@@ -394,7 +424,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         )}
       </div>
 
-      {/* 複数選択時のアクションバー */}
+      {/* 複数選択時のアクションバー（page.tsx完全準拠） */}
       {isMultiSelectMode && selectedTaskIds.length > 0 && (
         <div className="border-t p-2 bg-muted/50 flex items-center justify-between">
           <div className="text-sm font-medium">{selectedTaskIds.length}個のタスクを選択中</div>
@@ -402,7 +432,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => selectedTaskIds[0] && onCopyTask(selectedTaskIds[0])}
+              onClick={() => handleBatchOperation(BATCH_OPERATIONS.COPY)}
               title="選択したタスクをコピー"
             >
               <Copy className="h-4 w-4 mr-1" />
@@ -411,7 +441,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => selectedTaskIds[0] && onToggleTaskCompletion(selectedTaskIds[0])}
+              onClick={() => handleBatchOperation(BATCH_OPERATIONS.COMPLETE)}
               title="選択したタスクの完了状態を切り替え"
             >
               <Check className="h-4 w-4 mr-1" />
@@ -420,7 +450,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => selectedTaskIds[0] && onDeleteTask(selectedTaskIds[0])}
+              onClick={() => handleBatchOperation(BATCH_OPERATIONS.DELETE)}
               title="選択したタスクを削除"
               className="text-destructive"
             >
