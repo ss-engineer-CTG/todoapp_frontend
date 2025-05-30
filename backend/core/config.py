@@ -1,24 +1,20 @@
 """
-統一設定管理モジュール（システムプロンプト準拠改良版）
+統一設定管理モジュール
+システムプロンプト準拠：KISS原則、DRY原則、一元管理
 """
 import os
 from pathlib import Path
-from typing import List
-from ..utils.paths import PathUtils, PathConstants
+from utils.paths import get_base_dir, get_database_path, get_schema_path, get_log_file_path
 
 class Config:
     """アプリケーション設定クラス"""
     
     def __init__(self):
-        # システムプロンプト準拠: パス管理の一元化
-        self.base_dir = PathConstants.BASE_DIR
-        self.database_path = PathUtils.get_database_path()
-        self.schema_path = PathUtils.get_schema_path()
-        self.log_file = PathUtils.get_log_file_path()
-        
-        # ログディレクトリの作成
-        self.log_dir = self.log_file.parent
-        PathUtils.ensure_directory(self.log_dir)
+        # システムプロンプト準拠：パス管理の一元化（シンプル実装）
+        self.base_dir = get_base_dir()
+        self.database_path = get_database_path()
+        self.schema_path = get_schema_path()
+        self.log_file = get_log_file_path()
         
         # サーバー設定
         self.host = os.getenv("HOST", "0.0.0.0")
@@ -39,11 +35,8 @@ class Config:
         return f"sqlite:///{self.database_path}"
     
     def validate_paths(self) -> bool:
-        """パスの存在確認"""
-        return all([
-            self.base_dir.exists(),
-            self.schema_path.exists()
-        ])
+        """必要なパスの存在確認"""
+        return self.schema_path.exists()
 
 # グローバル設定インスタンス
 config = Config()
