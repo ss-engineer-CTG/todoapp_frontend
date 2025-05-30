@@ -1,5 +1,4 @@
 import React, { Component, ReactNode } from 'react'
-import { logger } from '../../utils/logger'
 import { handleError, AppError, ErrorType } from '../../utils/errorHandler'
 
 interface Props {

@@ -2,10 +2,9 @@ import { useEffect, useRef } from 'react'
 
 interface UseScrollToTaskProps {
   selectedTaskId: string | null
-  taskList: Array<{ id: string }>
 }
 
-export const useScrollToTask = ({ selectedTaskId, taskList }: UseScrollToTaskProps) => {
+export const useScrollToTask = ({ selectedTaskId }: UseScrollToTaskProps) => {
   const taskRefs = useRef<{ [key: string]: HTMLDivElement }>({})
 
   // 選択されたタスクを表示範囲内にスクロール

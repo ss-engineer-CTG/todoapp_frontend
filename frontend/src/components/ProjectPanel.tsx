@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { Project } from '../types'
+import { Project, ProjectApiActions } from '../types'
 import { Plus, MoreHorizontal, Edit, Trash } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ColorPicker } from './ColorPicker'
 import { PROJECT_COLORS } from '../utils/constants'
 import { cn } from '@/lib/utils'
+import { handleError } from '../utils/errorHandler'
 
 interface ProjectPanelProps {
   projects: Project[]
@@ -15,6 +16,11 @@ interface ProjectPanelProps {
   onProjectSelect: (projectId: string) => void
   activeArea: string
   setActiveArea: (area: "projects" | "tasks" | "details") => void
+  isAddingProject: boolean
+  setIsAddingProject: (adding: boolean) => void
+  isEditingProject: boolean
+  setIsEditingProject: (editing: boolean) => void
+  apiActions: ProjectApiActions
 }
 
 export const ProjectPanel: React.FC<ProjectPanelProps> = ({
@@ -23,10 +29,13 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
   selectedProjectId,
   onProjectSelect,
   activeArea,
-  setActiveArea
+  setActiveArea,
+  isAddingProject,
+  setIsAddingProject,
+  isEditingProject,
+  setIsEditingProject,
+  apiActions
 }) => {
-  const [isAddingProject, setIsAddingProject] = useState(false)
-  const [isEditingProject, setIsEditingProject] = useState(false)
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null)
   const [newProjectName, setNewProjectName] = useState("")
   const [newProjectColor, setNewProjectColor] = useState(getRandomColor())
@@ -40,10 +49,6 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
     return PROJECT_COLORS[Math.floor(Math.random() * PROJECT_COLORS.length)].value
   }
 
-  const generateId = (prefix: string) => {
-    return `${prefix}${Date.now()}`
-  }
-
   const handleAddProject = () => {
     setIsAddingProject(true)
     setNewProjectColor(getRandomColor())
@@ -52,18 +57,23 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
     }, 0)
   }
 
-  const handleSaveNewProject = () => {
+  const handleSaveNewProject = async () => {
     if (newProjectName.trim()) {
-      const newProject: Project = {
-        id: generateId("p"),
-        name: newProjectName,
-        color: newProjectColor,
-        collapsed: false,
+      try {
+        const newProject = await apiActions.createProject({
+          name: newProjectName,
+          color: newProjectColor,
+          collapsed: false,
+        })
+        
+        onProjectsUpdate([...projects, newProject])
+        setNewProjectName("")
+        setIsAddingProject(false)
+        onProjectSelect(newProject.id)
+      } catch (error) {
+        handleError(error, 'プロジェクトの作成に失敗しました')
+        setIsAddingProject(false)
       }
-      onProjectsUpdate([...projects, newProject])
-      setNewProjectName("")
-      setIsAddingProject(false)
-      onProjectSelect(newProject.id)
     } else {
       setIsAddingProject(false)
     }
@@ -82,33 +92,47 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
     }
   }
 
-  const handleSaveEditProject = () => {
+  const handleSaveEditProject = async () => {
     if (editingProjectName.trim() && editingProjectId) {
-      onProjectsUpdate(
-        projects.map((project) =>
-          project.id === editingProjectId
-            ? { ...project, name: editingProjectName, color: editingProjectColor }
-            : project
+      try {
+        const updatedProject = await apiActions.updateProject(editingProjectId, {
+          name: editingProjectName,
+          color: editingProjectColor
+        })
+        
+        onProjectsUpdate(
+          projects.map((project) =>
+            project.id === editingProjectId ? updatedProject : project
+          )
         )
-      )
-      setIsEditingProject(false)
-      setEditingProjectId(null)
+        setIsEditingProject(false)
+        setEditingProjectId(null)
+      } catch (error) {
+        handleError(error, 'プロジェクトの更新に失敗しました')
+        setIsEditingProject(false)
+        setEditingProjectId(null)
+      }
     } else {
       setIsEditingProject(false)
       setEditingProjectId(null)
     }
   }
 
-  const handleDeleteProject = (projectId: string) => {
+  const handleDeleteProject = async (projectId: string) => {
     if (confirm('このプロジェクトを削除しますか？関連するタスクもすべて削除されます。')) {
-      onProjectsUpdate(projects.filter((project) => project.id !== projectId))
-      
-      // 削除されたプロジェクトが選択されていた場合、他のプロジェクトを選択
-      if (selectedProjectId === projectId) {
-        const remainingProjects = projects.filter(p => p.id !== projectId)
-        if (remainingProjects.length > 0) {
-          onProjectSelect(remainingProjects[0].id)
+      try {
+        await apiActions.deleteProject(projectId)
+        onProjectsUpdate(projects.filter((project) => project.id !== projectId))
+        
+        // 削除されたプロジェクトが選択されていた場合、他のプロジェクトを選択
+        if (selectedProjectId === projectId) {
+          const remainingProjects = projects.filter(p => p.id !== projectId)
+          if (remainingProjects.length > 0) {
+            onProjectSelect(remainingProjects[0].id)
+          }
         }
+      } catch (error) {
+        handleError(error, 'プロジェクトの削除に失敗しました')
       }
     }
   }

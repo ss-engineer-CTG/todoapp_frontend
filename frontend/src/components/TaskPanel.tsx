@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { Task, TaskRelationMap } from '../types'
+import { Task, TaskRelationMap, TaskApiActions } from '../types'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import {
@@ -22,6 +22,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ShortcutGuideDialog } from './ShortcutGuideDialog'
 import { useTheme } from './ThemeProvider'
 import { cn } from '@/lib/utils'
+import { handleError } from '../utils/errorHandler'
 
 interface TaskPanelProps {
   tasks: Task[]
@@ -45,6 +46,11 @@ interface TaskPanelProps {
   onToggleTaskCompletion: (taskId: string) => void
   onToggleTaskCollapse: (taskId: string) => void
   onClearSelection: () => void
+  setTaskRef: (taskId: string, element: HTMLDivElement | null) => void
+  isAddingTask: boolean
+  setIsAddingTask: (adding: boolean) => void
+  lastSelectedIndex: number
+  apiActions: TaskApiActions
 }
 
 export const TaskPanel: React.FC<TaskPanelProps> = ({
@@ -68,10 +74,14 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   onCopyTask,
   onToggleTaskCompletion,
   onToggleTaskCollapse,
-  onClearSelection
+  onClearSelection,
+  setTaskRef,
+  isAddingTask,
+  setIsAddingTask,
+  lastSelectedIndex,
+  apiActions
 }) => {
   const { theme, setTheme } = useTheme()
-  const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskName, setNewTaskName] = useState("")
   const [newTaskParentId, setNewTaskParentId] = useState<string | null>(null)
   const [newTaskLevel, setNewTaskLevel] = useState(0)
@@ -87,29 +97,37 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }, 0)
   }
 
-  const handleSaveNewTask = () => {
+  const handleSaveNewTask = async () => {
     if (newTaskName.trim() && selectedProjectId) {
-      const parentTask = newTaskParentId ? allTasks.find((task) => task.id === newTaskParentId) : null
+      try {
+        const parentTask = newTaskParentId ? allTasks.find((task) => task.id === newTaskParentId) : null
 
-      const newTask: Task = {
-        id: `t${Date.now()}`,
-        name: newTaskName,
-        projectId: selectedProjectId,
-        parentId: newTaskParentId,
-        completed: false,
-        startDate: parentTask?.startDate || new Date(),
-        dueDate: parentTask?.dueDate || new Date(),
-        completionDate: null,
-        notes: "",
-        assignee: "自分",
-        level: newTaskLevel,
-        collapsed: false,
+        const newTask = {
+          name: newTaskName,
+          projectId: selectedProjectId,
+          parentId: newTaskParentId,
+          completed: false,
+          startDate: parentTask?.startDate || new Date(),
+          dueDate: parentTask?.dueDate || new Date(),
+          completionDate: null,
+          notes: "",
+          assignee: "自分",
+          level: newTaskLevel,
+          collapsed: false,
+        }
+
+        const createdTask = await apiActions.createTask(newTask)
+        onTasksUpdate([...allTasks, createdTask])
+        setNewTaskName("")
+        setIsAddingTask(false)
+        onTaskSelect(createdTask.id)
+        
+        // タスク一覧を再読み込み
+        await apiActions.loadTasks()
+      } catch (error) {
+        handleError(error, 'タスクの作成に失敗しました')
+        setIsAddingTask(false)
       }
-
-      onTasksUpdate([...allTasks, newTask])
-      setNewTaskName("")
-      setIsAddingTask(false)
-      onTaskSelect(newTask.id)
     } else {
       setIsAddingTask(false)
     }
@@ -247,6 +265,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             {tasks.map((task) => (
               <div
                 key={task.id}
+                ref={(el) => setTaskRef(task.id, el)}
                 className={cn(
                   "flex items-start p-2 rounded-md cursor-pointer group transition-colors",
                   selectedTaskId === task.id ? "bg-accent" : "hover:bg-accent/50",
