@@ -1,3 +1,5 @@
+// システムプロンプト準拠: DRY原則 - 型定義統一、重複排除
+
 export type Project = {
   id: string
   name: string
@@ -37,7 +39,7 @@ export type ProjectColor = {
 
 export type AreaType = "projects" | "tasks" | "details"
 
-// 新規追加の型定義
+// 複数選択関連の型定義（page.tsx準拠）
 export type SelectionState = {
   selectedId: string | null
   selectedIds: string[]
@@ -51,10 +53,28 @@ export type KeyboardNavigationProps = {
   isDetailPanelVisible: boolean
 }
 
-export type MultiSelectActions = {
-  copy: (taskIds: string[]) => void
-  delete: (taskIds: string[]) => void
-  toggleCompletion: (taskIds: string[]) => void
+// 一括操作関連の型定義
+export type BatchOperation = 'complete' | 'incomplete' | 'delete' | 'copy'
+
+export type BatchOperationResult = {
+  success: boolean
+  affectedCount: number
+  errors?: string[]
+}
+
+// 範囲選択関連の型定義（page.tsx準拠）
+export type RangeSelectionState = {
+  startIndex: number
+  endIndex: number
+  direction: 'up' | 'down' | null
+}
+
+// タブナビゲーション関連の型定義
+export type TabNavigationRefs = {
+  taskNameInputRef: React.RefObject<HTMLInputElement>
+  startDateButtonRef: React.RefObject<HTMLButtonElement>
+  dueDateButtonRef: React.RefObject<HTMLButtonElement>
+  taskNotesRef: React.RefObject<HTMLTextAreaElement>
 }
 
 // API関連の型定義
@@ -87,4 +107,35 @@ export interface TaskApiActions {
   createTask: (task: Omit<Task, 'id'>) => Promise<Task>
   updateTask: (id: string, updates: Partial<Task>) => Promise<Task>
   loadTasks: () => Promise<Task[]>
+  batchUpdateTasks: (operation: BatchOperation, taskIds: string[]) => Promise<BatchOperationResult>
+}
+
+// キーボードイベント関連の型定義
+export type KeyboardEventHandler = (event: KeyboardEvent) => void
+
+export type KeyboardShortcutMap = {
+  [key: string]: KeyboardEventHandler
+}
+
+// 複数選択操作の型定義（page.tsx準拠）
+export type MultiSelectActions = {
+  handleSelect: (itemId: string, event?: React.MouseEvent) => void
+  handleKeyboardRangeSelect: (direction: 'up' | 'down') => void
+  selectAll: () => void
+  clearSelection: () => void
+  toggleMultiSelectMode: () => void
+}
+
+// コピー&ペースト関連の型定義
+export type ClipboardData = {
+  tasks: Task[]
+  timestamp: number
+  sourceProjectId: string
+}
+
+// パフォーマンス監視用の型定義（最小限）
+export type PerformanceMetric = {
+  operation: string
+  duration: number
+  timestamp: number
 }
