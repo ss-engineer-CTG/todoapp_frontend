@@ -71,7 +71,7 @@ export type RangeSelectionState = {
   direction: 'up' | 'down' | null
 }
 
-// 🔄 修正：タブナビゲーション関連の型定義（保存ボタン追加）
+// タブナビゲーション関連の型定義
 export type TabNavigationRefs = {
   taskNameInputRef: React.RefObject<HTMLInputElement>
   startDateButtonRef: React.RefObject<HTMLButtonElement>
@@ -80,7 +80,7 @@ export type TabNavigationRefs = {
   saveButtonRef: React.RefObject<HTMLButtonElement>
 }
 
-// 🔄 修正：編集状態管理用の型定義（カレンダー制御追加）
+// システムプロンプト準拠：編集状態管理用の型定義（カレンダー制御）
 export type TaskEditingState = {
   name: string
   startDate: Date | null
@@ -88,14 +88,10 @@ export type TaskEditingState = {
   assignee: string
   notes: string
   hasChanges: boolean
-  // 🆕 新規追加：カレンダー制御状態
   isStartDateCalendarOpen: boolean
   isDueDateCalendarOpen: boolean
   focusTransitionMode: 'navigation' | 'calendar-selection'
 }
-
-// 🆕 新規追加：保存完了コールバック用の型定義
-export type TaskSaveCompleteCallback = (taskId: string) => void
 
 // API関連の型定義（システムプロンプト準拠：バックエンド応答形式追加）
 export interface ApiResponse<T> {
@@ -110,7 +106,7 @@ export interface ApiError {
   details?: any
 }
 
-// システムプロンプト準拠：新規追加 - バックエンドから返される日付フィールド形式
+// システムプロンプト準拠：バックエンドから返される日付フィールド形式
 export interface ApiTaskResponse {
   id: string
   name: string
@@ -188,7 +184,7 @@ export type PerformanceMetric = {
   timestamp: number
 }
 
-// システムプロンプト準拠：新規追加 - データ変換エラー用の型定義
+// システムプロンプト準拠：データ変換エラー用の型定義
 export interface DateConversionError {
   field: string
   originalValue: any

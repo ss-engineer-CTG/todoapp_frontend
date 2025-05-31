@@ -68,55 +68,9 @@ export const useKeyboardShortcuts = ({
   const taskNotesRef = useRef<HTMLTextAreaElement>(null)
   const saveButtonRef = useRef<HTMLButtonElement>(null)
 
-  // 🔄 修正：詳細パネル内のEnterキーナビゲーション（カレンダー制御対応）
-  const handleDetailEnterNavigation = useCallback((e: KeyboardEvent) => {
-    if (!selectedTaskId || activeArea !== "details") return
-
-    const activeElement = document.activeElement
-
-    // 🆕 新規追加：カレンダーが開いている場合は通常のEnter処理をスキップ
-    const isCalendarOpen = document.querySelector('[role="dialog"]') || 
-                          document.querySelector('[data-state="open"]')
-    
-    if (isCalendarOpen) {
-      logger.trace('Calendar is open, skipping Enter navigation')
-      return
-    }
-
-    // Enterキーでの順次移動：タスク名 → 開始日 → 期限日 → メモ → 保存ボタン
-    if (activeElement === taskNameInputRef.current) {
-      e.preventDefault()
-      startDateButtonRef.current?.focus()
-      logger.debug('Enter navigation: moved to start date button')
-    } else if (activeElement === startDateButtonRef.current) {
-      e.preventDefault()
-      dueDateButtonRef.current?.focus()
-      logger.debug('Enter navigation: moved to due date button')
-    } else if (activeElement === dueDateButtonRef.current) {
-      e.preventDefault()
-      taskNotesRef.current?.focus()
-      logger.debug('Enter navigation: moved to notes textarea')
-    } else if (activeElement === taskNotesRef.current) {
-      e.preventDefault()
-      saveButtonRef.current?.focus()
-      logger.debug('Enter navigation: moved to save button')
-    } else if (activeElement === saveButtonRef.current) {
-      logger.debug('Enter on save button - save action will be handled by DetailPanel')
-    }
-  }, [selectedTaskId, activeArea])
-
-  // 🔄 修正：詳細パネル内のTab navigation（カレンダー制御対応）
+  // システムプロンプト準拠：詳細パネル内のTab navigation（簡素化版）
   const handleDetailTabNavigation = useCallback((e: KeyboardEvent) => {
     if (!selectedTaskId || activeArea !== "details") return
-
-    // 🆕 新規追加：カレンダーが開いている場合は通常のTab処理をスキップ
-    const isCalendarOpen = document.querySelector('[role="dialog"]') || 
-                          document.querySelector('[data-state="open"]')
-    
-    if (isCalendarOpen) {
-      logger.trace('Calendar is open, skipping Tab navigation')
-      return
-    }
 
     const isShiftTab = e.shiftKey
     const activeElement = document.activeElement
@@ -167,33 +121,46 @@ export const useKeyboardShortcuts = ({
     }
   }, [selectedTaskId, activeArea])
 
-  // 🔄 修正：イベントハンドリング改善（カレンダー考慮）
+  // システムプロンプト準拠：カレンダー内操作かどうかの詳細判定
+  const isCalendarInteraction = useCallback((target: EventTarget | null): boolean => {
+    if (!target || !(target instanceof Element)) return false
+    
+    // カレンダー内部の要素かどうかを判定
+    return !!(
+      target.closest('[role="dialog"]') ||
+      target.closest('[data-state="open"]') ||
+      target.closest('.calendar') ||
+      target.closest('[role="gridcell"]') ||
+      target.closest('[role="button"][aria-label*="日"]')
+    )
+  }, [])
+
+  // システムプロンプト準拠：入力フィールドまたは編集中状態の判定
+  const isInputState = useCallback((target: EventTarget | null): boolean => {
+    if (!target) return false
+    
+    return !!(
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      isAddingProject ||
+      isAddingTask ||
+      isEditingProject
+    )
+  }, [isAddingProject, isAddingTask, isEditingProject])
+
+  // メインキーボードイベントハンドラー
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       try {
-        // 🔄 修正：カレンダー表示中の条件を追加
-        const isCalendarOpen = document.querySelector('[role="dialog"]') || 
-                              document.querySelector('[data-state="open"]')
+        // システムプロンプト準拠：カレンダー表示時のナビゲーション有効化
+        const isCalendarAction = isCalendarInteraction(e.target)
+        const isInputField = isInputState(e.target)
 
-        if (e.target instanceof HTMLInputElement || 
-            e.target instanceof HTMLTextAreaElement ||
-            e.target instanceof HTMLSelectElement ||
-            isCalendarOpen ||
-            (e.target as Element)?.closest('[role="dialog"]') ||
-            (e.target as Element)?.closest('[data-state="open"]') ||
-            isAddingProject || 
-            isAddingTask || 
-            isEditingProject) {
-          
-          // 🆕 新規追加：カレンダー内でのEscapeキー処理
-          if (isCalendarOpen && e.key === 'Escape') {
-            logger.debug('Escape pressed in calendar, allowing normal close behavior')
-            return
-          }
-
-          logger.trace('Keyboard shortcut skipped - input field, calendar, or modal active', { 
+        // 入力フィールドアクティブ時は基本的にスキップ（カレンダー以外）
+        if (isInputField && !isCalendarAction) {
+          logger.trace('Keyboard shortcut skipped - input field active', { 
             targetType: (e.target as HTMLElement)?.tagName,
-            isCalendarOpen,
             isAddingProject,
             isAddingTask,
             isEditingProject
@@ -201,10 +168,20 @@ export const useKeyboardShortcuts = ({
           return
         }
 
-        // 詳細パネル内でのEnterキー処理
-        if (activeArea === "details" && e.key === "Enter") {
-          handleDetailEnterNavigation(e)
-          return
+        // カレンダー内部の操作は、ナビゲーション系のみ許可
+        if (isCalendarAction) {
+          // ナビゲーション系キー以外はスキップ
+          const navigationKeys = [
+            'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+            'Escape'
+          ]
+          
+          if (!navigationKeys.includes(e.key) && !e.ctrlKey) {
+            logger.trace('Non-navigation key skipped in calendar', { key: e.key })
+            return
+          }
+          
+          logger.debug('Navigation key allowed in calendar', { key: e.key })
         }
 
         // 詳細パネル内でのTabキー処理
@@ -483,7 +460,8 @@ export const useKeyboardShortcuts = ({
     setActiveArea,
     setIsMultiSelectMode,
     handleDetailTabNavigation,
-    handleDetailEnterNavigation
+    isCalendarInteraction,
+    isInputState
   ])
 
   return {

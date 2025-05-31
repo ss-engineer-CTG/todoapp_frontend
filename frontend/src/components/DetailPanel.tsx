@@ -1,5 +1,5 @@
 import React, { RefObject, useEffect, useState, useCallback } from 'react'
-import { Task, Project, TaskEditingState, TaskSaveCompleteCallback } from '../types'
+import { Task, Project, TaskEditingState } from '../types'
 import { safeFormatDate, isValidDate } from '../utils/dateUtils'
 import { logger } from '../utils/logger'
 import { handleError } from '../utils/errorHandler'
@@ -24,8 +24,6 @@ interface DetailPanelProps {
   dueDateButtonRef: RefObject<HTMLButtonElement>
   taskNotesRef: RefObject<HTMLTextAreaElement>
   saveButtonRef: RefObject<HTMLButtonElement>
-  // 🆕 新規追加：保存完了コールバック
-  onSaveComplete?: TaskSaveCompleteCallback
 }
 
 export const DetailPanel: React.FC<DetailPanelProps> = ({
@@ -40,10 +38,9 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   startDateButtonRef,
   dueDateButtonRef,
   taskNotesRef,
-  saveButtonRef,
-  onSaveComplete // 🆕 新規追加
+  saveButtonRef
 }) => {
-  // 🔄 修正：編集状態管理（カレンダー制御追加）
+  // システムプロンプト準拠：編集状態管理（カレンダー制御追加）
   const [editingState, setEditingState] = useState<TaskEditingState>({
     name: '',
     startDate: null,
@@ -51,7 +48,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     assignee: '',
     notes: '',
     hasChanges: false,
-    // 🆕 新規追加：カレンダー制御状態
     isStartDateCalendarOpen: false,
     isDueDateCalendarOpen: false,
     focusTransitionMode: 'navigation'
@@ -78,7 +74,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         assignee: selectedTask.assignee || '自分',
         notes: selectedTask.notes || '',
         hasChanges: false,
-        // 🆕 新規追加：カレンダー状態初期化
         isStartDateCalendarOpen: false,
         isDueDateCalendarOpen: false,
         focusTransitionMode: 'navigation'
@@ -95,7 +90,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }, [activeArea, selectedTask, taskNameInputRef])
 
-  // 🆕 新規追加：開始日ボタンフォーカス時のカレンダー自動表示
+  // システムプロンプト準拠：開始日ボタンフォーカス時のカレンダー自動表示
   useEffect(() => {
     const startDateButton = startDateButtonRef.current
     if (!startDateButton) return
@@ -115,7 +110,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }, [selectedTask])
 
-  // 🆕 新規追加：期限日ボタンフォーカス時のカレンダー自動表示
+  // システムプロンプト準拠：期限日ボタンフォーカス時のカレンダー自動表示
   useEffect(() => {
     const dueDateButton = dueDateButtonRef.current
     if (!dueDateButton) return
@@ -162,7 +157,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
-  // 🆕 新規追加：開始日選択完了時の自動遷移
+  // システムプロンプト準拠：開始日選択完了時の自動遷移
   const handleStartDateSelect = useCallback((date: Date | undefined) => {
     if (!date || !selectedTask) return
 
@@ -186,7 +181,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }, 100)
   }, [selectedTask, dueDateButtonRef])
 
-  // 🆕 新規追加：期限日選択完了時の自動遷移
+  // システムプロンプト準拠：期限日選択完了時の自動遷移
   const handleDueDateSelect = useCallback((date: Date | undefined) => {
     if (!date || !selectedTask) return
 
@@ -210,7 +205,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }, 100)
   }, [selectedTask, taskNotesRef])
 
-  // 🔄 修正：保存処理（完了コールバック追加）
+  // システムプロンプト準拠：保存処理（完了後の詳細パネル非表示削除）
   const handleSave = async () => {
     if (!selectedTask || !editingState.hasChanges || isSaving) {
       logger.debug('Save skipped', { 
@@ -266,12 +261,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         updatedFields: Object.keys(updates) 
       })
 
-      // 🆕 新規追加：保存完了コールバック実行
-      if (onSaveComplete) {
-        logger.debug('Executing save complete callback', { taskId: selectedTask.id })
-        onSaveComplete(selectedTask.id)
-      }
-
     } catch (error) {
       logger.error('Manual save failed', { 
         taskId: selectedTask.id, 
@@ -288,30 +277,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     logger.debug('Save button clicked')
     await handleSave()
   }
-
-  // 🆕 新規追加：Enterキーでの保存処理（useKeyboardShortcuts から呼び出される）
-  const handleSaveViaEnter = async () => {
-    logger.debug('Save triggered via Enter key')
-    await handleSave()
-  }
-
-  // 保存ボタンにEnterキーイベントを設定
-  useEffect(() => {
-    const saveButton = saveButtonRef.current
-    if (!saveButton) return
-
-    const handleEnterOnSaveButton = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && document.activeElement === saveButton) {
-        e.preventDefault()
-        handleSaveViaEnter()
-      }
-    }
-
-    saveButton.addEventListener('keydown', handleEnterOnSaveButton)
-    return () => {
-      saveButton.removeEventListener('keydown', handleEnterOnSaveButton)
-    }
-  }, [selectedTask, editingState.hasChanges])
 
   // システムプロンプト準拠：安全なプロジェクト情報取得
   const getProjectInfo = (projectId: string) => {

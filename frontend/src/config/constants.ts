@@ -13,7 +13,7 @@ export const PROJECT_COLORS: ProjectColor[] = [
   { name: "ティール", value: "#14b8a6" },
 ] as const
 
-// システムプロンプト準拠：修正 - キーボードショートカット（完全版）
+// システムプロンプト準拠：修正 - キーボードショートカット（改善版）
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Enter", description: "同じレベルで新規タスク追加" },
   { key: "Tab", description: "選択したタスクの子タスクを追加" },
@@ -30,6 +30,7 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Ctrl + クリック", description: "タスクを個別に選択/選択解除" },
   { key: "Ctrl + A", description: "すべてのタスクを選択" },
   { key: "Escape", description: "複数選択モードを解除" },
+  { key: "Tab (詳細パネル)", description: "フィールド間の移動" },
 ] as const
 
 // APIエンドポイント（重複排除）
@@ -56,7 +57,6 @@ export const ERROR_MESSAGES = {
   UNKNOWN_ERROR: '予期しないエラーが発生しました',
   PROJECT_NOT_FOUND: 'プロジェクトが見つかりません',
   TASK_NOT_FOUND: 'タスクが見つかりません',
-  // システムプロンプト準拠：新規追加 - ショートカット関連エラー
   SHORTCUT_ERROR: 'ショートカット操作でエラーが発生しました',
   TASK_OPERATION_ERROR: 'タスク操作でエラーが発生しました',
   COPY_PASTE_ERROR: 'コピー・ペースト操作でエラーが発生しました',
@@ -124,7 +124,7 @@ export const BATCH_OPERATIONS = {
   COPY: 'copy'
 } as const
 
-// システムプロンプト準拠：新規追加 - タスク操作関連定数
+// システムプロンプト準拠：タスク操作関連定数
 export const TASK_OPERATION_CONSTANTS = {
   DEFAULT_TASK_NAME: '新しいタスク',
   COPY_SUFFIX: ' (コピー)',
@@ -132,7 +132,7 @@ export const TASK_OPERATION_CONSTANTS = {
   AUTO_SAVE_DELAY: 500, // 自動保存の遅延時間（ミリ秒）
 } as const
 
-// システムプロンプト準拠：新規追加 - ショートカット操作のログメッセージ
+// システムプロンプト準拠：ショートカット操作のログメッセージ
 export const SHORTCUT_LOG_MESSAGES = {
   TASK_ADDED: 'Task added via shortcut',
   TASK_DELETED: 'Task deleted via shortcut',

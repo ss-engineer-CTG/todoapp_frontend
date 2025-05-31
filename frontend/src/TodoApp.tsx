@@ -121,6 +121,23 @@ const TodoApp: React.FC = () => {
 
   const taskOperations = createTaskOperations(taskApiActions, currentTasks, selectedProjectId)
 
+  // システムプロンプト準拠：タスクフォーカス時の詳細パネル自動表示
+  useEffect(() => {
+    if (selectedTaskId && isInitialized && !isAddingTask && !isEditingProject) {
+      // 不適切なタイミングでの表示を抑制
+      const shouldShowDetail = !isMultiSelectMode && selectedProjectId && !isAddingProject
+      
+      if (shouldShowDetail) {
+        logger.debug('Auto-showing detail panel for selected task', { 
+          taskId: selectedTaskId,
+          isMultiSelectMode,
+          selectedProjectId 
+        })
+        setIsDetailPanelVisible(true)
+      }
+    }
+  }, [selectedTaskId, isInitialized, isMultiSelectMode, selectedProjectId, isAddingTask, isEditingProject, isAddingProject])
+
   const handleAddTask = async (parentId: string | null = null, level = 0) => {
     try {
       logger.info('Adding task via shortcut', { parentId, level })
@@ -387,29 +404,6 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // 🆕 新規追加：保存完了コールバック
-  const handleSaveComplete = async (taskId: string) => {
-    try {
-      logger.info('Save completed, closing detail panel and returning focus', { taskId })
-      
-      // 詳細パネルを非表示
-      setIsDetailPanelVisible(false)
-      
-      // タスクパネルにフォーカスを戻す
-      setActiveArea("tasks")
-      
-      // 編集していたタスクにフォーカスを戻す
-      if (selectedTaskId && selectedTaskId === taskId) {
-        // useScrollToTaskが自動的にスクロールしてくれる
-        logger.debug('Focus returned to edited task', { taskId })
-      }
-      
-    } catch (error) {
-      logger.error('Save complete callback failed', { taskId, error })
-      handleError(error, '保存完了処理でエラーが発生しました')
-    }
-  }
-
   return (
     <ErrorBoundary>
       <div className="flex h-screen bg-background">
@@ -473,7 +467,6 @@ const TodoApp: React.FC = () => {
             dueDateButtonRef={dueDateButtonRef}
             taskNotesRef={taskNotesRef}
             saveButtonRef={saveButtonRef}
-            onSaveComplete={handleSaveComplete} // 🆕 新規追加
           />
         )}
       </div>
