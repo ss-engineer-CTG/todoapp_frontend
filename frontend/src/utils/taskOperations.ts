@@ -74,9 +74,6 @@ export class TaskOperations {
 
       const createdTask = await this.apiActions.createTask(newTaskData)
       
-      // タスク一覧を再読み込み
-      await this.apiActions.loadTasks()
-      
       logger.info('Task created successfully', { 
         taskId: createdTask.id, 
         taskName: createdTask.name 
@@ -92,6 +89,7 @@ export class TaskOperations {
 
   /**
    * タスク削除処理（ショートカット・UI共通）
+   * システムプロンプト準拠：KISS原則 - 正しいAPI呼び出しに修正
    */
   async deleteTask(taskId: string): Promise<boolean> {
     try {
@@ -103,10 +101,8 @@ export class TaskOperations {
         return false
       }
 
-      await this.apiActions.updateTask(taskId, { completed: false })
-      
-      // タスク一覧を再読み込み
-      await this.apiActions.loadTasks()
+      // 🎯 修正：正しい削除API呼び出しに変更
+      await this.apiActions.deleteTask(taskId)
       
       logger.info('Task deleted successfully', { taskId, taskName: task.name })
       return true
@@ -138,9 +134,6 @@ export class TaskOperations {
         completionDate
       })
 
-      // タスク一覧を再読み込み
-      await this.apiActions.loadTasks()
-
       logger.info('Task completion toggled successfully', { 
         taskId, 
         newState: newCompletionState 
@@ -167,9 +160,6 @@ export class TaskOperations {
       }
 
       await this.apiActions.updateTask(taskId, { collapsed: !task.collapsed })
-
-      // タスク一覧を再読み込み
-      await this.apiActions.loadTasks()
 
       logger.debug('Task collapse toggled successfully', { 
         taskId, 
@@ -307,9 +297,6 @@ export class TaskOperations {
 
         await this.apiActions.createTask(newTask)
       }
-
-      // タスク一覧を再読み込み
-      await this.apiActions.loadTasks()
 
       logger.info('Tasks pasted successfully', { count: copiedTasks.length })
       return true

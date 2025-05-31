@@ -246,6 +246,7 @@ export const useApi = () => {
     }
   }, [])
 
+  // 🎯 修正：deleteTask関数を追加
   const deleteTask = useCallback(async (id: string) => {
     try {
       logger.info('Deleting task', { taskId: id })
@@ -292,7 +293,7 @@ export const useApi = () => {
     loadTasks,
     createTask,
     updateTask,
-    deleteTask,
+    deleteTask, // 🎯 修正：deleteTaskを返り値に追加
     batchUpdateTasks
   }
 }

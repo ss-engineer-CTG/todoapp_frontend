@@ -28,6 +28,7 @@ const TodoApp: React.FC = () => {
     loadTasks,
     createTask,
     updateTask,
+    deleteTask, // 🎯 修正：deleteTaskを追加
     batchUpdateTasks
   } = useApi()
 
@@ -114,10 +115,11 @@ const TodoApp: React.FC = () => {
     }
   })()
 
-  // TaskOperationsインスタンス作成
+  // 🎯 修正：TaskOperationsインスタンス作成（deleteTask追加）
   const taskApiActions = {
     createTask,
     updateTask,
+    deleteTask, // 🎯 修正：deleteTaskを追加
     loadTasks: async () => {
       const result = await loadTasks(selectedProjectId)
       return result
@@ -138,6 +140,9 @@ const TodoApp: React.FC = () => {
       
       const createdTask = await taskOperations.addTask(parentId, level)
       if (createdTask) {
+        // タスク一覧を再読み込み
+        await loadTasks(selectedProjectId)
+        
         setSelectedTaskId(createdTask.id)
         setSelectedTaskIds([createdTask.id])
         setActiveArea("tasks")
@@ -219,6 +224,8 @@ const TodoApp: React.FC = () => {
       const success = await taskOperations.pasteTasks(copiedTasks, targetParentId, targetLevel)
       
       if (success) {
+        // タスク一覧を再読み込み
+        await loadTasks(selectedProjectId)
         logger.info('Tasks pasted successfully via shortcut', { count: copiedTasks.length })
       }
     } catch (error) {

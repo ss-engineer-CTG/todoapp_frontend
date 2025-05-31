@@ -132,9 +132,11 @@ export interface ProjectApiActions {
   deleteProject: (id: string) => Promise<void>
 }
 
+// 🎯 修正：TaskApiActionsにdeleteTaskを追加
 export interface TaskApiActions {
   createTask: (task: Omit<Task, 'id'>) => Promise<Task>
   updateTask: (id: string, updates: Partial<Task>) => Promise<Task>
+  deleteTask: (id: string) => Promise<void>
   loadTasks: () => Promise<Task[]>
   batchUpdateTasks: (operation: BatchOperation, taskIds: string[]) => Promise<BatchOperationResult>
 }

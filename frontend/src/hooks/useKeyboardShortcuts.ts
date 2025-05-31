@@ -47,6 +47,7 @@ export const useKeyboardShortcuts = ({
   isDetailPanelVisible,
   isMultiSelectMode,
   setIsMultiSelectMode,
+  taskRelationMap,
   copiedTasks,
   onAddTask,
   onDeleteTask,
@@ -108,13 +109,16 @@ export const useKeyboardShortcuts = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       try {
-        // 入力フィールド中やモーダル処理中はスキップ
+        // 🔧 修正：入力フィールド中やモーダル処理中の条件を精密化
         if (e.target instanceof HTMLInputElement || 
             e.target instanceof HTMLTextAreaElement ||
+            e.target instanceof HTMLSelectElement ||
+            (e.target as Element)?.closest('[role="dialog"]') ||
+            (e.target as Element)?.closest('[data-state="open"]') ||
             isAddingProject || 
             isAddingTask || 
             isEditingProject) {
-          logger.trace('Keyboard shortcut skipped - input field active', { 
+          logger.trace('Keyboard shortcut skipped - input field or modal active', { 
             targetType: (e.target as HTMLElement)?.tagName,
             isAddingProject,
             isAddingTask,
@@ -292,10 +296,15 @@ export const useKeyboardShortcuts = ({
 
           case "ArrowRight":
             if (e.ctrlKey && activeArea === "tasks" && selectedTaskId) {
-              // 折りたたみ切り替え
-              e.preventDefault()
-              logger.info('Toggling task collapse via Ctrl+ArrowRight', { taskId: selectedTaskId })
-              onToggleTaskCollapse(selectedTaskId)
+              // 🔧 修正：子タスクの存在確認を追加
+              const hasChildren = taskRelationMap.childrenMap[selectedTaskId]?.length > 0
+              if (hasChildren) {
+                e.preventDefault()
+                logger.info('Toggling task collapse via Ctrl+ArrowRight', { taskId: selectedTaskId })
+                onToggleTaskCollapse(selectedTaskId)
+              } else {
+                logger.debug('Cannot collapse task - no children', { taskId: selectedTaskId })
+              }
             } else {
               // エリア間移動
               e.preventDefault()
@@ -390,6 +399,7 @@ export const useKeyboardShortcuts = ({
     selectedProjectId,
     isDetailPanelVisible,
     isMultiSelectMode,
+    taskRelationMap,
     copiedTasks,
     isAddingProject,
     isAddingTask,
