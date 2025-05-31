@@ -1,7 +1,8 @@
 import React from 'react'
 import { Check } from 'lucide-react'
-import { PROJECT_COLORS } from '../utils/constants'
+import { PROJECT_COLORS } from '../config/constants'
 import { cn } from '@/lib/utils'
+import { ProjectColor } from '../types'
 
 interface ColorPickerProps {
   selectedColor: string
@@ -16,7 +17,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 }) => {
   return (
     <div className={cn("flex flex-wrap gap-1", className)}>
-      {PROJECT_COLORS.map((color) => (
+      {PROJECT_COLORS.map((color: ProjectColor) => (
         <button
           key={color.value}
           className={cn(

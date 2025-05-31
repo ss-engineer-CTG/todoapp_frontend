@@ -10,6 +10,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useMultiSelect } from './hooks/useMultiSelect'
 import { useScrollToTask } from './hooks/useScrollToTask'
 import { useApi } from './hooks/useApi'
+import { createTaskOperations } from './utils/taskOperations'
 import { logger } from './utils/logger'
 import { handleError } from './utils/errorHandler'
 import { isValidDate } from './utils/dateUtils'
@@ -27,7 +28,6 @@ const TodoApp: React.FC = () => {
     loadTasks,
     createTask,
     updateTask,
-    deleteTask,
     batchUpdateTasks
   } = useApi()
 
@@ -114,6 +114,165 @@ const TodoApp: React.FC = () => {
     }
   })()
 
+  // TaskOperationsインスタンス作成
+  const taskApiActions = {
+    createTask,
+    updateTask,
+    loadTasks: async () => {
+      const result = await loadTasks(selectedProjectId)
+      return result
+    },
+    batchUpdateTasks: async (operation: BatchOperation, taskIds: string[]) => {
+      const result = await batchUpdateTasks(operation, taskIds)
+      await loadTasks(selectedProjectId)
+      return result
+    }
+  }
+
+  const taskOperations = createTaskOperations(taskApiActions, currentTasks, selectedProjectId)
+
+  // システムプロンプト準拠：修正 - タスク追加処理の完全実装
+  const handleAddTask = async (parentId: string | null = null, level = 0) => {
+    try {
+      logger.info('Adding task via shortcut', { parentId, level })
+      
+      const createdTask = await taskOperations.addTask(parentId, level)
+      if (createdTask) {
+        setSelectedTaskId(createdTask.id)
+        setSelectedTaskIds([createdTask.id])
+        setActiveArea("tasks")
+        setIsDetailPanelVisible(true)
+        
+        logger.info('Task added successfully via shortcut', { 
+          taskId: createdTask.id,
+          taskName: createdTask.name 
+        })
+      }
+    } catch (error) {
+      logger.error('Task addition via shortcut failed', { parentId, level, error })
+      handleError(error, 'ショートカットによるタスク追加に失敗しました')
+    }
+  }
+
+  // システムプロンプト準拠：修正 - タスク削除処理の実装
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      logger.info('Deleting task', { taskId, isMultiSelect: isMultiSelectMode })
+      
+      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
+        // 複数選択の場合は一括削除
+        await batchUpdateTasks(BATCH_OPERATIONS.DELETE, selectedTaskIds)
+        setSelectedTaskId(null)
+        setSelectedTaskIds([])
+        setIsMultiSelectMode(false)
+        logger.info('Batch delete completed', { taskCount: selectedTaskIds.length })
+      } else {
+        // 単一削除
+        const success = await taskOperations.deleteTask(taskId)
+        if (success && selectedTaskId === taskId) {
+          setSelectedTaskId(null)
+          setSelectedTaskIds([])
+        }
+        logger.info('Single task deleted', { taskId })
+      }
+      
+      // タスク一覧を再読み込み
+      await loadTasks(selectedProjectId)
+    } catch (error) {
+      logger.error('Task deletion failed', { taskId, error })
+      handleError(error, 'タスクの削除に失敗しました')
+    }
+  }
+
+  // システムプロンプト準拠：修正 - タスクコピー処理の実装
+  const handleCopyTask = async (taskId: string) => {
+    try {
+      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
+        const copiedTaskList = await taskOperations.copyTasks(selectedTaskIds)
+        setCopiedTasks(copiedTaskList)
+        logger.info('Multiple tasks copied', { taskCount: copiedTaskList.length })
+      } else {
+        const copiedTaskList = await taskOperations.copyTasks([taskId])
+        setCopiedTasks(copiedTaskList)
+        logger.info('Single task copied', { taskId, childCount: copiedTaskList.length - 1 })
+      }
+    } catch (error) {
+      logger.error('Task copy failed', { taskId, error })
+      handleError(error, 'タスクのコピーに失敗しました')
+    }
+  }
+
+  // システムプロンプト準拠：修正 - タスク貼り付け処理の実装
+  const handlePasteTask = async () => {
+    if (copiedTasks.length === 0 || !selectedProjectId) return
+
+    try {
+      logger.info('Pasting tasks via shortcut', { 
+        count: copiedTasks.length, 
+        projectId: selectedProjectId 
+      })
+      
+      const currentTask = selectedTaskId ? currentTasks.find((t) => t.id === selectedTaskId) : null
+      const targetParentId = currentTask ? currentTask.parentId : null
+      const targetLevel = currentTask ? currentTask.level : 0
+
+      const success = await taskOperations.pasteTasks(copiedTasks, targetParentId, targetLevel)
+      
+      if (success) {
+        logger.info('Tasks pasted successfully via shortcut', { count: copiedTasks.length })
+      }
+    } catch (error) {
+      logger.error('Task paste via shortcut failed', { error })
+      handleError(error, 'ショートカットによるタスク貼り付けに失敗しました')
+    }
+  }
+
+  // システムプロンプト準拠：修正 - タスク完了状態切り替えの実装
+  const handleToggleTaskCompletion = async (taskId: string) => {
+    try {
+      logger.info('Toggling task completion', { taskId, isMultiSelect: isMultiSelectMode })
+      
+      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
+        // 複数選択の場合は一括切り替え
+        const targetTask = currentTasks.find(t => t.id === taskId)
+        const newCompletionState = targetTask ? !targetTask.completed : false
+        
+        const operation = newCompletionState ? BATCH_OPERATIONS.COMPLETE : BATCH_OPERATIONS.INCOMPLETE
+        await batchUpdateTasks(operation, selectedTaskIds)
+        
+        logger.info('Batch completion toggle', { 
+          taskCount: selectedTaskIds.length, 
+          newState: newCompletionState 
+        })
+      } else {
+        // 単一タスクの場合
+        await taskOperations.toggleTaskCompletion(taskId)
+        logger.info('Single task completion toggle', { taskId })
+      }
+
+      // タスク一覧を再読み込み
+      await loadTasks(selectedProjectId)
+    } catch (error) {
+      logger.error('Task completion toggle failed', { taskId, error })
+      handleError(error, 'タスクの完了状態切り替えに失敗しました')
+    }
+  }
+
+  // システムプロンプト準拠：修正 - タスク折りたたみ切り替えの実装
+  const handleToggleTaskCollapse = async (taskId: string) => {
+    try {
+      const success = await taskOperations.toggleTaskCollapse(taskId)
+      
+      if (success) {
+        // タスク一覧を再読み込み
+        await loadTasks(selectedProjectId)
+      }
+    } catch (error) {
+      logger.error('Task collapse toggle failed', { taskId, error })
+      handleError(error, 'タスクの折りたたみ切り替えに失敗しました')
+    }
+  }
+
   // システムプロンプト準拠：初期データ読み込み（順序調整）
   useEffect(() => {
     const initializeApp = async () => {
@@ -196,243 +355,6 @@ const TodoApp: React.FC = () => {
     handleTaskSelect(taskId, event)
     setActiveArea("tasks")
     setIsDetailPanelVisible(true)
-  }
-
-  // ID生成
-  const generateId = (prefix: string) => {
-    return `${prefix}${Date.now()}`
-  }
-
-  // すべての子タスクを取得
-  const getChildTasks = (parentId: string, taskList: Task[]): Task[] => {
-    try {
-      const childIds = taskRelationMap.childrenMap[parentId] || []
-      const directChildren = childIds.map((id) => taskList.find((task) => task.id === id)).filter(Boolean) as Task[]
-
-      let allChildren: Task[] = [...directChildren]
-      directChildren.forEach((child) => {
-        allChildren = [...allChildren, ...getChildTasks(child.id, taskList)]
-      })
-
-      return allChildren
-    } catch (error) {
-      logger.error('Error getting child tasks', { parentId, error })
-      return []
-    }
-  }
-
-  // タスク追加
-  const handleAddTask = (_parentId: string | null = null, _level = 0) => {
-    // TaskPanelで実際の追加処理を行うため、ここでは何もしない
-  }
-
-  // タスク削除（一括削除対応）
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-      logger.info('Deleting task', { taskId, isMultiSelect: isMultiSelectMode })
-      
-      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-        // 複数選択の場合は一括削除
-        await batchUpdateTasks(BATCH_OPERATIONS.DELETE, selectedTaskIds)
-        setSelectedTaskId(null)
-        setSelectedTaskIds([])
-        setIsMultiSelectMode(false)
-        logger.info('Batch delete completed', { taskCount: selectedTaskIds.length })
-      } else {
-        // 単一削除
-        await deleteTask(taskId)
-        if (selectedTaskId === taskId) {
-          setSelectedTaskId(null)
-          setSelectedTaskIds([])
-        }
-        logger.info('Single task deleted', { taskId })
-      }
-      
-      // タスク一覧を再読み込み
-      await loadTasks(selectedProjectId)
-    } catch (error) {
-      logger.error('Task deletion failed', { taskId, error })
-      handleError(error, 'タスクの削除に失敗しました')
-    }
-  }
-
-  // タスクコピー
-  const handleCopyTask = (taskId: string) => {
-    try {
-      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-        const tasksToCopy = currentTasks.filter((task) => selectedTaskIds.includes(task.id))
-        let allTasksToCopy: Task[] = [...tasksToCopy]
-
-        tasksToCopy.forEach((task) => {
-          const childTasks = getChildTasks(task.id, currentTasks)
-          const unselectedChildTasks = childTasks.filter((childTask) => !selectedTaskIds.includes(childTask.id))
-          allTasksToCopy = [...allTasksToCopy, ...unselectedChildTasks]
-        })
-
-        setCopiedTasks(allTasksToCopy)
-        logger.info('Multiple tasks copied', { taskCount: allTasksToCopy.length })
-      } else {
-        const taskToCopy = currentTasks.find((task) => task.id === taskId)
-        if (taskToCopy) {
-          const childTasks = getChildTasks(taskId, currentTasks)
-          setCopiedTasks([taskToCopy, ...childTasks])
-          logger.info('Single task copied', { taskId, childCount: childTasks.length })
-        }
-      }
-    } catch (error) {
-      logger.error('Task copy failed', { taskId, error })
-      handleError(error, 'タスクのコピーに失敗しました')
-    }
-  }
-
-  // タスク貼り付け
-  const handlePasteTask = async () => {
-    if (copiedTasks.length === 0 || !selectedProjectId) return
-
-    try {
-      logger.info('Pasting tasks', { count: copiedTasks.length, projectId: selectedProjectId })
-      
-      const currentTask = selectedTaskId ? currentTasks.find((t) => t.id === selectedTaskId) : null
-      const targetParentId = currentTask ? currentTask.parentId : null
-      const targetLevel = currentTask ? currentTask.level : 0
-
-      // ルートタスクを処理
-      const rootTasks = copiedTasks.filter((task) => 
-        !task.parentId || !copiedTasks.some((t) => t.id === task.parentId)
-      )
-
-      // 順次作成（階層構造を維持）
-      const idMap: { [key: string]: string } = {}
-      
-      // ルートタスクを先に作成
-      for (const rootTask of rootTasks) {
-        const newTaskId = generateId("t")
-        idMap[rootTask.id] = newTaskId
-
-        // システムプロンプト準拠：日付データの安全な処理
-        const newTask = {
-          ...rootTask,
-          name: `${rootTask.name}${rootTasks.length === 1 ? " (コピー)" : ""}`,
-          projectId: selectedProjectId,
-          parentId: targetParentId,
-          level: targetLevel,
-          // 日付の安全な処理
-          startDate: isValidDate(rootTask.startDate) ? rootTask.startDate : new Date(),
-          dueDate: isValidDate(rootTask.dueDate) ? rootTask.dueDate : new Date(),
-          completionDate: null // コピー時は未完了に設定
-        }
-
-        await createTask(newTask)
-      }
-
-      // 子タスクを作成
-      const childTasks = copiedTasks.filter((task) => 
-        task.parentId && copiedTasks.some((t) => t.id === task.parentId)
-      )
-
-      for (const childTask of childTasks) {
-        const newChildId = generateId("t")
-        idMap[childTask.id] = newChildId
-
-        const newParentId = childTask.parentId ? idMap[childTask.parentId] : null
-        const parentLevel = rootTasks.find(t => idMap[t.id] === newParentId)?.level || 0
-
-        const newTask = {
-          ...childTask,
-          name: childTask.name,
-          projectId: selectedProjectId,
-          parentId: newParentId,
-          level: parentLevel + 1,
-          // 日付の安全な処理
-          startDate: isValidDate(childTask.startDate) ? childTask.startDate : new Date(),
-          dueDate: isValidDate(childTask.dueDate) ? childTask.dueDate : new Date(),
-          completionDate: null
-        }
-
-        await createTask(newTask)
-      }
-
-      // タスク一覧を再読み込み
-      await loadTasks(selectedProjectId)
-      
-      logger.info('Tasks pasted successfully', { count: copiedTasks.length })
-    } catch (error) {
-      logger.error('Task paste failed', { error })
-      handleError(error, 'タスクの貼り付けに失敗しました')
-    }
-  }
-
-  // タスク完了状態切り替え（一括対応）
-  const handleToggleTaskCompletion = async (taskId: string) => {
-    try {
-      logger.info('Toggling task completion', { taskId, isMultiSelect: isMultiSelectMode })
-      
-      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-        // 複数選択の場合は一括切り替え
-        const targetTask = currentTasks.find(t => t.id === taskId)
-        const newCompletionState = targetTask ? !targetTask.completed : false
-        
-        const operation = newCompletionState ? BATCH_OPERATIONS.COMPLETE : BATCH_OPERATIONS.INCOMPLETE
-        await batchUpdateTasks(operation, selectedTaskIds)
-        
-        logger.info('Batch completion toggle', { 
-          taskCount: selectedTaskIds.length, 
-          newState: newCompletionState 
-        })
-      } else {
-        // 単一タスクの場合
-        const task = currentTasks.find(t => t.id === taskId)
-        if (!task) return
-
-        const newCompletionState = !task.completed
-        
-        await updateTask(taskId, {
-          completed: newCompletionState,
-          completionDate: newCompletionState ? new Date() : null
-        })
-        
-        logger.info('Single task completion toggle', { taskId, newState: newCompletionState })
-      }
-
-      // タスク一覧を再読み込み
-      await loadTasks(selectedProjectId)
-    } catch (error) {
-      logger.error('Task completion toggle failed', { taskId, error })
-      handleError(error, 'タスクの完了状態切り替えに失敗しました')
-    }
-  }
-
-  // タスク折りたたみ切り替え
-  const handleToggleTaskCollapse = async (taskId: string) => {
-    try {
-      const task = currentTasks.find(t => t.id === taskId)
-      if (!task) return
-
-      logger.debug('Toggling task collapse', { taskId, currentState: task.collapsed })
-      
-      await updateTask(taskId, { collapsed: !task.collapsed })
-      
-      // タスク一覧を再読み込み
-      await loadTasks(selectedProjectId)
-    } catch (error) {
-      logger.error('Task collapse toggle failed', { taskId, error })
-      handleError(error, 'タスクの折りたたみ切り替えに失敗しました')
-    }
-  }
-
-  // TaskApiActions用のラッパー関数
-  const taskApiActions = {
-    createTask,
-    updateTask,
-    loadTasks: async () => {
-      const result = await loadTasks(selectedProjectId)
-      return result
-    },
-    batchUpdateTasks: async (operation: BatchOperation, taskIds: string[]) => {
-      const result = await batchUpdateTasks(operation, taskIds)
-      await loadTasks(selectedProjectId) // 操作後に再読み込み
-      return result
-    }
   }
 
   // キーボードショートカット

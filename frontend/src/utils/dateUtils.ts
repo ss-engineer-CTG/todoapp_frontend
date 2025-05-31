@@ -1,7 +1,6 @@
 import { format, parseISO, isValid, parse } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { logger } from './logger'
-import { handleError } from './errorHandler'
 
 export const formatDate = (date: Date | string): string => {
   try {

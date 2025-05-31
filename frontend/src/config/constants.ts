@@ -1,4 +1,4 @@
-// システムプロンプト準拠: DRY原則 - 重複定数統一、utils/constants.tsを統合
+// システムプロンプト準拠: DRY原則 - 重複定数統一、utils/constants.tsを削除して統合
 import { ProjectColor, KeyboardShortcut } from '../types'
 
 // プロジェクトカラー（重複排除）
@@ -13,7 +13,7 @@ export const PROJECT_COLORS: ProjectColor[] = [
   { name: "ティール", value: "#14b8a6" },
 ] as const
 
-// キーボードショートカット（重複排除、page.tsx準拠）
+// システムプロンプト準拠：修正 - キーボードショートカット（完全版）
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Enter", description: "同じレベルで新規タスク追加" },
   { key: "Tab", description: "選択したタスクの子タスクを追加" },
@@ -56,6 +56,10 @@ export const ERROR_MESSAGES = {
   UNKNOWN_ERROR: '予期しないエラーが発生しました',
   PROJECT_NOT_FOUND: 'プロジェクトが見つかりません',
   TASK_NOT_FOUND: 'タスクが見つかりません',
+  // システムプロンプト準拠：新規追加 - ショートカット関連エラー
+  SHORTCUT_ERROR: 'ショートカット操作でエラーが発生しました',
+  TASK_OPERATION_ERROR: 'タスク操作でエラーが発生しました',
+  COPY_PASTE_ERROR: 'コピー・ペースト操作でエラーが発生しました',
 } as const
 
 // UI設定定数
@@ -81,7 +85,7 @@ export const APP_CONFIG = {
   }
 } as const
 
-// キーボードマッピング（page.tsx完全準拠）
+// システムプロンプト準拠：修正 - キーボードマッピング（実際の処理と一致）
 export const KEYBOARD_MAPPINGS = {
   TASK_OPERATIONS: {
     ADD_SAME_LEVEL: 'Enter',
@@ -89,7 +93,8 @@ export const KEYBOARD_MAPPINGS = {
     DELETE: ['Delete', 'Backspace'],
     COPY: 'ctrl+c',
     PASTE: 'ctrl+v',
-    TOGGLE_COMPLETION: 'Space'
+    TOGGLE_COMPLETION: ' ', // スペースキー
+    TOGGLE_COLLAPSE: 'ctrl+ArrowRight'
   },
   NAVIGATION: {
     MOVE_UP: 'ArrowUp',
@@ -97,8 +102,7 @@ export const KEYBOARD_MAPPINGS = {
     MOVE_RIGHT: 'ArrowRight',
     MOVE_LEFT: 'ArrowLeft',
     RANGE_SELECT_UP: 'shift+ArrowUp',
-    RANGE_SELECT_DOWN: 'shift+ArrowDown',
-    TOGGLE_COLLAPSE: 'ctrl+ArrowRight'
+    RANGE_SELECT_DOWN: 'shift+ArrowDown'
   },
   SELECTION: {
     MULTI_SELECT: 'ctrl+click',
@@ -118,4 +122,24 @@ export const BATCH_OPERATIONS = {
   INCOMPLETE: 'incomplete',
   DELETE: 'delete',
   COPY: 'copy'
+} as const
+
+// システムプロンプト準拠：新規追加 - タスク操作関連定数
+export const TASK_OPERATION_CONSTANTS = {
+  DEFAULT_TASK_NAME: '新しいタスク',
+  COPY_SUFFIX: ' (コピー)',
+  MAX_TASK_LEVEL: 10, // 階層の最大深度
+  AUTO_SAVE_DELAY: 500, // 自動保存の遅延時間（ミリ秒）
+} as const
+
+// システムプロンプト準拠：新規追加 - ショートカット操作のログメッセージ
+export const SHORTCUT_LOG_MESSAGES = {
+  TASK_ADDED: 'Task added via shortcut',
+  TASK_DELETED: 'Task deleted via shortcut',
+  TASK_COPIED: 'Task copied via shortcut',
+  TASK_PASTED: 'Task pasted via shortcut',
+  COMPLETION_TOGGLED: 'Task completion toggled via shortcut',
+  COLLAPSE_TOGGLED: 'Task collapse toggled via shortcut',
+  NAVIGATION: 'Navigation via shortcut',
+  SELECTION_CHANGED: 'Selection changed via shortcut',
 } as const

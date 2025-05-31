@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react'
 import { Task, TaskRelationMap, TaskApiActions, BatchOperation } from '../types'
 import { safeFormatDate } from '../utils/dateUtils'
 import { logger } from '../utils/logger'
+import { createTaskOperations } from '../utils/taskOperations'
 import {
   Plus,
   MoreHorizontal,
@@ -87,6 +88,9 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
 
   const newTaskInputRef = useRef<HTMLInputElement>(null)
 
+  // システムプロンプト準拠：DRY原則 - TaskOperationsを活用
+  const taskOperations = createTaskOperations(apiActions, allTasks, selectedProjectId)
+
   const handleAddTaskClick = (parentId: string | null = null, level = 0) => {
     setIsAddingTask(true)
     setNewTaskParentId(parentId)
@@ -96,40 +100,29 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }, 0)
   }
 
+  // システムプロンプト準拠：修正 - TaskOperationsを使用した統一処理
   const handleSaveNewTask = async () => {
     if (newTaskName.trim() && selectedProjectId) {
       try {
-        const parentTask = newTaskParentId ? allTasks.find((task) => task.id === newTaskParentId) : null
-
-        const newTask = {
-          name: newTaskName,
-          projectId: selectedProjectId,
-          parentId: newTaskParentId,
-          completed: false,
-          startDate: parentTask?.startDate || new Date(),
-          dueDate: parentTask?.dueDate || new Date(),
-          completionDate: null,
-          notes: "",
-          assignee: "自分",
-          level: newTaskLevel,
-          collapsed: false,
-        }
-
-        logger.info('Creating new task', { 
-          taskName: newTask.name, 
+        logger.info('Creating new task via UI', { 
+          taskName: newTaskName, 
           parentId: newTaskParentId, 
           level: newTaskLevel 
         })
 
-        const createdTask = await apiActions.createTask(newTask)
-        onTasksUpdate([...allTasks, createdTask])
-        setNewTaskName("")
-        setIsAddingTask(false)
-        onTaskSelect(createdTask.id)
+        const createdTask = await taskOperations.addTask(newTaskParentId, newTaskLevel, newTaskName)
         
-        // タスク一覧を再読み込み
-        await apiActions.loadTasks()
-        logger.info('Task created successfully', { taskId: createdTask.id, taskName: createdTask.name })
+        if (createdTask) {
+          onTasksUpdate([...allTasks, createdTask])
+          setNewTaskName("")
+          setIsAddingTask(false)
+          onTaskSelect(createdTask.id)
+          
+          logger.info('Task created successfully via UI', { 
+            taskId: createdTask.id, 
+            taskName: createdTask.name 
+          })
+        }
       } catch (error) {
         handleError(error, 'タスクの作成に失敗しました')
         setIsAddingTask(false)

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ColorPicker } from './ColorPicker'
-import { PROJECT_COLORS } from '../utils/constants'
+import { PROJECT_COLORS } from '../config/constants'
 import { cn } from '@/lib/utils'
 import { handleError } from '../utils/errorHandler'
 

@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { HelpCircle } from 'lucide-react'
-import { KEYBOARD_SHORTCUTS } from '../utils/constants'
+import { KEYBOARD_SHORTCUTS } from '../config/constants'
+import { KeyboardShortcut } from '../types'
 
 export const ShortcutGuideDialog: React.FC = () => {
   return (
@@ -24,7 +25,7 @@ export const ShortcutGuideDialog: React.FC = () => {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-1 gap-3">
-            {KEYBOARD_SHORTCUTS.map((shortcut, index) => (
+            {KEYBOARD_SHORTCUTS.map((shortcut: KeyboardShortcut, index: number) => (
               <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
                 <kbd className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted rounded-md border min-w-[120px] text-center">
                   {shortcut.key}
