@@ -62,46 +62,61 @@ export const useKeyboardShortcuts = ({
   isEditingProject
 }: UseKeyboardShortcutsProps) => {
   
-  // 🔄 修正：詳細パネル内のフォーカス管理用ref（保存ボタン追加）
   const taskNameInputRef = useRef<HTMLInputElement>(null)
   const startDateButtonRef = useRef<HTMLButtonElement>(null)
   const dueDateButtonRef = useRef<HTMLButtonElement>(null)
   const taskNotesRef = useRef<HTMLTextAreaElement>(null)
-  const saveButtonRef = useRef<HTMLButtonElement>(null) // 🆕 追加
+  const saveButtonRef = useRef<HTMLButtonElement>(null)
 
-  // 🆕 新規追加：詳細パネル内のEnterキーナビゲーション
+  // 🔄 修正：詳細パネル内のEnterキーナビゲーション（カレンダー制御対応）
   const handleDetailEnterNavigation = useCallback((e: KeyboardEvent) => {
     if (!selectedTaskId || activeArea !== "details") return
 
     const activeElement = document.activeElement
 
+    // 🆕 新規追加：カレンダーが開いている場合は通常のEnter処理をスキップ
+    const isCalendarOpen = document.querySelector('[role="dialog"]') || 
+                          document.querySelector('[data-state="open"]')
+    
+    if (isCalendarOpen) {
+      logger.trace('Calendar is open, skipping Enter navigation')
+      return
+    }
+
     // Enterキーでの順次移動：タスク名 → 開始日 → 期限日 → メモ → 保存ボタン
     if (activeElement === taskNameInputRef.current) {
       e.preventDefault()
       startDateButtonRef.current?.focus()
-      logger.trace('Enter navigation: moved to start date button')
+      logger.debug('Enter navigation: moved to start date button')
     } else if (activeElement === startDateButtonRef.current) {
       e.preventDefault()
       dueDateButtonRef.current?.focus()
-      logger.trace('Enter navigation: moved to due date button')
+      logger.debug('Enter navigation: moved to due date button')
     } else if (activeElement === dueDateButtonRef.current) {
       e.preventDefault()
       taskNotesRef.current?.focus()
-      logger.trace('Enter navigation: moved to notes textarea')
+      logger.debug('Enter navigation: moved to notes textarea')
     } else if (activeElement === taskNotesRef.current) {
       e.preventDefault()
       saveButtonRef.current?.focus()
-      logger.trace('Enter navigation: moved to save button')
+      logger.debug('Enter navigation: moved to save button')
     } else if (activeElement === saveButtonRef.current) {
-      // 保存ボタンでのEnterキーは保存処理を実行（DetailPanel側で処理）
       logger.debug('Enter on save button - save action will be handled by DetailPanel')
-      // ここでは何もしない（DetailPanel側のイベントリスナーが処理）
     }
   }, [selectedTaskId, activeArea])
 
-  // システムプロンプト準拠：修正 - 詳細パネル内のTab navigation（保存ボタン追加）
+  // 🔄 修正：詳細パネル内のTab navigation（カレンダー制御対応）
   const handleDetailTabNavigation = useCallback((e: KeyboardEvent) => {
     if (!selectedTaskId || activeArea !== "details") return
+
+    // 🆕 新規追加：カレンダーが開いている場合は通常のTab処理をスキップ
+    const isCalendarOpen = document.querySelector('[role="dialog"]') || 
+                          document.querySelector('[data-state="open"]')
+    
+    if (isCalendarOpen) {
+      logger.trace('Calendar is open, skipping Tab navigation')
+      return
+    }
 
     const isShiftTab = e.shiftKey
     const activeElement = document.activeElement
@@ -149,25 +164,36 @@ export const useKeyboardShortcuts = ({
         taskNotesRef.current?.focus()
         logger.trace('Shift+Tab navigation: moved to notes textarea')
       }
-      // 順方向のTabでは保存ボタンが最後の要素なので何もしない
     }
   }, [selectedTaskId, activeArea])
 
-  // システムプロンプト準拠：修正 - イベントハンドリング改善（Enterキー処理追加）
+  // 🔄 修正：イベントハンドリング改善（カレンダー考慮）
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       try {
-        // 🔧 修正：入力フィールド中やモーダル処理中の条件を精密化
+        // 🔄 修正：カレンダー表示中の条件を追加
+        const isCalendarOpen = document.querySelector('[role="dialog"]') || 
+                              document.querySelector('[data-state="open"]')
+
         if (e.target instanceof HTMLInputElement || 
             e.target instanceof HTMLTextAreaElement ||
             e.target instanceof HTMLSelectElement ||
+            isCalendarOpen ||
             (e.target as Element)?.closest('[role="dialog"]') ||
             (e.target as Element)?.closest('[data-state="open"]') ||
             isAddingProject || 
             isAddingTask || 
             isEditingProject) {
-          logger.trace('Keyboard shortcut skipped - input field or modal active', { 
+          
+          // 🆕 新規追加：カレンダー内でのEscapeキー処理
+          if (isCalendarOpen && e.key === 'Escape') {
+            logger.debug('Escape pressed in calendar, allowing normal close behavior')
+            return
+          }
+
+          logger.trace('Keyboard shortcut skipped - input field, calendar, or modal active', { 
             targetType: (e.target as HTMLElement)?.tagName,
+            isCalendarOpen,
             isAddingProject,
             isAddingTask,
             isEditingProject
@@ -175,7 +201,7 @@ export const useKeyboardShortcuts = ({
           return
         }
 
-        // 🆕 新規追加：詳細パネル内でのEnterキー処理
+        // 詳細パネル内でのEnterキー処理
         if (activeArea === "details" && e.key === "Enter") {
           handleDetailEnterNavigation(e)
           return
@@ -187,7 +213,6 @@ export const useKeyboardShortcuts = ({
           return
         }
 
-        // システムプロンプト準拠：適切なログレベルでショートカット実行をログ
         logger.debug('Processing keyboard shortcut', { 
           key: e.key, 
           ctrlKey: e.ctrlKey, 
@@ -198,7 +223,6 @@ export const useKeyboardShortcuts = ({
 
         switch (e.key) {
           case "Enter":
-            // タスクエリア以外では通常のEnter処理
             if (activeArea === "tasks") {
               e.preventDefault()
               if (selectedTaskId) {
@@ -218,12 +242,10 @@ export const useKeyboardShortcuts = ({
             break
 
           case "Tab":
-            // 詳細エリアでは通常のTab動作を許可
             if (activeArea === "details") {
               return
             }
             
-            // タスクエリアでのみ子タスク追加
             if (activeArea === "tasks" && selectedTaskId) {
               e.preventDefault()
               const task = tasks.find((t) => t.id === selectedTaskId)
@@ -284,11 +306,9 @@ export const useKeyboardShortcuts = ({
             e.preventDefault()
             if (activeArea === "tasks" && filteredTasks.length > 0) {
               if (e.shiftKey && selectedTaskId) {
-                // Shift+矢印キーでの範囲選択
                 logger.debug('Range select up via Shift+ArrowUp', { selectedTaskId })
                 onHandleKeyboardRangeSelect('up')
               } else {
-                // 通常の移動
                 if (selectedTaskId) {
                   const currentIndex = filteredTasks.findIndex((t) => t.id === selectedTaskId)
                   if (currentIndex > 0) {
@@ -318,11 +338,9 @@ export const useKeyboardShortcuts = ({
             e.preventDefault()
             if (activeArea === "tasks" && filteredTasks.length > 0) {
               if (e.shiftKey && selectedTaskId) {
-                // Shift+矢印キーでの範囲選択
                 logger.debug('Range select down via Shift+ArrowDown', { selectedTaskId })
                 onHandleKeyboardRangeSelect('down')
               } else {
-                // 通常の移動
                 if (selectedTaskId) {
                   const currentIndex = filteredTasks.findIndex((t) => t.id === selectedTaskId)
                   if (currentIndex < filteredTasks.length - 1) {
@@ -350,7 +368,6 @@ export const useKeyboardShortcuts = ({
 
           case "ArrowRight":
             if (e.ctrlKey && activeArea === "tasks" && selectedTaskId) {
-              // 🔧 修正：子タスクの存在確認を追加
               const hasChildren = taskRelationMap.childrenMap[selectedTaskId]?.length > 0
               if (hasChildren) {
                 e.preventDefault()
@@ -360,7 +377,6 @@ export const useKeyboardShortcuts = ({
                 logger.debug('Cannot collapse task - no children', { taskId: selectedTaskId })
               }
             } else {
-              // エリア間移動
               e.preventDefault()
               if (activeArea === "projects") {
                 setActiveArea("tasks")
@@ -371,7 +387,6 @@ export const useKeyboardShortcuts = ({
                 logger.debug('Moved from projects to tasks area')
               } else if (activeArea === "tasks" && isDetailPanelVisible && selectedTaskId) {
                 setActiveArea("details")
-                // 詳細パネルの最初の要素にフォーカス
                 setTimeout(() => {
                   taskNameInputRef.current?.focus()
                 }, 0)
@@ -383,7 +398,6 @@ export const useKeyboardShortcuts = ({
           case "ArrowLeft":
             e.preventDefault()
             if (activeArea === "tasks" && selectedTaskId) {
-              // 親タスクに移動するか、左のエリアに移動
               const task = tasks.find((t) => t.id === selectedTaskId)
               if (task && task.parentId) {
                 setSelectedTaskId(task.parentId)
@@ -425,11 +439,9 @@ export const useKeyboardShortcuts = ({
             break
 
           default:
-            // その他のキーは処理しない
             break
         }
       } catch (error) {
-        // システムプロンプト準拠：エラー詳細や例外スタックトレースを記録
         logger.error('Error in keyboard shortcut handler', { 
           key: e.key,
           error: error instanceof Error ? error.message : String(error),
@@ -438,7 +450,6 @@ export const useKeyboardShortcuts = ({
       }
     }
 
-    // システムプロンプト準拠：イベントリスナーの適切な管理
     window.addEventListener("keydown", handleKeyDown)
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
@@ -472,15 +483,14 @@ export const useKeyboardShortcuts = ({
     setActiveArea,
     setIsMultiSelectMode,
     handleDetailTabNavigation,
-    handleDetailEnterNavigation // 🆕 追加
+    handleDetailEnterNavigation
   ])
 
-  // 🔄 修正：詳細パネル用のrefを返す（保存ボタン追加）
   return {
     taskNameInputRef,
     startDateButtonRef,
     dueDateButtonRef,
     taskNotesRef,
-    saveButtonRef // 🆕 追加
+    saveButtonRef
   }
 }

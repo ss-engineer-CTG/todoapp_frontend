@@ -1,5 +1,5 @@
-import React, { RefObject, useEffect, useState } from 'react'
-import { Task, Project, TaskEditingState } from '../types'
+import React, { RefObject, useEffect, useState, useCallback } from 'react'
+import { Task, Project, TaskEditingState, TaskSaveCompleteCallback } from '../types'
 import { safeFormatDate, isValidDate } from '../utils/dateUtils'
 import { logger } from '../utils/logger'
 import { handleError } from '../utils/errorHandler'
@@ -23,7 +23,9 @@ interface DetailPanelProps {
   startDateButtonRef: RefObject<HTMLButtonElement>
   dueDateButtonRef: RefObject<HTMLButtonElement>
   taskNotesRef: RefObject<HTMLTextAreaElement>
-  saveButtonRef: RefObject<HTMLButtonElement> // 🆕 追加
+  saveButtonRef: RefObject<HTMLButtonElement>
+  // 🆕 新規追加：保存完了コールバック
+  onSaveComplete?: TaskSaveCompleteCallback
 }
 
 export const DetailPanel: React.FC<DetailPanelProps> = ({
@@ -38,19 +40,23 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   startDateButtonRef,
   dueDateButtonRef,
   taskNotesRef,
-  saveButtonRef // 🆕 追加
+  saveButtonRef,
+  onSaveComplete // 🆕 新規追加
 }) => {
-  // 🆕 新規追加：編集状態管理
+  // 🔄 修正：編集状態管理（カレンダー制御追加）
   const [editingState, setEditingState] = useState<TaskEditingState>({
     name: '',
     startDate: null,
     dueDate: null,
     assignee: '',
     notes: '',
-    hasChanges: false
+    hasChanges: false,
+    // 🆕 新規追加：カレンダー制御状態
+    isStartDateCalendarOpen: false,
+    isDueDateCalendarOpen: false,
+    focusTransitionMode: 'navigation'
   })
 
-  // 🆕 新規追加：保存処理中の状態管理
   const [isSaving, setIsSaving] = useState<boolean>(false)
 
   const toggleDetailPanel = () => {
@@ -60,7 +66,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
-  // 🆕 新規追加：タスク変更時の編集状態初期化
+  // タスク変更時の編集状態初期化
   useEffect(() => {
     if (selectedTask) {
       logger.debug('Initializing editing state for task', { taskId: selectedTask.id })
@@ -71,50 +77,140 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         dueDate: isValidDate(selectedTask.dueDate) ? selectedTask.dueDate : new Date(),
         assignee: selectedTask.assignee || '自分',
         notes: selectedTask.notes || '',
-        hasChanges: false
+        hasChanges: false,
+        // 🆕 新規追加：カレンダー状態初期化
+        isStartDateCalendarOpen: false,
+        isDueDateCalendarOpen: false,
+        focusTransitionMode: 'navigation'
       })
     }
-  }, [selectedTask?.id]) // selectedTask?.id の変更時のみ実行
+  }, [selectedTask?.id])
 
   // フォーカス管理
   useEffect(() => {
     if (activeArea === "details" && selectedTask) {
-      // 詳細パネルがアクティブになった時、最初の要素にフォーカス
       setTimeout(() => {
         taskNameInputRef.current?.focus()
       }, 0)
     }
   }, [activeArea, selectedTask, taskNameInputRef])
 
-  // 🆕 新規追加：編集状態更新関数
-  const updateEditingState = (field: keyof Omit<TaskEditingState, 'hasChanges'>, value: any) => {
+  // 🆕 新規追加：開始日ボタンフォーカス時のカレンダー自動表示
+  useEffect(() => {
+    const startDateButton = startDateButtonRef.current
+    if (!startDateButton) return
+
+    const handleStartDateFocus = () => {
+      logger.debug('Start date button focused - opening calendar automatically')
+      setEditingState(prev => ({ 
+        ...prev, 
+        isStartDateCalendarOpen: true,
+        focusTransitionMode: 'calendar-selection'
+      }))
+    }
+
+    startDateButton.addEventListener('focus', handleStartDateFocus)
+    return () => {
+      startDateButton.removeEventListener('focus', handleStartDateFocus)
+    }
+  }, [selectedTask])
+
+  // 🆕 新規追加：期限日ボタンフォーカス時のカレンダー自動表示
+  useEffect(() => {
+    const dueDateButton = dueDateButtonRef.current
+    if (!dueDateButton) return
+
+    const handleDueDateFocus = () => {
+      logger.debug('Due date button focused - opening calendar automatically')
+      setEditingState(prev => ({ 
+        ...prev, 
+        isDueDateCalendarOpen: true,
+        focusTransitionMode: 'calendar-selection'
+      }))
+    }
+
+    dueDateButton.addEventListener('focus', handleDueDateFocus)
+    return () => {
+      dueDateButton.removeEventListener('focus', handleDueDateFocus)
+    }
+  }, [selectedTask])
+
+  // 編集状態更新関数
+  const updateEditingState = (field: keyof Omit<TaskEditingState, 'hasChanges' | 'isStartDateCalendarOpen' | 'isDueDateCalendarOpen' | 'focusTransitionMode'>, value: any) => {
     if (!selectedTask) return
 
     try {
       logger.trace('Updating editing state', { taskId: selectedTask.id, field, value })
       
-        setEditingState(prev => {
-          const newState = { ...prev, [field]: value }
-          
-          // 🔧 修正：変更があるかどうかをチェック（確実にboolean型を返す）
-          const hasActualChanges = Boolean(
-            newState.name !== selectedTask.name ||
-            newState.assignee !== selectedTask.assignee ||
-            newState.notes !== selectedTask.notes ||
-            (newState.startDate && selectedTask.startDate && 
-            newState.startDate.getTime() !== selectedTask.startDate.getTime()) ||
-            (newState.dueDate && selectedTask.dueDate && 
-            newState.dueDate.getTime() !== selectedTask.dueDate.getTime())
-          )
+      setEditingState(prev => {
+        const newState = { ...prev, [field]: value }
         
-          return { ...newState, hasChanges: hasActualChanges }
-        })
+        const hasActualChanges = Boolean(
+          newState.name !== selectedTask.name ||
+          newState.assignee !== selectedTask.assignee ||
+          newState.notes !== selectedTask.notes ||
+          (newState.startDate && selectedTask.startDate && 
+          newState.startDate.getTime() !== selectedTask.startDate.getTime()) ||
+          (newState.dueDate && selectedTask.dueDate && 
+          newState.dueDate.getTime() !== selectedTask.dueDate.getTime())
+        )
+      
+        return { ...newState, hasChanges: hasActualChanges }
+      })
     } catch (error) {
       logger.error('Error updating editing state', { taskId: selectedTask.id, field, value, error })
     }
   }
 
-  // 🆕 新規追加：保存処理
+  // 🆕 新規追加：開始日選択完了時の自動遷移
+  const handleStartDateSelect = useCallback((date: Date | undefined) => {
+    if (!date || !selectedTask) return
+
+    logger.debug('Start date selected, transitioning to due date', { 
+      taskId: selectedTask.id, 
+      selectedDate: date.toISOString() 
+    })
+
+    updateEditingState('startDate', date)
+    
+    // カレンダーを閉じて次のフィールドにフォーカス
+    setEditingState(prev => ({ 
+      ...prev, 
+      isStartDateCalendarOpen: false,
+      focusTransitionMode: 'navigation'
+    }))
+
+    // 期限日ボタンにフォーカス（自動でカレンダーが開く）
+    setTimeout(() => {
+      dueDateButtonRef.current?.focus()
+    }, 100)
+  }, [selectedTask, dueDateButtonRef])
+
+  // 🆕 新規追加：期限日選択完了時の自動遷移
+  const handleDueDateSelect = useCallback((date: Date | undefined) => {
+    if (!date || !selectedTask) return
+
+    logger.debug('Due date selected, transitioning to notes', { 
+      taskId: selectedTask.id, 
+      selectedDate: date.toISOString() 
+    })
+
+    updateEditingState('dueDate', date)
+    
+    // カレンダーを閉じて次のフィールドにフォーカス
+    setEditingState(prev => ({ 
+      ...prev, 
+      isDueDateCalendarOpen: false,
+      focusTransitionMode: 'navigation'
+    }))
+
+    // メモフィールドにフォーカス
+    setTimeout(() => {
+      taskNotesRef.current?.focus()
+    }, 100)
+  }, [selectedTask, taskNotesRef])
+
+  // 🔄 修正：保存処理（完了コールバック追加）
   const handleSave = async () => {
     if (!selectedTask || !editingState.hasChanges || isSaving) {
       logger.debug('Save skipped', { 
@@ -133,7 +229,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         taskName: editingState.name 
       })
 
-      // システムプロンプト準拠：日付フィールドの安全な処理
       const updates: Partial<Task> = {}
       
       if (editingState.name !== selectedTask.name) {
@@ -158,20 +253,24 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         updates.dueDate = editingState.dueDate
       }
 
-      // バリデーション
       if (!updates.name?.trim() && editingState.name !== selectedTask.name) {
         throw new Error('タスク名は必須です')
       }
 
       await onTaskUpdate(selectedTask.id, updates)
       
-      // 保存成功時は変更状態をリセット
       setEditingState(prev => ({ ...prev, hasChanges: false }))
       
       logger.info('Manual save completed successfully', { 
         taskId: selectedTask.id, 
         updatedFields: Object.keys(updates) 
       })
+
+      // 🆕 新規追加：保存完了コールバック実行
+      if (onSaveComplete) {
+        logger.debug('Executing save complete callback', { taskId: selectedTask.id })
+        onSaveComplete(selectedTask.id)
+      }
 
     } catch (error) {
       logger.error('Manual save failed', { 
@@ -185,7 +284,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
-  // 🆕 新規追加：保存ボタンクリックハンドラー
   const handleSaveButtonClick = async () => {
     logger.debug('Save button clicked')
     await handleSave()
@@ -197,7 +295,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     await handleSave()
   }
 
-  // 🆕 新規追加：保存ボタンにEnterキーイベントを設定
+  // 保存ボタンにEnterキーイベントを設定
   useEffect(() => {
     const saveButton = saveButtonRef.current
     if (!saveButton) return
@@ -248,7 +346,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     )
   }
 
-  // システムプロンプト準拠：データ検証
   if (!selectedTask.id || !selectedTask.name) {
     logger.warn('Selected task has invalid data', { task: selectedTask })
     return (
@@ -293,7 +390,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         </div>
 
         <div className="space-y-4 flex-grow overflow-y-auto">
-          {/* タスク名 - Tab/Enter順序1番目 */}
+          {/* タスク名 */}
           <div>
             <label className="text-sm font-medium mb-1 block">タスク名</label>
             <Input
@@ -305,11 +402,14 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             />
           </div>
 
-          {/* 開始日・期限日 - Tab/Enter順序2番目、3番目 */}
+          {/* 開始日・期限日 */}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-sm font-medium mb-1 block">開始日</label>
-              <Popover>
+              <Popover 
+                open={editingState.isStartDateCalendarOpen} 
+                onOpenChange={(open) => setEditingState(prev => ({ ...prev, isStartDateCalendarOpen: open }))}
+              >
                 <PopoverTrigger asChild>
                   <Button
                     ref={startDateButtonRef}
@@ -330,7 +430,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                   <Calendar
                     mode="single"
                     selected={editingState.startDate || undefined}
-                    onSelect={(date) => updateEditingState('startDate', date || new Date())}
+                    onSelect={handleStartDateSelect}
                     initialFocus
                   />
                 </PopoverContent>
@@ -339,7 +439,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
             <div>
               <label className="text-sm font-medium mb-1 block">期限日</label>
-              <Popover>
+              <Popover 
+                open={editingState.isDueDateCalendarOpen} 
+                onOpenChange={(open) => setEditingState(prev => ({ ...prev, isDueDateCalendarOpen: open }))}
+              >
                 <PopoverTrigger asChild>
                   <Button
                     ref={dueDateButtonRef}
@@ -360,7 +463,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                   <Calendar
                     mode="single"
                     selected={editingState.dueDate || undefined}
-                    onSelect={(date) => updateEditingState('dueDate', date || new Date())}
+                    onSelect={handleDueDateSelect}
                     initialFocus
                   />
                 </PopoverContent>
@@ -401,7 +504,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             />
           </div>
 
-          {/* メモ - Tab/Enter順序4番目 */}
+          {/* メモ */}
           <div>
             <label className="text-sm font-medium mb-1 block">メモ</label>
             <Textarea
@@ -417,7 +520,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             />
           </div>
 
-          {/* 🆕 新規追加：保存ボタン - Tab/Enter順序5番目 */}
+          {/* 保存ボタン */}
           <div className="flex justify-end pt-2">
             <Button
               ref={saveButtonRef}

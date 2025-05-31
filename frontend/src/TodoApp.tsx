@@ -17,7 +17,6 @@ import { isValidDate } from './utils/dateUtils'
 import { BATCH_OPERATIONS } from './config/constants'
 
 const TodoApp: React.FC = () => {
-  // API フック
   const {
     projects,
     tasks,
@@ -32,7 +31,6 @@ const TodoApp: React.FC = () => {
     batchUpdateTasks
   } = useApi()
 
-  // 基本状態管理
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
   const [activeArea, setActiveArea] = useState<AreaType>("tasks")
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState<boolean>(true)
@@ -40,22 +38,17 @@ const TodoApp: React.FC = () => {
   const [copiedTasks, setCopiedTasks] = useState<Task[]>([])
   const [isInitialized, setIsInitialized] = useState<boolean>(false)
 
-  // 編集状態管理
   const [isAddingProject, setIsAddingProject] = useState<boolean>(false)
   const [isAddingTask, setIsAddingTask] = useState<boolean>(false)
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
 
-  // 現在のプロジェクトとタスクデータ
   const currentProjects = projects.data || []
   const currentTasks = tasks.data || []
 
-  // カスタムフック
   const { taskRelationMap } = useTaskRelations(currentTasks)
 
-  // システムプロンプト準拠：安全なタスクフィルタリング
   const filteredTasks = currentTasks.filter((task) => {
     try {
-      // 基本検証
       if (!task.id || !task.projectId) {
         logger.warn('Task missing required fields during filtering', { task })
         return false
@@ -64,7 +57,6 @@ const TodoApp: React.FC = () => {
       if (task.projectId !== selectedProjectId) return false
       if (!showCompleted && task.completed) return false
 
-      // 親タスクの折りたたみ状態をチェック
       if (task.parentId) {
         let currentParentId: string | null = task.parentId
         while (currentParentId) {
@@ -81,7 +73,6 @@ const TodoApp: React.FC = () => {
     }
   })
 
-  // 複数選択機能
   const {
     selectedId: selectedTaskId,
     selectedIds: selectedTaskIds,
@@ -99,12 +90,10 @@ const TodoApp: React.FC = () => {
     initialSelectedId: null
   })
 
-  // スクロール管理
   const { setTaskRef } = useScrollToTask({
     selectedTaskId
   })
 
-  // 選択されたタスク（システムプロンプト準拠：安全な取得）
   const selectedTask = (() => {
     try {
       if (!selectedTaskId) return undefined
@@ -115,7 +104,6 @@ const TodoApp: React.FC = () => {
     }
   })()
 
-  // TaskOperationsインスタンス作成
   const taskApiActions = {
     createTask,
     updateTask,
@@ -133,14 +121,12 @@ const TodoApp: React.FC = () => {
 
   const taskOperations = createTaskOperations(taskApiActions, currentTasks, selectedProjectId)
 
-  // システムプロンプト準拠：修正 - タスク追加処理の完全実装
   const handleAddTask = async (parentId: string | null = null, level = 0) => {
     try {
       logger.info('Adding task via shortcut', { parentId, level })
       
       const createdTask = await taskOperations.addTask(parentId, level)
       if (createdTask) {
-        // タスク一覧を再読み込み
         await loadTasks(selectedProjectId)
         
         setSelectedTaskId(createdTask.id)
@@ -159,20 +145,17 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // システムプロンプト準拠：修正 - タスク削除処理の実装
   const handleDeleteTask = async (taskId: string) => {
     try {
       logger.info('Deleting task', { taskId, isMultiSelect: isMultiSelectMode })
       
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-        // 複数選択の場合は一括削除
         await batchUpdateTasks(BATCH_OPERATIONS.DELETE, selectedTaskIds)
         setSelectedTaskId(null)
         setSelectedTaskIds([])
         setIsMultiSelectMode(false)
         logger.info('Batch delete completed', { taskCount: selectedTaskIds.length })
       } else {
-        // 単一削除
         const success = await taskOperations.deleteTask(taskId)
         if (success && selectedTaskId === taskId) {
           setSelectedTaskId(null)
@@ -181,7 +164,6 @@ const TodoApp: React.FC = () => {
         logger.info('Single task deleted', { taskId })
       }
       
-      // タスク一覧を再読み込み
       await loadTasks(selectedProjectId)
     } catch (error) {
       logger.error('Task deletion failed', { taskId, error })
@@ -189,7 +171,6 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // システムプロンプト準拠：修正 - タスクコピー処理の実装
   const handleCopyTask = async (taskId: string) => {
     try {
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
@@ -207,7 +188,6 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // システムプロンプト準拠：修正 - タスク貼り付け処理の実装
   const handlePasteTask = async () => {
     if (copiedTasks.length === 0 || !selectedProjectId) return
 
@@ -224,7 +204,6 @@ const TodoApp: React.FC = () => {
       const success = await taskOperations.pasteTasks(copiedTasks, targetParentId, targetLevel)
       
       if (success) {
-        // タスク一覧を再読み込み
         await loadTasks(selectedProjectId)
         logger.info('Tasks pasted successfully via shortcut', { count: copiedTasks.length })
       }
@@ -234,13 +213,11 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // システムプロンプト準拠：修正 - タスク完了状態切り替えの実装
   const handleToggleTaskCompletion = async (taskId: string) => {
     try {
       logger.info('Toggling task completion', { taskId, isMultiSelect: isMultiSelectMode })
       
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-        // 複数選択の場合は一括切り替え
         const targetTask = currentTasks.find(t => t.id === taskId)
         const newCompletionState = targetTask ? !targetTask.completed : false
         
@@ -252,12 +229,10 @@ const TodoApp: React.FC = () => {
           newState: newCompletionState 
         })
       } else {
-        // 単一タスクの場合
         await taskOperations.toggleTaskCompletion(taskId)
         logger.info('Single task completion toggle', { taskId })
       }
 
-      // タスク一覧を再読み込み
       await loadTasks(selectedProjectId)
     } catch (error) {
       logger.error('Task completion toggle failed', { taskId, error })
@@ -265,13 +240,11 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // システムプロンプト準拠：修正 - タスク折りたたみ切り替えの実装
   const handleToggleTaskCollapse = async (taskId: string) => {
     try {
       const success = await taskOperations.toggleTaskCollapse(taskId)
       
       if (success) {
-        // タスク一覧を再読み込み
         await loadTasks(selectedProjectId)
       }
     } catch (error) {
@@ -280,23 +253,19 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // システムプロンプト準拠：初期データ読み込み（順序調整）
   useEffect(() => {
     const initializeApp = async () => {
       try {
         logger.info('Initializing application')
         
-        // 1. プロジェクトを先に読み込み
         const projectsData = await loadProjects()
         logger.info('Projects loaded during initialization', { count: projectsData.length })
 
-        // 2. 最初のプロジェクトを選択
         if (projectsData.length > 0) {
           const firstProject = projectsData[0]
           setSelectedProjectId(firstProject.id)
           logger.info('Selected initial project', { projectId: firstProject.id, name: firstProject.name })
           
-          // 3. 選択されたプロジェクトのタスクを読み込み
           try {
             const tasksData = await loadTasks(firstProject.id)
             logger.info('Tasks loaded for initial project', { 
@@ -308,7 +277,6 @@ const TodoApp: React.FC = () => {
               projectId: firstProject.id, 
               error: taskError 
             })
-            // プロジェクトは読み込めたので、初期化は継続
           }
         } else {
           logger.warn('No projects found during initialization')
@@ -319,14 +287,13 @@ const TodoApp: React.FC = () => {
       } catch (error) {
         logger.error('Application initialization failed', { error })
         handleError(error, 'アプリケーションの初期化に失敗しました')
-        setIsInitialized(true) // エラーでも画面は表示する
+        setIsInitialized(true)
       }
     }
 
     initializeApp()
   }, [])
 
-  // プロジェクト変更時のタスク読み込み（システムプロンプト準拠：条件付き実行）
   useEffect(() => {
     if (selectedProjectId && isInitialized) {
       logger.info('Project selection changed, loading tasks', { projectId: selectedProjectId })
@@ -338,7 +305,6 @@ const TodoApp: React.FC = () => {
     }
   }, [selectedProjectId, isInitialized, loadTasks])
 
-  // プロジェクト操作
   const handleProjectUpdate = async (updatedProjects: Project[]) => {
     logger.debug('Project update requested', { count: updatedProjects.length })
   }
@@ -352,7 +318,6 @@ const TodoApp: React.FC = () => {
     setIsDetailPanelVisible(false)
   }
 
-  // タスク操作
   const handleTaskUpdate = async (updatedTasks: Task[]) => {
     logger.debug('Task update requested', { count: updatedTasks.length })
   }
@@ -364,7 +329,6 @@ const TodoApp: React.FC = () => {
     setIsDetailPanelVisible(true)
   }
 
-  // 🔧 修正：キーボードショートカット（saveButtonRefを取得）
   const { taskNameInputRef, startDateButtonRef, dueDateButtonRef, taskNotesRef, saveButtonRef } = useKeyboardShortcuts({
     tasks: currentTasks,
     projects: currentProjects,
@@ -395,7 +359,6 @@ const TodoApp: React.FC = () => {
     isEditingProject
   })
 
-  // 初期化中のローディング表示
   if (!isInitialized) {
     return (
       <div className="flex h-screen bg-background">
@@ -404,10 +367,8 @@ const TodoApp: React.FC = () => {
     )
   }
 
-  // システムプロンプト準拠：安全なタスク更新処理
   const handleTaskDetailUpdate = async (taskId: string, updates: Partial<Task>) => {
     try {
-      // 日付フィールドの検証
       if (updates.startDate && !isValidDate(updates.startDate)) {
         logger.warn('Invalid startDate in task update, using current date', { taskId, startDate: updates.startDate })
         updates.startDate = new Date()
@@ -423,6 +384,29 @@ const TodoApp: React.FC = () => {
     } catch (error) {
       logger.error('Task detail update failed', { taskId, updates, error })
       handleError(error, 'タスクの更新に失敗しました')
+    }
+  }
+
+  // 🆕 新規追加：保存完了コールバック
+  const handleSaveComplete = async (taskId: string) => {
+    try {
+      logger.info('Save completed, closing detail panel and returning focus', { taskId })
+      
+      // 詳細パネルを非表示
+      setIsDetailPanelVisible(false)
+      
+      // タスクパネルにフォーカスを戻す
+      setActiveArea("tasks")
+      
+      // 編集していたタスクにフォーカスを戻す
+      if (selectedTaskId && selectedTaskId === taskId) {
+        // useScrollToTaskが自動的にスクロールしてくれる
+        logger.debug('Focus returned to edited task', { taskId })
+      }
+      
+    } catch (error) {
+      logger.error('Save complete callback failed', { taskId, error })
+      handleError(error, '保存完了処理でエラーが発生しました')
     }
   }
 
@@ -475,7 +459,6 @@ const TodoApp: React.FC = () => {
           apiActions={taskApiActions}
         />
 
-        {/* 🔧 修正：DetailPanelにsaveButtonRefを追加 */}
         {isDetailPanelVisible && (
           <DetailPanel
             selectedTask={selectedTask}
@@ -489,7 +472,8 @@ const TodoApp: React.FC = () => {
             startDateButtonRef={startDateButtonRef}
             dueDateButtonRef={dueDateButtonRef}
             taskNotesRef={taskNotesRef}
-            saveButtonRef={saveButtonRef} // 🆕 追加
+            saveButtonRef={saveButtonRef}
+            onSaveComplete={handleSaveComplete} // 🆕 新規追加
           />
         )}
       </div>

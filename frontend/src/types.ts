@@ -77,10 +77,10 @@ export type TabNavigationRefs = {
   startDateButtonRef: React.RefObject<HTMLButtonElement>
   dueDateButtonRef: React.RefObject<HTMLButtonElement>
   taskNotesRef: React.RefObject<HTMLTextAreaElement>
-  saveButtonRef: React.RefObject<HTMLButtonElement> // 🆕 追加
+  saveButtonRef: React.RefObject<HTMLButtonElement>
 }
 
-// 🆕 新規追加：編集状態管理用の型定義
+// 🔄 修正：編集状態管理用の型定義（カレンダー制御追加）
 export type TaskEditingState = {
   name: string
   startDate: Date | null
@@ -88,7 +88,14 @@ export type TaskEditingState = {
   assignee: string
   notes: string
   hasChanges: boolean
+  // 🆕 新規追加：カレンダー制御状態
+  isStartDateCalendarOpen: boolean
+  isDueDateCalendarOpen: boolean
+  focusTransitionMode: 'navigation' | 'calendar-selection'
 }
+
+// 🆕 新規追加：保存完了コールバック用の型定義
+export type TaskSaveCompleteCallback = (taskId: string) => void
 
 // API関連の型定義（システムプロンプト準拠：バックエンド応答形式追加）
 export interface ApiResponse<T> {
