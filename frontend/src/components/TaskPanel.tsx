@@ -28,7 +28,6 @@ import { BATCH_OPERATIONS } from '../config/constants'
 
 interface TaskPanelProps {
   tasks: Task[]
-  onTasksUpdate: (tasks: Task[]) => void
   selectedProjectId: string
   selectedTaskId: string | null
   selectedTaskIds: string[]
@@ -56,7 +55,6 @@ interface TaskPanelProps {
 
 export const TaskPanel: React.FC<TaskPanelProps> = ({
   tasks,
-  onTasksUpdate,
   selectedProjectId,
   selectedTaskId,
   selectedTaskIds,

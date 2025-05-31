@@ -23,6 +23,9 @@
   --input: 214.3 31.8% 91.4%;
   --ring: 222.2 84% 4.9%;
   --radius: 0.5rem;
+  /* システムプロンプト準拠：フォーカス状態強化用CSS変数 */
+  --focus-ring: 222.2 84% 4.9%;
+  --focus-bg: 210 40% 96%;
 }
 
 .dark {
@@ -45,6 +48,9 @@
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
   --ring: 212.7 26.8% 83.9%;
+  /* システムプロンプト準拠：ダークモードでのフォーカス状態強化 */
+  --focus-ring: 212.7 26.8% 83.9%;
+  --focus-bg: 217.2 32.6% 17.5%;
 }
 
 * {
@@ -102,10 +108,23 @@ body {
   background: hsl(var(--foreground));
 }
 
-/* フォーカス管理 */
+/* システムプロンプト準拠：フォーカス管理強化 */
 .focus-visible:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
+}
+
+/* アクティブエリアの視覚的強調 */
+.area-active {
+  background-color: hsl(var(--focus-bg) / 0.4);
+  ring: 1px solid hsl(var(--focus-ring) / 0.2);
+}
+
+/* キーボードフォーカス可能エリアの明確化 */
+.keyboard-focus-area:focus-within {
+  background-color: hsl(var(--focus-bg) / 0.3);
+  outline: 1px solid hsl(var(--focus-ring) / 0.3);
+  outline-offset: -1px;
 }
 
 /* 複数選択時のハイライト */
@@ -123,9 +142,41 @@ body {
   }
 }
 
-/* キーボードナビゲーション */
+/* システムプロンプト準拠：キーボードナビゲーション強化 */
 .keyboard-focus {
   box-shadow: 0 0 0 2px hsl(var(--ring));
+}
+
+/* フォーカス可能パネルの視覚的フィードバック */
+.panel-focusable {
+  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.panel-focusable:focus {
+  background-color: hsl(var(--focus-bg) / 0.2);
+  outline: none;
+  box-shadow: inset 0 0 0 1px hsl(var(--focus-ring) / 0.3);
+}
+
+.panel-focusable:focus-visible {
+  background-color: hsl(var(--focus-bg) / 0.4);
+  box-shadow: inset 0 0 0 2px hsl(var(--focus-ring) / 0.5);
+}
+
+/* 操作可能状態の明確化 */
+.interactive-ready {
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.interactive-ready:hover {
+  background-color: hsl(var(--accent) / 0.6);
+}
+
+.interactive-ready:focus {
+  background-color: hsl(var(--focus-bg) / 0.8);
+  outline: 2px solid hsl(var(--focus-ring));
+  outline-offset: 1px;
 }
 
 /* ダークモード対応のスムーズな切り替え */
@@ -262,10 +313,29 @@ html.dark {
   :root {
     --border: 0 0% 0%;
     --input: 0 0% 0%;
+    --focus-ring: 0 0% 0%;
   }
   
   .dark {
     --border: 0 0% 100%;
     --input: 0 0% 100%;
+    --focus-ring: 0 0% 100%;
   }
+}
+
+/* システムプロンプト準拠：フォーカス状態のアニメーション */
+@keyframes focus-pulse {
+  0% {
+    box-shadow: 0 0 0 0 hsl(var(--focus-ring) / 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 4px hsl(var(--focus-ring) / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--focus-ring) / 0);
+  }
+}
+
+.focus-pulse {
+  animation: focus-pulse 1.5s infinite;
 }

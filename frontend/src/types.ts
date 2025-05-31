@@ -1,142 +1,103 @@
-// システムプロンプト準拠: 軽量化された定数定義
-import { ProjectColor, KeyboardShortcut } from '../types'
+// システムプロンプト準拠: タスク・プロジェクト関連の型定義
 
-// プロジェクトカラー
-export const PROJECT_COLORS: ProjectColor[] = [
-  { name: "オレンジ", value: "#f97316" },
-  { name: "紫", value: "#8b5cf6" },
-  { name: "緑", value: "#10b981" },
-  { name: "赤", value: "#ef4444" },
-  { name: "青", value: "#3b82f6" },
-  { name: "琥珀", value: "#f59e0b" },
-  { name: "ピンク", value: "#ec4899" },
-  { name: "ティール", value: "#14b8a6" },
-] as const
+// 基本型
+export interface Project {
+  id: string
+  name: string
+  color: string
+  collapsed: boolean
+  createdAt?: Date
+  updatedAt?: Date
+}
 
-// キーボードショートカット
-export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
-  { key: "Enter", description: "同じレベルで新規タスク追加" },
-  { key: "Tab", description: "選択したタスクの子タスクを追加" },
-  { key: "Delete / Backspace", description: "選択したタスクを削除" },
-  { key: "Ctrl + C", description: "選択したタスクをコピー" },
-  { key: "Ctrl + V", description: "コピーしたタスクを貼り付け" },
-  { key: "Space", description: "タスク完了状態の切り替え" },
-  { key: "↑", description: "上のタスクに移動" },
-  { key: "↓", description: "下のタスクに移動" },
-  { key: "→", description: "右のエリアに移動" },
-  { key: "←", description: "左のエリアに移動" },
-  { key: "Ctrl + →", description: "タスクの折りたたみ切り替え" },
-  { key: "Shift + ↑/↓", description: "複数タスクを選択" },
-  { key: "Ctrl + クリック", description: "タスクを個別に選択/選択解除" },
-  { key: "Ctrl + A", description: "すべてのタスクを選択" },
-  { key: "Escape", description: "複数選択モードを解除" },
-  { key: "Tab (詳細パネル)", description: "フィールド間の移動" },
-] as const
+export interface Task {
+  id: string
+  name: string
+  projectId: string
+  parentId: string | null
+  completed: boolean
+  startDate: Date
+  dueDate: Date
+  completionDate: Date | null
+  notes: string
+  assignee: string
+  level: number
+  collapsed: boolean
+  createdAt?: Date
+  updatedAt?: Date
+}
 
-// APIエンドポイント
-export const PROJECT_API_ENDPOINTS = {
-  LIST: '/api/projects',
-  CREATE: '/api/projects',
-  UPDATE: (id: string) => `/api/projects/${id}`,
-  DELETE: (id: string) => `/api/projects/${id}`,
-} as const
+// UI関連型
+export type AreaType = "projects" | "tasks" | "details"
 
-export const TASK_API_ENDPOINTS = {
-  LIST: '/api/tasks',
-  CREATE: '/api/tasks',
-  UPDATE: (id: string) => `/api/tasks/${id}`,
-  DELETE: (id: string) => `/api/tasks/${id}`,
-  BATCH: '/api/tasks/batch',
-} as const
+export interface TaskRelationMap {
+  childrenMap: { [parentId: string]: string[] }
+  parentMap: { [childId: string]: string | null }
+}
 
-// エラーメッセージ
-export const ERROR_MESSAGES = {
-  NETWORK_ERROR: 'ネットワークエラーが発生しました',
-  VALIDATION_ERROR: '入力値に誤りがあります',
-  SERVER_ERROR: 'サーバーエラーが発生しました',
-  UNKNOWN_ERROR: '予期しないエラーが発生しました',
-  PROJECT_NOT_FOUND: 'プロジェクトが見つかりません',
-  TASK_NOT_FOUND: 'タスクが見つかりません',
-  SHORTCUT_ERROR: 'ショートカット操作でエラーが発生しました',
-  TASK_OPERATION_ERROR: 'タスク操作でエラーが発生しました',
-  COPY_PASTE_ERROR: 'コピー・ペースト操作でエラーが発生しました',
-  FOCUS_ERROR: 'フォーカス管理でエラーが発生しました', // 新規追加
-} as const
+// API関連型
+export type BatchOperation = 'complete' | 'incomplete' | 'delete' | 'copy'
 
-// UI設定定数
-export const UI_CONSTANTS = {
-  THEME_STORAGE_KEY: 'vite-ui-theme',
-  DEFAULT_ASSIGNEE: '自分',
-  PANEL_WIDTHS: {
-    PROJECT: 'w-64',
-    TASK: 'flex-1',
-    DETAIL: 'w-80'
-  }
-} as const
+export interface BatchOperationResult {
+  success: boolean
+  message: string
+  affected_count: number
+  task_ids: string[]
+}
 
-// アプリケーション設定
-export const APP_CONFIG = {
-  PORTS: {
-    FRONTEND: 3000,
-    BACKEND: 8000,
-  },
-  ENDPOINTS: {
-    API_BASE: '/api',
-    HEALTH: '/api/health'
-  }
-} as const
+export interface TaskApiActions {
+  createTask: (task: Omit<Task, 'id'>) => Promise<Task>
+  updateTask: (id: string, task: Partial<Task>) => Promise<Task>
+  deleteTask: (id: string) => Promise<void>
+  loadTasks: () => Promise<Task[]>
+  batchUpdateTasks: (operation: BatchOperation, taskIds: string[]) => Promise<BatchOperationResult>
+}
 
-// 一括操作タイプ
-export const BATCH_OPERATIONS = {
-  COMPLETE: 'complete',
-  INCOMPLETE: 'incomplete',
-  DELETE: 'delete',
-  COPY: 'copy'
-} as const
+export interface ProjectApiActions {
+  createProject: (project: Omit<Project, 'id'>) => Promise<Project>
+  updateProject: (id: string, project: Partial<Project>) => Promise<Project>
+  deleteProject: (id: string) => Promise<void>
+}
 
-// タスク操作関連定数
-export const TASK_OPERATION_CONSTANTS = {
-  DEFAULT_TASK_NAME: '新しいタスク',
-  COPY_SUFFIX: ' (コピー)',
-  MAX_TASK_LEVEL: 10,
-  AUTO_SAVE_DELAY: 500,
-} as const
+// 設定・定数型
+export interface ProjectColor {
+  name: string
+  value: string
+}
 
-// システムプロンプト準拠：フォーカス管理関連定数（新規追加）
-export const FOCUS_CONSTANTS = {
-  // フォーカス可能な要素のセレクタ
-  FOCUSABLE_SELECTORS: [
-    'input:not([disabled])',
-    'button:not([disabled])',
-    'textarea:not([disabled])',
-    'select:not([disabled])',
-    '[tabindex]:not([tabindex="-1"])',
-    '[contenteditable="true"]'
-  ].join(', '),
-  
-  // 詳細パネル内の入力要素識別子
-  DETAIL_PANEL_INPUTS: {
-    TASK_NAME: 'task-name-input',
-    START_DATE_BUTTON: 'start-date-button',
-    DUE_DATE_BUTTON: 'due-date-button',
-    TASK_NOTES: 'task-notes-textarea',
-    SAVE_BUTTON: 'save-button'
-  },
-  
-  // フォーカス遷移タイムアウト
-  FOCUS_TRANSITION_DELAY: 100,
-  
-  // カレンダー関連セレクタ
-  CALENDAR_SELECTORS: [
-    '[role="dialog"]',
-    '[data-state="open"]',
-    '.calendar',
-    '[role="gridcell"]'
-  ],
-  
-  // 新規タスク入力識別子
-  NEW_TASK_INPUT_SELECTORS: [
-    '[data-new-task-input]',
-    'input[placeholder="新しいタスク"]'
-  ]
-} as const
+export interface KeyboardShortcut {
+  key: string
+  description: string
+}
+
+// システムプロンプト準拠：タスク作成フロー管理型
+export interface TaskCreationFlow {
+  isActive: boolean
+  parentId: string | null
+  level: number
+  source: 'shortcut' | 'ui'
+  createdTaskId: string | null
+  shouldFocusOnCreation: boolean
+}
+
+// システムプロンプト準拠：フォーカス管理型
+export interface FocusManagement {
+  activeArea: AreaType
+  lastFocusedTaskId: string | null
+  shouldMaintainTaskFocus: boolean
+  detailPanelAutoShow: boolean
+  preventNextFocusChange: boolean
+}
+
+// システムプロンプト準拠：タスク編集状態管理型
+export interface TaskEditingState {
+  name: string
+  startDate: Date | null
+  dueDate: Date | null
+  assignee: string
+  notes: string
+  hasChanges: boolean
+  isStartDateCalendarOpen: boolean
+  isDueDateCalendarOpen: boolean
+  focusTransitionMode: 'navigation' | 'calendar-selection'
+}

@@ -341,20 +341,13 @@ const TodoApp: React.FC = () => {
     }
   }, [selectedProjectId, isInitialized, loadTasks])
 
-  const handleProjectUpdate = async (updatedProjects: Project[]) => {
-    // 必要に応じて実装
-  }
-
+  // システムプロンプト準拠：YAGNI原則 - 未使用ハンドラーをシンプル化
   const handleProjectSelect = (projectId: string) => {
     setSelectedProjectId(projectId)
     setSelectedTaskId(null)
     setSelectedTaskIds([])
     setActiveArea("projects")
     setIsDetailPanelVisible(false)
-  }
-
-  const handleTaskUpdate = async (updatedTasks: Task[]) => {
-    // 必要に応じて実装
   }
 
   const handleTaskSelectWrapper = (taskId: string, event?: React.MouseEvent) => {
@@ -423,7 +416,6 @@ const TodoApp: React.FC = () => {
       <div className="flex h-screen bg-background">
         <ProjectPanel
           projects={currentProjects}
-          onProjectsUpdate={handleProjectUpdate}
           selectedProjectId={selectedProjectId}
           onProjectSelect={handleProjectSelect}
           activeArea={activeArea}
@@ -441,7 +433,6 @@ const TodoApp: React.FC = () => {
 
         <TaskPanel
           tasks={filteredTasks}
-          onTasksUpdate={handleTaskUpdate}
           selectedProjectId={selectedProjectId}
           selectedTaskId={selectedTaskId}
           selectedTaskIds={selectedTaskIds}
