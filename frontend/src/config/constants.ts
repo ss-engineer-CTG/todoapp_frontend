@@ -13,7 +13,7 @@ export const PROJECT_COLORS: ProjectColor[] = [
   { name: "ティール", value: "#14b8a6" },
 ] as const
 
-// キーボードショートカット
+// キーボードショートカット（システムプロンプト準拠：ESC追加）
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Enter", description: "同じレベルで新規タスク追加" },
   { key: "Tab", description: "選択したタスクの子タスクを追加" },
@@ -29,7 +29,7 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Shift + ↑/↓", description: "複数タスクを選択" },
   { key: "Ctrl + クリック", description: "タスクを個別に選択/選択解除" },
   { key: "Ctrl + A", description: "すべてのタスクを選択" },
-  { key: "Escape", description: "複数選択モードを解除" },
+  { key: "Escape", description: "詳細パネルからタスクパネルに戻る / 複数選択モードを解除" },
   { key: "Tab (詳細パネル)", description: "フィールド間の移動" },
 ] as const
 

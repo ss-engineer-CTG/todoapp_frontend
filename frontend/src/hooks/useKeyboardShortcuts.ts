@@ -398,13 +398,13 @@ export const useKeyboardShortcuts = ({
                   setSelectedTaskId(filteredTasks[0].id)
                   setSelectedTaskIds([filteredTasks[0].id])
                 }
-                logger.debug('Moved from projects to tasks area')
+                logger.logAreaTransition('projects', 'tasks', 'arrow_right')
               } else if (activeArea === "tasks" && isDetailPanelVisible && selectedTaskId && !isDetailPanelInputFocused()) {
                 setActiveArea("details")
                 setTimeout(() => {
                   taskNameInputRef.current?.focus()
                 }, 0)
-                logger.debug('Moved from tasks to details area')
+                logger.logAreaTransition('tasks', 'details', 'arrow_right')
               }
             }
             break
@@ -420,19 +420,28 @@ export const useKeyboardShortcuts = ({
                 logger.debug('Moved to parent task', { taskId: task.parentId })
               } else {
                 setActiveArea("projects")
-                logger.debug('Moved from tasks to projects area')
+                logger.logAreaTransition('tasks', 'projects', 'arrow_left')
               }
             } else if (activeArea === "details") {
               setActiveArea("tasks")
-              logger.debug('Moved from details to tasks area')
+              logger.logAreaTransition('details', 'tasks', 'arrow_left')
             } else if (activeArea === "tasks") {
               setActiveArea("projects")
-              logger.debug('Moved from tasks to projects area')
+              logger.logAreaTransition('tasks', 'projects', 'arrow_left')
             }
             break
 
+          // システムプロンプト準拠：詳細パネルからタスクパネルへのESC遷移追加
           case "Escape":
-            if (isMultiSelectMode) {
+            if (activeArea === "details" && isDetailPanelVisible) {
+              e.preventDefault()
+              setActiveArea("tasks")
+              logger.logAreaTransition('details', 'tasks', 'escape_key')
+              logger.logFocusEvent('escape_from_detail_panel', { 
+                selectedTaskId,
+                reason: 'user_escape'
+              })
+            } else if (isMultiSelectMode) {
               e.preventDefault()
               setIsMultiSelectMode(false)
               if (selectedTaskId) {
@@ -440,7 +449,7 @@ export const useKeyboardShortcuts = ({
               } else {
                 setSelectedTaskIds([])
               }
-              logger.debug('Exited multi-select mode')
+              logger.debug('Exited multi-select mode via escape')
             }
             break
 

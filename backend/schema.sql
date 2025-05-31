@@ -1,5 +1,5 @@
 -- システムプロンプト準拠：階層型ToDoリストアプリケーション データベーススキーマ
--- 修正内容：多様なテストケース用データ追加
+-- 修正内容：期限日を要求仕様に合わせて調整、SQL構文エラーを修正
 
 -- プロジェクトテーブル
 CREATE TABLE IF NOT EXISTS projects (
@@ -36,6 +36,9 @@ CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_parent_id ON tasks(parent_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed);
 CREATE INDEX IF NOT EXISTS idx_tasks_level ON tasks(level);
+-- システムプロンプト準拠：新しい表示順序要求に対応するインデックス追加
+CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
+CREATE INDEX IF NOT EXISTS idx_tasks_level_due_date ON tasks(level, due_date);
 
 -- システムプロンプト準拠：基本プロジェクトデータ
 INSERT OR IGNORE INTO projects (id, name, color) VALUES
@@ -44,95 +47,47 @@ INSERT OR IGNORE INTO projects (id, name, color) VALUES
 ('p3', '学習', '#10b981'),
 ('p4', 'テスト用プロジェクト', '#ef4444');
 
--- システムプロンプト準拠：基本タスクデータ（ショートカット機能テスト用）
+-- システムプロンプト準拠：表示順序テスト用データ（期限日調整）
 INSERT OR IGNORE INTO tasks (id, name, project_id, parent_id, completed, start_date, due_date, notes, assignee, level) VALUES
--- 仕事プロジェクト
-('t1', 'プロジェクト提案書を完成させる', 'p1', NULL, FALSE, datetime('now'), datetime('now', '+3 days'), '予算見積もりとスケジュールを含める', '自分', 0),
-('t2', '競合他社の調査', 'p1', 't1', FALSE, datetime('now'), datetime('now', '+2 days'), '価格と機能に焦点を当てる', '自分', 1),
-('t3', 'プレゼンテーションスライドの作成', 'p1', 't1', FALSE, datetime('now'), datetime('now', '+3 days'), '会社のテンプレートを使用する', '自分', 1),
+-- 仕事プロジェクト（レベル0タスクの期限日順序をテスト）
+('t1', '緊急プロジェクト提案書', 'p1', NULL, FALSE, datetime('now'), datetime('now', '+1 days'), '最優先タスク', '自分', 0),
+('t2', '競合他社の調査', 'p1', 't1', FALSE, datetime('now'), datetime('now', '+2 days'), '価格と機能に焦点', '自分', 1),
+('t3', 'プレゼンテーション準備', 'p1', 't1', FALSE, datetime('now'), datetime('now', '+3 days'), 'スライド作成', '自分', 1),
+
+('t4', '通常業務レポート', 'p1', NULL, FALSE, datetime('now'), datetime('now', '+5 days'), '週次レポート', '自分', 0),
+('t5', 'データ収集', 'p1', 't4', FALSE, datetime('now'), datetime('now', '+4 days'), '統計データ', '自分', 1),
+('t6', 'レポート執筆', 'p1', 't4', FALSE, datetime('now'), datetime('now', '+5 days'), 'グラフ作成含む', '自分', 1),
 
 -- 個人プロジェクト
-('t4', '食料品の買い物', 'p2', NULL, FALSE, datetime('now'), datetime('now'), '牛乳と卵を忘れないように', '自分', 0),
+('t7', '食料品の買い物', 'p2', NULL, FALSE, datetime('now'), datetime('now'), '牛乳と卵', '自分', 0),
+('t8', '家計簿整理', 'p2', NULL, FALSE, datetime('now'), datetime('now', '+2 days'), '月末締め', '自分', 0),
 
--- 学習プロジェクト
-('t5', 'Reactを学ぶ', 'p3', NULL, FALSE, datetime('now'), datetime('now', '+7 days'), 'オンラインコースを完了する', '自分', 0),
-('t6', '練習プロジェクトの構築', 'p3', 't5', FALSE, datetime('now'), datetime('now', '+10 days'), 'ReactでTodoアプリを作る', '自分', 1);
+-- 学習プロジェクト（階層テスト）
+('t9', 'React学習', 'p3', NULL, FALSE, datetime('now'), datetime('now', '+7 days'), 'オンラインコース', '自分', 0),
+('t10', '基礎概念理解', 'p3', 't9', FALSE, datetime('now'), datetime('now', '+3 days'), 'JSX、コンポーネント', '自分', 1),
+('t11', '実践演習', 'p3', 't9', FALSE, datetime('now'), datetime('now', '+7 days'), 'ToDoアプリ構築', '自分', 1),
+('t12', 'デプロイ練習', 'p3', 't11', FALSE, datetime('now'), datetime('now', '+10 days'), 'Vercel使用', '自分', 2);
 
--- システムプロンプト準拠：テスト用データ（不具合検出用）
--- ショートカット機能テスト用の階層構造データ
+-- システムプロンプト準拠：表示順序テスト用データ（期限日バラエティ）
 INSERT OR IGNORE INTO tasks (id, name, project_id, parent_id, completed, start_date, due_date, notes, assignee, level) VALUES
--- 多階層テストデータ（階層深度テスト）
-('test_root1', 'ルートタスク1', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+1 days'), 'Enterキーテスト用', '自分', 0),
-('test_root2', 'ルートタスク2', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+2 days'), 'Enterキーテスト用', '自分', 0),
+-- テストプロジェクト（複雑な階層と期限日順序）
+('test_urgent', '緊急対応タスク', 'p4', NULL, FALSE, datetime('now'), datetime('now'), '今日期限', '自分', 0),
+('test_medium', '中優先度タスク', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+3 days'), '3日後期限', '自分', 0),
+('test_low', '低優先度タスク', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+7 days'), '1週間後期限', '自分', 0),
 
--- 階層構造テスト（Tabキーテスト用）
-('test_l1_1', 'レベル1タスクA', 'p4', 'test_root1', FALSE, datetime('now'), datetime('now', '+1 days'), 'Tabキーテスト用', '自分', 1),
-('test_l1_2', 'レベル1タスクB', 'p4', 'test_root1', FALSE, datetime('now'), datetime('now', '+1 days'), 'Tabキーテスト用', '自分', 1),
+-- 中優先度タスクの子タスク（同階層での期限日順序テスト）
+('test_child1', '子タスク（早い期限）', 'p4', 'test_medium', FALSE, datetime('now'), datetime('now', '+1 days'), '子タスク1', '自分', 1),
+('test_child2', '子タスク（遅い期限）', 'p4', 'test_medium', FALSE, datetime('now'), datetime('now', '+4 days'), '子タスク2', '自分', 1),
+('test_child3', '子タスク（中間期限）', 'p4', 'test_medium', FALSE, datetime('now'), datetime('now', '+2 days'), '子タスク3', '自分', 1),
 
-('test_l2_1', 'レベル2タスクA-1', 'p4', 'test_l1_1', FALSE, datetime('now'), datetime('now', '+1 days'), '深い階層テスト', '自分', 2),
-('test_l2_2', 'レベル2タスクA-2', 'p4', 'test_l1_1', FALSE, datetime('now'), datetime('now', '+1 days'), '深い階層テスト', '自分', 2),
-
-('test_l3_1', 'レベル3タスクA-1-1', 'p4', 'test_l2_1', FALSE, datetime('now'), datetime('now', '+1 days'), '最深階層テスト', '自分', 3),
+-- 深い階層テスト
+('test_grandchild1', '孫タスク1', 'p4', 'test_child1', FALSE, datetime('now'), datetime('now', '+1 days'), '深い階層', '自分', 2),
+('test_grandchild2', '孫タスク2', 'p4', 'test_child2', FALSE, datetime('now'), datetime('now', '+3 days'), '深い階層', '自分', 2),
 
 -- 完了済みタスク混在テスト
 ('test_completed1', '完了済みタスク1', 'p4', NULL, TRUE, datetime('now', '-2 days'), datetime('now', '-1 days'), '完了状態テスト', '自分', 0),
-('test_completed2', '完了済み子タスク', 'p4', 'test_completed1', TRUE, datetime('now', '-2 days'), datetime('now', '-1 days'), '完了状態テスト', '自分', 1),
+('test_completed2', '完了済み子タスク', 'p4', 'test_completed1', TRUE, datetime('now', '-2 days'), datetime('now', '-1 days'), '完了状態テスト', '自分', 1);
 
--- システムプロンプト準拠：エッジケーステストデータ
--- 空名前タスク（要件①テスト用）
-('test_empty1', '', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+1 days'), '空名前タスクテスト', '自分', 0),
-('test_empty2', '', 'p4', 'test_empty1', FALSE, datetime('now'), datetime('now', '+1 days'), '空名前子タスクテスト', '自分', 1),
-
--- 長い名前のタスク
-('test_long1', 'これは非常に長いタスク名のテストです。長いタスク名がUIで適切に表示されるかどうかを確認するためのテストデータです。', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+1 days'), '長い名前テスト', '自分', 0),
-
--- 特殊文字を含むタスク
-('test_special1', 'タスク名 / 特殊文字 & テスト < > " '' \\ ? * | : #', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+1 days'), '特殊文字 & HTML < > " '' テスト', '自分', 0),
-
--- 折りたたみテスト用データ（多数の子タスク）
-('test_collapse1', '折りたたみテスト親タスク', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+5 days'), '折りたたみ機能テスト', '自分', 0);
-
--- 折りたたみテスト用の多数の子タスク
-INSERT OR IGNORE INTO tasks (id, name, project_id, parent_id, completed, start_date, due_date, notes, assignee, level) VALUES
-('test_child_1', '子タスク1', 'p4', 'test_collapse1', FALSE, datetime('now'), datetime('now', '+1 days'), '子タスク1', '自分', 1),
-('test_child_2', '子タスク2', 'p4', 'test_collapse1', FALSE, datetime('now'), datetime('now', '+1 days'), '子タスク2', '自分', 1),
-('test_child_3', '子タスク3', 'p4', 'test_collapse1', FALSE, datetime('now'), datetime('now', '+1 days'), '子タスク3', '自分', 1),
-('test_child_4', '子タスク4', 'p4', 'test_collapse1', FALSE, datetime('now'), datetime('now', '+1 days'), '子タスク4', '自分', 1),
-('test_child_5', '子タスク5', 'p4', 'test_collapse1', FALSE, datetime('now'), datetime('now', '+1 days'), '子タスク5', '自分', 1),
-('test_child_6', '子タスク6', 'p4', 'test_collapse1', FALSE, datetime('now'), datetime('now', '+1 days'), '子タスク6', '自分', 1),
-('test_child_7', '子タスク7', 'p4', 'test_collapse1', FALSE, datetime('now'), datetime('now', '+1 days'), '子タスク7', '自分', 1),
-('test_child_8', '子タスク8', 'p4', 'test_collapse1', FALSE, datetime('now'), datetime('now', '+1 days'), '子タスク8', '自分', 1),
-('test_child_9', '子タスク9', 'p4', 'test_collapse1', FALSE, datetime('now'), datetime('now', '+1 days'), '子タスク9', '自分', 1),
-('test_child_10', '子タスク10', 'p4', 'test_collapse1', FALSE, datetime('now'), datetime('now', '+1 days'), '子タスク10', '自分', 1);
-
--- システムプロンプト準拠：複数選択テスト用データ
-INSERT OR IGNORE INTO tasks (id, name, project_id, parent_id, completed, start_date, due_date, notes, assignee, level) VALUES
-('test_multi_1', '複数選択テスト1', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+1 days'), '複数選択テスト', '自分', 0),
-('test_multi_2', '複数選択テスト2', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+2 days'), '複数選択テスト', '自分', 0),
-('test_multi_3', '複数選択テスト3', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+3 days'), '複数選択テスト', '自分', 0),
-('test_multi_4', '複数選択テスト4', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+4 days'), '複数選択テスト', '自分', 0),
-('test_multi_5', '複数選択テスト5', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+5 days'), '複数選択テスト', '自分', 0);
-
--- システムプロンプト準拠：日付テストデータ
-INSERT OR IGNORE INTO tasks (id, name, project_id, parent_id, completed, start_date, due_date, notes, assignee, level) VALUES
--- 過去の日付
-('test_date_past', '過去の期限タスク', 'p4', NULL, FALSE, datetime('now', '-7 days'), datetime('now', '-3 days'), '過去の期限テスト', '自分', 0),
--- 今日の日付
-('test_date_today', '今日期限タスク', 'p4', NULL, FALSE, datetime('now'), datetime('now'), '今日期限テスト', '自分', 0),
--- 未来の日付
-('test_date_future', '未来の期限タスク', 'p4', NULL, FALSE, datetime('now'), datetime('now', '+30 days'), '未来期限テスト', '自分', 0);
-
--- システムプロンプト準拠：データ整合性テスト
+-- システムプロンプト準拠：データ整合性確保
 -- 完了日付設定済みのタスク
 UPDATE tasks SET completion_date = datetime('now', '-1 days'), updated_at = datetime('now') WHERE id IN ('test_completed1', 'test_completed2');
-
--- システムプロンプト準拠：ログ用コメント
--- このスキーマは以下の機能テストをサポートします：
--- 1. ショートカットキー（Enter/Tab）によるタスク追加
--- 2. 階層構造の表示と操作
--- 3. 複数選択とバッチ操作
--- 4. 空名前タスクの処理
--- 5. 特殊文字・長い名前の処理
--- 6. 日付フィールドの処理
--- 7. 完了状態の管理
--- 8. 折りたたみ機能

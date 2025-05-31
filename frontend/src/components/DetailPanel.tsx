@@ -197,16 +197,18 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
-  // システムプロンプト準拠：開始日選択完了時の自動遷移
+  // システムプロンプト準拠：開始日選択完了時の自動遷移（同一日付許可）
   const handleStartDateSelect = useCallback((date: Date | undefined) => {
     if (!date || !selectedTask) return
 
     logger.debug('Start date selected, transitioning to due date', { 
       taskId: selectedTask.id, 
       selectedDate: date.toISOString(),
-      isTemporary: isTemporaryTask
+      isTemporary: isTemporaryTask,
+      isSameDate: editingState.startDate && editingState.startDate.getTime() === date.getTime()
     })
 
+    // システムプロンプト準拠：同一日付でも受け入れて値を更新
     updateEditingState('startDate', date)
     
     // カレンダーを閉じて次のフィールドにフォーカス
@@ -220,18 +222,20 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     setTimeout(() => {
       dueDateButtonRef.current?.focus()
     }, 100)
-  }, [selectedTask, dueDateButtonRef, isTemporaryTask])
+  }, [selectedTask, dueDateButtonRef, isTemporaryTask, editingState.startDate])
 
-  // システムプロンプト準拠：期限日選択完了時の自動遷移
+  // システムプロンプト準拠：期限日選択完了時の自動遷移（同一日付許可）
   const handleDueDateSelect = useCallback((date: Date | undefined) => {
     if (!date || !selectedTask) return
 
     logger.debug('Due date selected, transitioning to notes', { 
       taskId: selectedTask.id, 
       selectedDate: date.toISOString(),
-      isTemporary: isTemporaryTask
+      isTemporary: isTemporaryTask,
+      isSameDate: editingState.dueDate && editingState.dueDate.getTime() === date.getTime()
     })
 
+    // システムプロンプト準拠：同一日付でも受け入れて値を更新
     updateEditingState('dueDate', date)
     
     // カレンダーを閉じて次のフィールドにフォーカス
@@ -245,7 +249,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     setTimeout(() => {
       taskNotesRef.current?.focus()
     }, 100)
-  }, [selectedTask, taskNotesRef, isTemporaryTask])
+  }, [selectedTask, taskNotesRef, isTemporaryTask, editingState.dueDate])
 
   // システムプロンプト準拠：統一保存処理（一時的タスク対応）
   const handleSave = async () => {

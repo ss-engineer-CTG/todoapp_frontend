@@ -37,7 +37,8 @@ export const ShortcutGuideDialog: React.FC = () => {
           <div className="text-xs text-muted-foreground mt-4 p-3 bg-muted/50 rounded-md">
             <p><strong>ヒント:</strong></p>
             <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>複数選択モードでは、選択されたすべてのタスクに対して操作が適用されます</li>
+              <li>詳細パネルでESCキーを押すとタスクパネルに戻ります</li>
+              <li>カレンダーで同じ日付を選び直すことも可能です</li>
               <li>タスクの階層は Tab キーで作成し、矢印キーで移動できます</li>
               <li>詳細パネルでは Tab キーでフィールド間を移動できます</li>
             </ul>

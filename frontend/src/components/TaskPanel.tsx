@@ -149,17 +149,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }
   }
 
-  const toggleMultiSelectMode = () => {
-    if (isMultiSelectMode) {
-      setIsMultiSelectMode(false)
-      if (selectedTaskIds.length > 0) {
-        onTaskSelect(selectedTaskIds[0])
-      }
-    } else {
-      setIsMultiSelectMode(true)
-    }
-  }
-
   const handleBatchOperation = async (operation: BatchOperation) => {
     if (!isMultiSelectMode || selectedTaskIds.length === 0) return
 
@@ -203,6 +192,17 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     return task.isTemporary === true
   }
 
+  // システムプロンプト準拠：子タスク存在判定の改善
+  const hasChildTasks = (taskId: string): boolean => {
+    try {
+      const childrenIds = taskRelationMap.childrenMap[taskId]
+      return Array.isArray(childrenIds) && childrenIds.length > 0
+    } catch (error) {
+      logger.error('Error checking child tasks', { taskId, error })
+      return false
+    }
+  }
+
   const renderTask = (task: Task) => {
     try {
       if (!task.id) {
@@ -214,6 +214,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
       const isEmptyName = !task.name.trim()
       const isTemp = isTemporaryTask(task)
       const dueDateDisplay = safeFormatDate(task.dueDate, '期限未設定')
+      const hasChildren = hasChildTasks(task.id)
 
       return (
         <div
@@ -232,13 +233,15 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
           onClick={(e) => onTaskSelect(task.id, e)}
         >
           <div className="w-4 flex justify-center">
-            {(taskRelationMap.childrenMap[task.id]?.length || 0) > 0 && !isTemp ? (
+            {/* システムプロンプト準拠：子タスクを持つ場合のみ折りたたみバッジ表示 */}
+            {hasChildren && !isTemp ? (
               <button
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground transition-colors"
                 onClick={(e) => {
                   e.stopPropagation()
                   onToggleTaskCollapse(task.id)
                 }}
+                title={task.collapsed ? "子タスクを展開" : "子タスクを折りたたみ"}
               >
                 {task.collapsed ? (
                   <ChevronRight className="h-4 w-4" />
@@ -271,7 +274,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
               isTemp ? "text-blue-700 font-medium" : ""
             )}>
               {taskDisplayName}
-              {/* システムプロンプト準拠：一時的タスクのインジケーター（title属性を親divに移動） */}
+              {/* システムプロンプト準拠：一時的タスクのインジケーター */}
               {isTemp && (
                 <div title="編集中のタスク">
                   <Edit3 className="h-3 w-3 ml-2 text-blue-500" />
@@ -283,6 +286,11 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                 期限: {dueDateDisplay}
               </span>
               {task.notes && <span className="mr-2">📝</span>}
+              {hasChildren && (
+                <span className="mr-2 text-blue-500" title={`${taskRelationMap.childrenMap[task.id]?.length || 0}個の子タスク`}>
+                  📂 {taskRelationMap.childrenMap[task.id]?.length || 0}
+                </span>
+              )}
               {isEmptyName && !isTemp && <span className="text-orange-500 ml-2">⚠ 名前未設定</span>}
               {isTemp && <span className="text-blue-500 ml-2">🔄 作成中</span>}
             </div>
@@ -400,15 +408,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant={isMultiSelectMode ? "secondary" : "outline"}
-            size="sm"
-            onClick={toggleMultiSelectMode}
-            title={isMultiSelectMode ? "複数選択モードを解除" : "複数選択モードを有効化"}
-            className="text-xs"
-          >
-            {isMultiSelectMode ? "選択モード解除" : "複数選択"}
-          </Button>
+          {/* システムプロンプト準拠：複数選択ボタンを削除 */}
 
           {isMultiSelectMode && (
             <Button
