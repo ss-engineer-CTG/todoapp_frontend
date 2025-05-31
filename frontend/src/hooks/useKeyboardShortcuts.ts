@@ -68,44 +68,38 @@ export const useKeyboardShortcuts = ({
   const taskNotesRef = useRef<HTMLTextAreaElement>(null)
   const saveButtonRef = useRef<HTMLButtonElement>(null)
 
-  // システムプロンプト準拠：KISS原則 - シンプルな判定関数に分割
+  // システムプロンプト準拠：KISS原則 - シンプルな判定関数
   const isNewTaskInputActive = useCallback((target: EventTarget | null): boolean => {
     if (!target || !(target instanceof Element)) return false
     
-    // 新規タスク名入力フィールドのみ特定
-    const isNewTaskInput = target.closest('[data-new-task-input]') ||
-                          (target instanceof HTMLInputElement && 
-                           target.placeholder === '新しいタスク')
-    
-    return !!isNewTaskInput
+    return !!(
+      target.closest('[data-new-task-input]') ||
+      (target instanceof HTMLInputElement && target.placeholder === '新しいタスク')
+    )
   }, [])
 
-  // システムプロンプト準拠：カレンダー操作判定の改善
-  const isCalendarInteraction = useCallback((target: EventTarget | null): boolean => {
+  const isCalendarActive = useCallback((target: EventTarget | null): boolean => {
     if (!target || !(target instanceof Element)) return false
     
     return !!(
       target.closest('[role="dialog"]') ||
       target.closest('[data-state="open"]') ||
       target.closest('.calendar') ||
-      target.closest('[role="gridcell"]') ||
-      target.closest('[role="button"][aria-label*="日"]')
+      target.closest('[role="gridcell"]')
     )
   }, [])
 
-  // システムプロンプト準拠：入力状態判定の改善（DRY原則）
   const isGeneralInputActive = useCallback((target: EventTarget | null): boolean => {
     if (!target) return false
     
-    // 一般的な入力フィールド（新規タスク以外）
-    const isGeneralInput = target instanceof HTMLInputElement ||
-                          target instanceof HTMLTextAreaElement ||
-                          target instanceof HTMLSelectElement
+    const isInput = target instanceof HTMLInputElement ||
+                   target instanceof HTMLTextAreaElement ||
+                   target instanceof HTMLSelectElement
     
-    // プロジェクト編集状態
     const isProjectEditing = isAddingProject || isEditingProject
+    const isNewTaskInput = isNewTaskInputActive(target)
     
-    return isGeneralInput && !isNewTaskInputActive(target) || isProjectEditing
+    return (isInput && !isNewTaskInput) || isProjectEditing
   }, [isAddingProject, isEditingProject, isNewTaskInputActive])
 
   // システムプロンプト準拠：詳細パネル内のTab navigation
@@ -119,96 +113,73 @@ export const useKeyboardShortcuts = ({
       if (!isShiftTab) {
         e.preventDefault()
         startDateButtonRef.current?.focus()
-        logger.debug('Detail panel: Tab navigation to start date')
       }
     } else if (activeElement === startDateButtonRef.current) {
       if (isShiftTab) {
         e.preventDefault()
         taskNameInputRef.current?.focus()
-        logger.debug('Detail panel: Shift+Tab navigation to task name')
       } else {
         e.preventDefault()
         dueDateButtonRef.current?.focus()
-        logger.debug('Detail panel: Tab navigation to due date')
       }
     } else if (activeElement === dueDateButtonRef.current) {
       if (isShiftTab) {
         e.preventDefault()
         startDateButtonRef.current?.focus()
-        logger.debug('Detail panel: Shift+Tab navigation to start date')
       } else {
         e.preventDefault()
         taskNotesRef.current?.focus()
-        logger.debug('Detail panel: Tab navigation to notes')
       }
     } else if (activeElement === taskNotesRef.current) {
       if (isShiftTab) {
         e.preventDefault()
         dueDateButtonRef.current?.focus()
-        logger.debug('Detail panel: Shift+Tab navigation to due date')
       } else {
         e.preventDefault()
         saveButtonRef.current?.focus()
-        logger.debug('Detail panel: Tab navigation to save button')
       }
     } else if (activeElement === saveButtonRef.current) {
       if (isShiftTab) {
         e.preventDefault()
         taskNotesRef.current?.focus()
-        logger.debug('Detail panel: Shift+Tab navigation to notes')
       }
     }
   }, [selectedTaskId, activeArea])
 
-  // システムプロンプト準拠：ショートカット処理の統一（YAGNI原則）
+  // システムプロンプト準拠：統一されたキーボードショートカット処理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       try {
         const target = e.target
         const isNewTaskInput = isNewTaskInputActive(target)
-        const isCalendarActive = isCalendarInteraction(target)
+        const isCalendar = isCalendarActive(target)
         const isGeneralInput = isGeneralInputActive(target)
 
-        // 新規タスク名入力中の特別処理
+        // 新規タスク名入力中はショートカット無効
         if (isNewTaskInput) {
-          logger.debug('New task input active - limited shortcuts only', { key: e.key })
-          return // 新規タスク名入力中はショートカット無効
+          return
         }
 
         // 一般入力フィールド中はスキップ（カレンダー以外）
-        if (isGeneralInput && !isCalendarActive) {
-          logger.trace('General input active - shortcuts disabled', { 
-            key: e.key,
-            targetType: (target as HTMLElement)?.tagName
-          })
+        if (isGeneralInput && !isCalendar) {
           return
         }
 
         // カレンダー内部ではナビゲーション系のみ許可
-        if (isCalendarActive) {
+        if (isCalendar) {
           const navigationKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Escape']
           if (!navigationKeys.includes(e.key) && !e.ctrlKey) {
-            logger.trace('Non-navigation key blocked in calendar', { key: e.key })
             return
           }
         }
 
-        // 詳細パネル内でのTabキー処理（優先度最高）
+        // 詳細パネル内でのTabキー処理
         if (activeArea === "details" && e.key === "Tab") {
           handleDetailTabNavigation(e)
           return
         }
 
-        logger.debug('Processing keyboard shortcut', { 
-          key: e.key, 
-          ctrlKey: e.ctrlKey, 
-          shiftKey: e.shiftKey,
-          activeArea,
-          selectedTaskId,
-          isAddingTask
-        })
-
-        // システムプロンプト準拠：メインショートカット処理
+        // システムプロンプト準拠：DRY原則 - activeAreaベースの統一判定
         switch (e.key) {
           case "Enter":
             if (activeArea === "tasks") {
@@ -216,29 +187,19 @@ export const useKeyboardShortcuts = ({
               if (selectedTaskId) {
                 const task = tasks.find((t) => t.id === selectedTaskId)
                 if (task) {
-                  logger.info('Shortcut: Adding same-level task', { 
-                    parentId: task.parentId, 
-                    level: task.level 
-                  })
                   onAddTask(task.parentId, task.level)
                 }
               } else {
-                logger.info('Shortcut: Adding root task')
                 onAddTask(null, 0)
               }
             }
             break
 
           case "Tab":
-            // 詳細パネル以外でのTabキー処理
             if (activeArea === "tasks" && selectedTaskId) {
               e.preventDefault()
               const task = tasks.find((t) => t.id === selectedTaskId)
               const level = task ? task.level + 1 : 1
-              logger.info('Shortcut: Adding child task', { 
-                parentId: selectedTaskId, 
-                level 
-              })
               onAddTask(selectedTaskId, level)
             }
             break
@@ -247,10 +208,6 @@ export const useKeyboardShortcuts = ({
           case "Backspace":
             if (activeArea === "tasks" && selectedTaskId) {
               e.preventDefault()
-              logger.info('Shortcut: Deleting task', { 
-                taskId: selectedTaskId,
-                isMultiSelect: isMultiSelectMode 
-              })
               onDeleteTask(selectedTaskId)
             }
             break
@@ -258,10 +215,6 @@ export const useKeyboardShortcuts = ({
           case "c":
             if (e.ctrlKey && activeArea === "tasks" && selectedTaskId) {
               e.preventDefault()
-              logger.info('Shortcut: Copying task', { 
-                taskId: selectedTaskId,
-                isMultiSelect: isMultiSelectMode 
-              })
               onCopyTask(selectedTaskId)
             }
             break
@@ -269,9 +222,6 @@ export const useKeyboardShortcuts = ({
           case "v":
             if (e.ctrlKey && activeArea === "tasks" && copiedTasks.length > 0) {
               e.preventDefault()
-              logger.info('Shortcut: Pasting task', { 
-                copiedTaskCount: copiedTasks.length 
-              })
               onPasteTask()
             }
             break
@@ -279,10 +229,6 @@ export const useKeyboardShortcuts = ({
           case " ":
             if (activeArea === "tasks" && selectedTaskId) {
               e.preventDefault()
-              logger.info('Shortcut: Toggling task completion', { 
-                taskId: selectedTaskId,
-                isMultiSelect: isMultiSelectMode 
-              })
               onToggleTaskCompletion(selectedTaskId)
             }
             break
@@ -291,7 +237,6 @@ export const useKeyboardShortcuts = ({
             e.preventDefault()
             if (activeArea === "tasks" && filteredTasks.length > 0) {
               if (e.shiftKey && selectedTaskId) {
-                logger.debug('Shortcut: Range select up')
                 onHandleKeyboardRangeSelect('up')
               } else {
                 if (selectedTaskId) {
@@ -302,19 +247,16 @@ export const useKeyboardShortcuts = ({
                     if (!isMultiSelectMode) {
                       setSelectedTaskIds([prevTaskId])
                     }
-                    logger.trace('Shortcut: Moved to previous task', { prevTaskId })
                   }
                 } else if (filteredTasks.length > 0) {
                   setSelectedTaskId(filteredTasks[0].id)
                   setSelectedTaskIds([filteredTasks[0].id])
-                  logger.trace('Shortcut: Selected first task')
                 }
               }
             } else if (activeArea === "projects" && projects.length > 0) {
               const currentIndex = projects.findIndex((p) => p.id === selectedProjectId)
               if (currentIndex > 0) {
                 setSelectedProjectId(projects[currentIndex - 1].id)
-                logger.trace('Shortcut: Moved to previous project')
               }
             }
             break
@@ -323,7 +265,6 @@ export const useKeyboardShortcuts = ({
             e.preventDefault()
             if (activeArea === "tasks" && filteredTasks.length > 0) {
               if (e.shiftKey && selectedTaskId) {
-                logger.debug('Shortcut: Range select down')
                 onHandleKeyboardRangeSelect('down')
               } else {
                 if (selectedTaskId) {
@@ -334,19 +275,16 @@ export const useKeyboardShortcuts = ({
                     if (!isMultiSelectMode) {
                       setSelectedTaskIds([nextTaskId])
                     }
-                    logger.trace('Shortcut: Moved to next task', { nextTaskId })
                   }
                 } else if (filteredTasks.length > 0) {
                   setSelectedTaskId(filteredTasks[0].id)
                   setSelectedTaskIds([filteredTasks[0].id])
-                  logger.trace('Shortcut: Selected first task')
                 }
               }
             } else if (activeArea === "projects" && projects.length > 0) {
               const currentIndex = projects.findIndex((p) => p.id === selectedProjectId)
               if (currentIndex < projects.length - 1) {
                 setSelectedProjectId(projects[currentIndex + 1].id)
-                logger.trace('Shortcut: Moved to next project')
               }
             }
             break
@@ -356,7 +294,6 @@ export const useKeyboardShortcuts = ({
               const hasChildren = taskRelationMap.childrenMap[selectedTaskId]?.length > 0
               if (hasChildren) {
                 e.preventDefault()
-                logger.info('Shortcut: Toggling task collapse', { taskId: selectedTaskId })
                 onToggleTaskCollapse(selectedTaskId)
               }
             } else {
@@ -367,13 +304,11 @@ export const useKeyboardShortcuts = ({
                   setSelectedTaskId(filteredTasks[0].id)
                   setSelectedTaskIds([filteredTasks[0].id])
                 }
-                logger.debug('Shortcut: Area navigation projects -> tasks')
               } else if (activeArea === "tasks" && isDetailPanelVisible && selectedTaskId) {
                 setActiveArea("details")
                 setTimeout(() => {
                   taskNameInputRef.current?.focus()
                 }, 0)
-                logger.debug('Shortcut: Area navigation tasks -> details')
               }
             }
             break
@@ -386,17 +321,13 @@ export const useKeyboardShortcuts = ({
                 setSelectedTaskId(task.parentId)
                 setSelectedTaskIds([task.parentId])
                 setIsMultiSelectMode(false)
-                logger.debug('Shortcut: Moved to parent task', { parentId: task.parentId })
               } else {
                 setActiveArea("projects")
-                logger.debug('Shortcut: Area navigation tasks -> projects')
               }
             } else if (activeArea === "details") {
               setActiveArea("tasks")
-              logger.debug('Shortcut: Area navigation details -> tasks')
             } else if (activeArea === "tasks") {
               setActiveArea("projects")
-              logger.debug('Shortcut: Area navigation tasks -> projects')
             }
             break
 
@@ -409,14 +340,12 @@ export const useKeyboardShortcuts = ({
               } else {
                 setSelectedTaskIds([])
               }
-              logger.info('Shortcut: Multi-select mode disabled')
             }
             break
 
           case "a":
             if (e.ctrlKey && activeArea === "tasks" && filteredTasks.length > 0) {
               e.preventDefault()
-              logger.info('Shortcut: Select all tasks', { taskCount: filteredTasks.length })
               onSelectAll()
             }
             break
@@ -427,8 +356,7 @@ export const useKeyboardShortcuts = ({
       } catch (error) {
         logger.error('Error in keyboard shortcut handler', { 
           key: e.key,
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+          error: error instanceof Error ? error.message : String(error)
         })
       }
     }
@@ -467,7 +395,7 @@ export const useKeyboardShortcuts = ({
     setIsMultiSelectMode,
     handleDetailTabNavigation,
     isNewTaskInputActive,
-    isCalendarInteraction,
+    isCalendarActive,
     isGeneralInputActive
   ])
 

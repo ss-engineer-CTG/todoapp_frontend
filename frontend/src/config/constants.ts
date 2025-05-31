@@ -1,7 +1,7 @@
-// システムプロンプト準拠: DRY原則 - 重複定数統一、ショートカット定義整理
+// システムプロンプト準拠: 軽量化された定数定義
 import { ProjectColor, KeyboardShortcut } from '../types'
 
-// プロジェクトカラー（重複排除）
+// プロジェクトカラー
 export const PROJECT_COLORS: ProjectColor[] = [
   { name: "オレンジ", value: "#f97316" },
   { name: "紫", value: "#8b5cf6" },
@@ -13,7 +13,7 @@ export const PROJECT_COLORS: ProjectColor[] = [
   { name: "ティール", value: "#14b8a6" },
 ] as const
 
-// システムプロンプト準拠：修正 - 実装と一致するキーボードショートカット定義
+// キーボードショートカット
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Enter", description: "同じレベルで新規タスク追加" },
   { key: "Tab", description: "選択したタスクの子タスクを追加" },
@@ -33,7 +33,7 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Tab (詳細パネル)", description: "フィールド間の移動" },
 ] as const
 
-// APIエンドポイント（重複排除）
+// APIエンドポイント
 export const PROJECT_API_ENDPOINTS = {
   LIST: '/api/projects',
   CREATE: '/api/projects',
@@ -49,7 +49,7 @@ export const TASK_API_ENDPOINTS = {
   BATCH: '/api/tasks/batch',
 } as const
 
-// エラーメッセージ（重複排除）
+// エラーメッセージ
 export const ERROR_MESSAGES = {
   NETWORK_ERROR: 'ネットワークエラーが発生しました',
   VALIDATION_ERROR: '入力値に誤りがあります',
@@ -85,37 +85,6 @@ export const APP_CONFIG = {
   }
 } as const
 
-// システムプロンプト準拠：修正 - 実装と一致するキーボードマッピング
-export const KEYBOARD_MAPPINGS = {
-  TASK_OPERATIONS: {
-    ADD_SAME_LEVEL: 'Enter',
-    ADD_CHILD: 'Tab',
-    DELETE: ['Delete', 'Backspace'],
-    COPY: 'ctrl+c',
-    PASTE: 'ctrl+v',
-    TOGGLE_COMPLETION: ' ', // スペースキー
-    TOGGLE_COLLAPSE: 'ctrl+ArrowRight'
-  },
-  NAVIGATION: {
-    MOVE_UP: 'ArrowUp',
-    MOVE_DOWN: 'ArrowDown',
-    MOVE_RIGHT: 'ArrowRight',
-    MOVE_LEFT: 'ArrowLeft',
-    RANGE_SELECT_UP: 'shift+ArrowUp',
-    RANGE_SELECT_DOWN: 'shift+ArrowDown'
-  },
-  SELECTION: {
-    MULTI_SELECT: 'ctrl+click',
-    RANGE_SELECT: 'shift+click',
-    SELECT_ALL: 'ctrl+a',
-    CLEAR_SELECTION: 'Escape'
-  },
-  DETAIL_PANEL: {
-    TAB_FORWARD: 'Tab',
-    TAB_BACKWARD: 'shift+Tab'
-  }
-} as const
-
 // 一括操作タイプ
 export const BATCH_OPERATIONS = {
   COMPLETE: 'complete',
@@ -124,51 +93,10 @@ export const BATCH_OPERATIONS = {
   COPY: 'copy'
 } as const
 
-// システムプロンプト準拠：タスク操作関連定数
+// タスク操作関連定数
 export const TASK_OPERATION_CONSTANTS = {
   DEFAULT_TASK_NAME: '新しいタスク',
   COPY_SUFFIX: ' (コピー)',
-  MAX_TASK_LEVEL: 10, // 階層の最大深度
-  AUTO_SAVE_DELAY: 500, // 自動保存の遅延時間（ミリ秒）
-} as const
-
-// システムプロンプト準拠：ショートカット操作のログメッセージ
-export const SHORTCUT_LOG_MESSAGES = {
-  TASK_ADDED: 'Task added via shortcut',
-  TASK_DELETED: 'Task deleted via shortcut',
-  TASK_COPIED: 'Task copied via shortcut',
-  TASK_PASTED: 'Task pasted via shortcut',
-  COMPLETION_TOGGLED: 'Task completion toggled via shortcut',
-  COLLAPSE_TOGGLED: 'Task collapse toggled via shortcut',
-  NAVIGATION: 'Navigation via shortcut',
-  SELECTION_CHANGED: 'Selection changed via shortcut',
-} as const
-
-// システムプロンプト準拠：新規追加 - 入力状態判定用定数
-export const INPUT_STATE_CONSTANTS = {
-  NEW_TASK_INPUT_SELECTOR: '[data-new-task-input]',
-  NEW_TASK_PLACEHOLDER: '新しいタスク',
-  CALENDAR_SELECTORS: [
-    '[role="dialog"]',
-    '[data-state="open"]',
-    '.calendar',
-    '[role="gridcell"]',
-    '[role="button"][aria-label*="日"]'
-  ],
-  NAVIGATION_KEYS: [
-    'ArrowUp', 
-    'ArrowDown', 
-    'ArrowLeft', 
-    'ArrowRight', 
-    'Escape'
-  ]
-} as const
-
-// システムプロンプト準拠：新規追加 - デバッグ用設定
-export const DEBUG_CONSTANTS = {
-  LOG_SHORTCUT_OPERATIONS: true,
-  LOG_STATE_CHANGES: true,
-  LOG_TASK_OPERATIONS: true,
-  LOG_API_CALLS: true,
-  DETAILED_ERROR_LOGGING: true
+  MAX_TASK_LEVEL: 10,
+  AUTO_SAVE_DELAY: 500,
 } as const

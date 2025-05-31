@@ -101,7 +101,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }, 0)
   }
 
-  // システムプロンプト準拠：修正 - TaskOperationsを使用した統一処理
   const handleSaveNewTask = async () => {
     if (newTaskName.trim() && selectedProjectId) {
       try {
@@ -114,11 +113,8 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         const createdTask = await taskOperations.addTask(newTaskParentId, newTaskLevel, newTaskName)
         
         if (createdTask) {
-          // システムプロンプト準拠：状態の適切な更新
           setNewTaskName("")
           setIsAddingTask(false)
-          
-          // タスク選択とアクティブエリア設定（ショートカット継続のため）
           onTaskSelect(createdTask.id)
           setActiveArea("tasks")
           
@@ -132,14 +128,12 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         setIsAddingTask(false)
       }
     } else {
-      // システムプロンプト準拠：KISS原則 - シンプルなキャンセル処理
       logger.debug('New task creation cancelled - empty name')
       setIsAddingTask(false)
       setNewTaskName("")
     }
   }
 
-  // システムプロンプト準拠：新規タスク作成のキャンセル処理
   const handleCancelNewTask = () => {
     logger.debug('New task creation cancelled')
     setIsAddingTask(false)
@@ -166,7 +160,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }
   }
 
-  // 一括操作ハンドラー
   const handleBatchOperation = async (operation: BatchOperation) => {
     if (!isMultiSelectMode || selectedTaskIds.length === 0) return
 
@@ -177,15 +170,12 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
       })
 
       await apiActions.batchUpdateTasks(operation, selectedTaskIds)
-      
-      // 操作後にタスク一覧を再読み込み
       await apiActions.loadTasks()
       
       logger.info(`Batch operation completed: ${operation}`, { 
         taskCount: selectedTaskIds.length 
       })
       
-      // 成功時は選択をクリア
       onClearSelection()
       
     } catch (error) {
@@ -193,20 +183,15 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }
   }
 
-  // システムプロンプト準拠：データ検証付きタスク表示
   const renderTask = (task: Task) => {
     try {
-      // 必須フィールドの検証
       if (!task.id) {
         logger.warn('Task missing required fields', { task })
         return null
       }
 
-      // システムプロンプト準拠：空名前時のプレースホルダー表示
       const taskDisplayName = task.name.trim() || '（タスク名未設定）'
       const isEmptyName = !task.name.trim()
-
-      // 日付フィールドの安全な表示
       const dueDateDisplay = safeFormatDate(task.dueDate, '期限未設定')
 
       return (
@@ -223,7 +208,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
           style={{ marginLeft: `${task.level * 1.5}rem` }}
           onClick={(e) => onTaskSelect(task.id, e)}
         >
-          {/* 折りたたみボタン */}
           <div className="w-4 flex justify-center">
             {(taskRelationMap.childrenMap[task.id]?.length || 0) > 0 ? (
               <button
@@ -244,7 +228,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             )}
           </div>
 
-          {/* チェックボックス */}
           <Checkbox
             checked={task.completed}
             onCheckedChange={() => onToggleTaskCompletion(task.id)}
@@ -252,7 +235,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             onClick={(e) => e.stopPropagation()}
           />
 
-          {/* タスク内容 */}
           <div className="flex-grow">
             <div className={cn(
               "font-medium", 
@@ -270,7 +252,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             </div>
           </div>
 
-          {/* アクションボタン */}
           <div className="flex opacity-0 group-hover:opacity-100">
             <Button
               variant="ghost"
@@ -337,13 +318,18 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
 
   return (
     <div
+      // システムプロンプト準拠：KISS原則 - 最小限のフォーカス管理
+      tabIndex={0}
+      onFocus={() => setActiveArea("tasks")}
+      onClick={() => setActiveArea("tasks")}
       className={cn(
-        "flex-1 flex flex-col h-full overflow-hidden",
+        "flex-1 flex flex-col h-full overflow-hidden outline-none",
         activeArea === "tasks" ? "bg-accent/40" : ""
       )}
-      onClick={() => setActiveArea("tasks")}
+      role="region"
+      aria-label="タスク一覧"
+      aria-description="キーボードでタスクを操作できます"
     >
-      {/* ヘッダー */}
       <div className="border-b p-4 flex items-center justify-between">
         <div className="flex items-center">
           <h1 className="text-xl font-semibold">タスク一覧</h1>
@@ -356,7 +342,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* 複数選択モード切り替え */}
           <Button
             variant={isMultiSelectMode ? "secondary" : "outline"}
             size="sm"
@@ -367,7 +352,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             {isMultiSelectMode ? "選択モード解除" : "複数選択"}
           </Button>
 
-          {/* 選択解除ボタン */}
           {isMultiSelectMode && (
             <Button
               variant="outline"
@@ -380,7 +364,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             </Button>
           )}
 
-          {/* テーマ切り替え */}
           <Button
             variant="ghost"
             size="icon"
@@ -390,10 +373,8 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
-          {/* ショートカットガイド */}
           <ShortcutGuideDialog />
 
-          {/* 完了タスク表示切り替え */}
           <div className="flex items-center">
             <Checkbox
               id="show-completed"
@@ -405,7 +386,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             </label>
           </div>
 
-          {/* タスク追加ボタン */}
           <Button
             variant="outline"
             size="sm"
@@ -416,7 +396,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             タスク追加
           </Button>
 
-          {/* 詳細パネル切り替え */}
           <Button
             variant="ghost"
             size="icon"
@@ -428,7 +407,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         </div>
       </div>
 
-      {/* タスクリスト */}
       <div className="flex-1 overflow-y-auto p-4">
         {tasks.length === 0 && !isAddingTask ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -446,10 +424,8 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
           </div>
         ) : (
           <div className="space-y-1">
-            {/* システムプロンプト準拠：エラー境界付きタスクレンダリング */}
             {tasks.map(renderTask).filter(Boolean)}
 
-            {/* システムプロンプト準拠：新規タスク追加フォーム（data属性追加） */}
             {isAddingTask && (
               <div className="flex items-center p-2" style={{ marginLeft: `${newTaskLevel * 1.5}rem` }}>
                 <div className="w-4 mr-2" />
@@ -479,7 +455,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         )}
       </div>
 
-      {/* 複数選択時のアクションバー */}
       {isMultiSelectMode && selectedTaskIds.length > 0 && (
         <div className="border-t p-2 bg-muted/50 flex items-center justify-between">
           <div className="text-sm font-medium">{selectedTaskIds.length}個のタスクを選択中</div>

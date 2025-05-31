@@ -42,7 +42,7 @@ const TodoApp: React.FC = () => {
   const [isAddingTask, setIsAddingTask] = useState<boolean>(false)
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
 
-  // システムプロンプト準拠：新規追加 - タスク作成フロー管理
+  // システムプロンプト準拠：軽量化されたタスク作成フロー管理
   const [taskCreationFlow, setTaskCreationFlow] = useState<TaskCreationFlow>({
     isActive: false,
     parentId: null,
@@ -52,7 +52,7 @@ const TodoApp: React.FC = () => {
     shouldFocusOnCreation: false
   })
 
-  // システムプロンプト準拠：新規追加 - フォーカス管理
+  // システムプロンプト準拠：軽量化されたフォーカス管理
   const [focusManagement, setFocusManagement] = useState<FocusManagement>({
     activeArea: "tasks",
     lastFocusedTaskId: null,
@@ -140,10 +140,9 @@ const TodoApp: React.FC = () => {
 
   const taskOperations = createTaskOperations(taskApiActions, currentTasks, selectedProjectId)
 
-  // システムプロンプト準拠：フォーカス管理の改善
+  // システムプロンプト準拠：軽量化されたフォーカス管理
   useEffect(() => {
     if (selectedTaskId && isInitialized && !isAddingTask && !isEditingProject) {
-      // システムプロンプト準拠：適切なタイミングでの詳細パネル表示
       const shouldShowDetail = focusManagement.detailPanelAutoShow && 
                               !isMultiSelectMode && 
                               selectedProjectId && 
@@ -151,20 +150,12 @@ const TodoApp: React.FC = () => {
                               !focusManagement.preventNextFocusChange
 
       if (shouldShowDetail) {
-        logger.debug('Auto-showing detail panel for selected task', { 
-          taskId: selectedTaskId,
-          isMultiSelectMode,
-          selectedProjectId 
-        })
         setIsDetailPanelVisible(true)
-        
-        // アクティブエリアをタスクに維持（ショートカット継続のため）
         if (activeArea !== "details") {
           setActiveArea("tasks")
         }
       }
       
-      // フォーカス管理状態の更新
       setFocusManagement(prev => ({
         ...prev,
         lastFocusedTaskId: selectedTaskId,
@@ -173,23 +164,13 @@ const TodoApp: React.FC = () => {
     }
   }, [selectedTaskId, isInitialized, isMultiSelectMode, selectedProjectId, isAddingTask, isEditingProject, isAddingProject, focusManagement.detailPanelAutoShow, focusManagement.preventNextFocusChange, activeArea])
 
-  // システムプロンプト準拠：タスク作成フロー管理
+  // システムプロンプト準拠：軽量化されたタスク作成処理
   const handleAddTask = async (parentId: string | null = null, level = 0) => {
     try {
-      logger.info('Starting task creation via shortcut', { 
-        parentId, 
-        level,
-        activeArea,
-        isAddingTask: taskCreationFlow.isActive
-      })
-      
-      // システムプロンプト準拠：作成中の重複防止
       if (taskCreationFlow.isActive) {
-        logger.debug('Task creation already in progress, skipping')
         return
       }
 
-      // タスク作成フロー開始
       setTaskCreationFlow({
         isActive: true,
         parentId,
@@ -202,41 +183,20 @@ const TodoApp: React.FC = () => {
       const createdTask = await taskOperations.addTask(parentId, level)
       if (createdTask) {
         await loadTasks(selectedProjectId)
-        
-        // システムプロンプト準拠：ショートカット継続のための状態管理
         setSelectedTaskId(createdTask.id)
         setSelectedTaskIds([createdTask.id])
-        
-        // アクティブエリアをタスクに維持
         setActiveArea("tasks")
         
-        // フォーカス管理の更新
-        setFocusManagement(prev => ({
-          ...prev,
-          activeArea: "tasks",
-          lastFocusedTaskId: createdTask.id,
-          shouldMaintainTaskFocus: true,
-          preventNextFocusChange: false
-        }))
-        
-        // 詳細パネルは条件に応じて表示
         if (!isMultiSelectMode) {
           setIsDetailPanelVisible(true)
         }
         
-        // タスク作成フロー完了
         setTaskCreationFlow(prev => ({
           ...prev,
           isActive: false,
           createdTaskId: createdTask.id
         }))
-        
-        logger.info('Task created successfully via shortcut', { 
-          taskId: createdTask.id,
-          taskName: createdTask.name 
-        })
       } else {
-        // 作成失敗時のフロー終了
         setTaskCreationFlow(prev => ({
           ...prev,
           isActive: false
@@ -245,8 +205,6 @@ const TodoApp: React.FC = () => {
     } catch (error) {
       logger.error('Task creation via shortcut failed', { parentId, level, error })
       handleError(error, 'ショートカットによるタスク追加に失敗しました')
-      
-      // エラー時のフロー終了
       setTaskCreationFlow(prev => ({
         ...prev,
         isActive: false
@@ -256,21 +214,17 @@ const TodoApp: React.FC = () => {
 
   const handleDeleteTask = async (taskId: string) => {
     try {
-      logger.info('Deleting task', { taskId, isMultiSelect: isMultiSelectMode })
-      
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
         await batchUpdateTasks(BATCH_OPERATIONS.DELETE, selectedTaskIds)
         setSelectedTaskId(null)
         setSelectedTaskIds([])
         setIsMultiSelectMode(false)
-        logger.info('Batch delete completed', { taskCount: selectedTaskIds.length })
       } else {
         const success = await taskOperations.deleteTask(taskId)
         if (success && selectedTaskId === taskId) {
           setSelectedTaskId(null)
           setSelectedTaskIds([])
         }
-        logger.info('Single task deleted', { taskId })
       }
       
       await loadTasks(selectedProjectId)
@@ -285,11 +239,9 @@ const TodoApp: React.FC = () => {
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
         const copiedTaskList = await taskOperations.copyTasks(selectedTaskIds)
         setCopiedTasks(copiedTaskList)
-        logger.info('Multiple tasks copied', { taskCount: copiedTaskList.length })
       } else {
         const copiedTaskList = await taskOperations.copyTasks([taskId])
         setCopiedTasks(copiedTaskList)
-        logger.info('Single task copied', { taskId, childCount: copiedTaskList.length - 1 })
       }
     } catch (error) {
       logger.error('Task copy failed', { taskId, error })
@@ -301,11 +253,6 @@ const TodoApp: React.FC = () => {
     if (copiedTasks.length === 0 || !selectedProjectId) return
 
     try {
-      logger.info('Pasting tasks via shortcut', { 
-        count: copiedTasks.length, 
-        projectId: selectedProjectId 
-      })
-      
       const currentTask = selectedTaskId ? currentTasks.find((t) => t.id === selectedTaskId) : null
       const targetParentId = currentTask ? currentTask.parentId : null
       const targetLevel = currentTask ? currentTask.level : 0
@@ -314,7 +261,6 @@ const TodoApp: React.FC = () => {
       
       if (success) {
         await loadTasks(selectedProjectId)
-        logger.info('Tasks pasted successfully via shortcut', { count: copiedTasks.length })
       }
     } catch (error) {
       logger.error('Task paste via shortcut failed', { error })
@@ -324,22 +270,14 @@ const TodoApp: React.FC = () => {
 
   const handleToggleTaskCompletion = async (taskId: string) => {
     try {
-      logger.info('Toggling task completion', { taskId, isMultiSelect: isMultiSelectMode })
-      
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
         const targetTask = currentTasks.find(t => t.id === taskId)
         const newCompletionState = targetTask ? !targetTask.completed : false
         
         const operation = newCompletionState ? BATCH_OPERATIONS.COMPLETE : BATCH_OPERATIONS.INCOMPLETE
         await batchUpdateTasks(operation, selectedTaskIds)
-        
-        logger.info('Batch completion toggle', { 
-          taskCount: selectedTaskIds.length, 
-          newState: newCompletionState 
-        })
       } else {
         await taskOperations.toggleTaskCompletion(taskId)
-        logger.info('Single task completion toggle', { taskId })
       }
 
       await loadTasks(selectedProjectId)
@@ -368,31 +306,22 @@ const TodoApp: React.FC = () => {
         logger.info('Initializing application')
         
         const projectsData = await loadProjects()
-        logger.info('Projects loaded during initialization', { count: projectsData.length })
 
         if (projectsData.length > 0) {
           const firstProject = projectsData[0]
           setSelectedProjectId(firstProject.id)
-          logger.info('Selected initial project', { projectId: firstProject.id, name: firstProject.name })
           
           try {
-            const tasksData = await loadTasks(firstProject.id)
-            logger.info('Tasks loaded for initial project', { 
-              projectId: firstProject.id, 
-              taskCount: tasksData.length 
-            })
+            await loadTasks(firstProject.id)
           } catch (taskError) {
             logger.warn('Failed to load tasks for initial project', { 
               projectId: firstProject.id, 
               error: taskError 
             })
           }
-        } else {
-          logger.warn('No projects found during initialization')
         }
 
         setIsInitialized(true)
-        logger.info('Application initialized successfully')
       } catch (error) {
         logger.error('Application initialization failed', { error })
         handleError(error, 'アプリケーションの初期化に失敗しました')
@@ -405,8 +334,6 @@ const TodoApp: React.FC = () => {
 
   useEffect(() => {
     if (selectedProjectId && isInitialized) {
-      logger.info('Project selection changed, loading tasks', { projectId: selectedProjectId })
-      
       loadTasks(selectedProjectId).catch(error => {
         logger.error('Failed to load tasks for project', { projectId: selectedProjectId, error })
         handleError(error, 'タスクの読み込みに失敗しました')
@@ -415,11 +342,10 @@ const TodoApp: React.FC = () => {
   }, [selectedProjectId, isInitialized, loadTasks])
 
   const handleProjectUpdate = async (updatedProjects: Project[]) => {
-    logger.debug('Project update requested', { count: updatedProjects.length })
+    // 必要に応じて実装
   }
 
   const handleProjectSelect = (projectId: string) => {
-    logger.info('Project selected', { projectId })
     setSelectedProjectId(projectId)
     setSelectedTaskId(null)
     setSelectedTaskIds([])
@@ -428,22 +354,11 @@ const TodoApp: React.FC = () => {
   }
 
   const handleTaskUpdate = async (updatedTasks: Task[]) => {
-    logger.debug('Task update requested', { count: updatedTasks.length })
+    // 必要に応じて実装
   }
 
-  // システムプロンプト準拠：タスク選択処理の改善
   const handleTaskSelectWrapper = (taskId: string, event?: React.MouseEvent) => {
-    logger.debug('Task selected', { taskId, source: 'user-click' })
     handleTaskSelect(taskId, event)
-    
-    // フォーカス管理の更新
-    setFocusManagement(prev => ({
-      ...prev,
-      activeArea: "tasks",
-      lastFocusedTaskId: taskId,
-      shouldMaintainTaskFocus: true
-    }))
-    
     setActiveArea("tasks")
     setIsDetailPanelVisible(true)
   }
@@ -489,17 +404,14 @@ const TodoApp: React.FC = () => {
   const handleTaskDetailUpdate = async (taskId: string, updates: Partial<Task>) => {
     try {
       if (updates.startDate && !isValidDate(updates.startDate)) {
-        logger.warn('Invalid startDate in task update, using current date', { taskId, startDate: updates.startDate })
         updates.startDate = new Date()
       }
       if (updates.dueDate && !isValidDate(updates.dueDate)) {
-        logger.warn('Invalid dueDate in task update, using current date', { taskId, dueDate: updates.dueDate })
         updates.dueDate = new Date()
       }
 
       await updateTask(taskId, updates)
       await loadTasks(selectedProjectId)
-      logger.debug('Task detail updated', { taskId, updates })
     } catch (error) {
       logger.error('Task detail update failed', { taskId, updates, error })
       handleError(error, 'タスクの更新に失敗しました')

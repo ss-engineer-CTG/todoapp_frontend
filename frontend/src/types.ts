@@ -1,4 +1,4 @@
-// システムプロンプト準拠: DRY原則 - 型定義統一、重複排除
+// システムプロンプト準拠: 軽量化された型定義
 
 export type Project = {
   id: string
@@ -80,7 +80,7 @@ export type TabNavigationRefs = {
   saveButtonRef: React.RefObject<HTMLButtonElement>
 }
 
-// システムプロンプト準拠：編集状態管理用の型定義（カレンダー制御）
+// 編集状態管理用の型定義
 export type TaskEditingState = {
   name: string
   startDate: Date | null
@@ -93,24 +93,7 @@ export type TaskEditingState = {
   focusTransitionMode: 'navigation' | 'calendar-selection'
 }
 
-// システムプロンプト準拠：新規追加 - ショートカット操作状態管理
-export type ShortcutOperationState = {
-  isProcessing: boolean
-  lastOperation: string | null
-  lastOperationTime: number | null
-  suppressNextOperation: boolean
-}
-
-// システムプロンプト準拠：新規追加 - 入力状態判定用型定義
-export type InputState = {
-  isNewTaskInput: boolean
-  isGeneralInput: boolean
-  isCalendarActive: boolean
-  isProjectEditing: boolean
-  activeInputType: 'none' | 'task-name' | 'project-name' | 'calendar' | 'general'
-}
-
-// API関連の型定義（システムプロンプト準拠：バックエンド応答形式追加）
+// API関連の型定義
 export interface ApiResponse<T> {
   data: T
   success: boolean
@@ -123,22 +106,22 @@ export interface ApiError {
   details?: any
 }
 
-// システムプロンプト準拠：バックエンドから返される日付フィールド形式
+// バックエンドから返される日付フィールド形式
 export interface ApiTaskResponse {
   id: string
   name: string
-  project_id: string // バックエンド形式
-  parent_id: string | null // バックエンド形式
+  project_id: string
+  parent_id: string | null
   completed: boolean
-  start_date: string // バックエンド形式（ISO文字列）
-  due_date: string // バックエンド形式（ISO文字列）
-  completion_date: string | null // バックエンド形式（ISO文字列）
+  start_date: string
+  due_date: string
+  completion_date: string | null
   notes: string
   assignee: string
   level: number
   collapsed: boolean
-  created_at: string // バックエンド形式
-  updated_at: string // バックエンド形式
+  created_at: string
+  updated_at: string
 }
 
 export interface ApiProjectResponse {
@@ -146,8 +129,8 @@ export interface ApiProjectResponse {
   name: string
   color: string
   collapsed: boolean
-  created_at: string // バックエンド形式
-  updated_at: string // バックエンド形式
+  created_at: string
+  updated_at: string
 }
 
 export interface PaginationParams {
@@ -194,14 +177,14 @@ export type ClipboardData = {
   sourceProjectId: string
 }
 
-// パフォーマンス監視用の型定義（最小限）
+// パフォーマンス監視用の型定義
 export type PerformanceMetric = {
   operation: string
   duration: number
   timestamp: number
 }
 
-// システムプロンプト準拠：データ変換エラー用の型定義
+// データ変換エラー用の型定義
 export interface DateConversionError {
   field: string
   originalValue: any
@@ -215,7 +198,7 @@ export interface DataValidationResult {
   data: any
 }
 
-// システムプロンプト準拠：新規追加 - タスク作成フロー管理用型定義
+// タスク作成フロー管理用型定義
 export type TaskCreationFlow = {
   isActive: boolean
   parentId: string | null
@@ -225,7 +208,7 @@ export type TaskCreationFlow = {
   shouldFocusOnCreation: boolean
 }
 
-// システムプロンプト準拠：新規追加 - フォーカス管理用型定義
+// フォーカス管理用型定義（軽量化）
 export type FocusManagement = {
   activeArea: AreaType
   lastFocusedTaskId: string | null
