@@ -25,6 +25,8 @@ export interface Task {
   collapsed: boolean
   createdAt?: Date
   updatedAt?: Date
+  // システムプロンプト準拠：一時的タスク管理機能追加
+  isTemporary?: boolean
 }
 
 // UI関連型
@@ -51,6 +53,10 @@ export interface TaskApiActions {
   deleteTask: (id: string) => Promise<void>
   loadTasks: () => Promise<Task[]>
   batchUpdateTasks: (operation: BatchOperation, taskIds: string[]) => Promise<BatchOperationResult>
+  // システムプロンプト準拠：一時的タスク管理機能追加
+  createTemporaryTask: (parentId: string | null, level: number) => Task
+  removeTemporaryTask: (taskId: string) => void
+  saveTemporaryTask: (taskId: string, taskData: Partial<Task>) => Promise<Task>
 }
 
 export interface ProjectApiActions {
@@ -89,7 +95,7 @@ export interface FocusManagement {
   preventNextFocusChange: boolean
 }
 
-// システムプロンプト準拠：タスク編集状態管理型
+// システムプロンプト準拠：タスク編集状態管理型（一時的タスク対応強化）
 export interface TaskEditingState {
   name: string
   startDate: Date | null
@@ -100,4 +106,15 @@ export interface TaskEditingState {
   isStartDateCalendarOpen: boolean
   isDueDateCalendarOpen: boolean
   focusTransitionMode: 'navigation' | 'calendar-selection'
+  // システムプロンプト準拠：一時的タスク管理機能追加
+  isTemporaryTask: boolean
+  canSave: boolean
+}
+
+// システムプロンプト準拠：一時的タスク操作結果型
+export interface TemporaryTaskResult {
+  success: boolean
+  task?: Task
+  error?: string
+  action: 'created' | 'saved' | 'cancelled' | 'removed'
 }

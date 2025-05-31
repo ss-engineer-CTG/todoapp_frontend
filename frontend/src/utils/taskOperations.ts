@@ -1,17 +1,19 @@
-// システムプロンプト準拠：DRY原則によるタスク操作共通処理
-import { Task, TaskApiActions } from '../types'
+// システムプロンプト準拠：DRY原則による一時的タスク管理統合処理
+import { Task, TaskApiActions, TemporaryTaskResult } from '../types'
 import { logger } from './logger'
-import { handleError } from './errorHandler'
+import { handleError, handleTemporaryTaskError, handleTemporaryTaskSaveError } from './errorHandler'
 import { isValidDate } from './dateUtils'
+import { TASK_OPERATION_CONSTANTS, TEMPORARY_TASK_OPERATIONS } from '../config/constants'
 
 /**
- * タスク操作の共通処理ユーティリティ
+ * 一時的タスク管理統合クラス
  * システムプロンプト準拠：ビジネスロジックの一元化
  */
 export class TaskOperations {
   private apiActions: TaskApiActions
   private allTasks: Task[]
   private selectedProjectId: string
+  private temporaryTasks: Map<string, Task> = new Map()
 
   constructor(apiActions: TaskApiActions, allTasks: Task[], selectedProjectId: string) {
     this.apiActions = apiActions
@@ -20,15 +22,224 @@ export class TaskOperations {
   }
 
   /**
-   * ID生成（システムプロンプト準拠：一元化）
+   * 一時的タスクID生成（システムプロンプト準拠：一元化）
+   */
+  private generateTemporaryTaskId(): string {
+    return `${TASK_OPERATION_CONSTANTS.TEMPORARY_TASK_PREFIX}${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }
+
+  /**
+   * 通常タスクID生成（システムプロンプト準拠：一元化）
    */
   private generateTaskId(): string {
     return `t${Date.now()}`
   }
 
   /**
-   * システムプロンプト準拠：タスク追加処理（ショートカット・UI共通）
-   * KISS原則：空名前対応の最小限修正
+   * システムプロンプト準拠：一時的タスク作成処理（新機能）
+   * KISS原則：シンプルな一時的タスク作成
+   */
+  createTemporaryTask(parentId: string | null = null, level = 0): TemporaryTaskResult {
+    if (!this.selectedProjectId) {
+      logger.warn('No project selected for temporary task creation')
+      return {
+        success: false,
+        error: 'プロジェクトが選択されていません',
+        action: 'created'
+      }
+    }
+
+    try {
+      const temporaryTaskId = this.generateTemporaryTaskId()
+      
+      logger.logTemporaryTaskLifecycle('creating', temporaryTaskId, 'unnamed', {
+        parentId,
+        level,
+        projectId: this.selectedProjectId
+      })
+
+      // 親タスクの情報を取得（日付継承用）
+      const parentTask = parentId ? this.allTasks.find(task => task.id === parentId) : null
+
+      // システムプロンプト準拠：日付フィールドの安全な処理
+      const startDate = parentTask?.startDate && isValidDate(parentTask.startDate) 
+        ? parentTask.startDate 
+        : new Date()
+      const dueDate = parentTask?.dueDate && isValidDate(parentTask.dueDate) 
+        ? parentTask.dueDate 
+        : new Date()
+
+      const temporaryTask: Task = {
+        id: temporaryTaskId,
+        name: TASK_OPERATION_CONSTANTS.TEMPORARY_TASK_DEFAULT_NAME,
+        projectId: this.selectedProjectId,
+        parentId,
+        completed: false,
+        startDate,
+        dueDate,
+        completionDate: null,
+        notes: '',
+        assignee: '自分',
+        level,
+        collapsed: false,
+        isTemporary: true
+      }
+
+      // 一時的タスクをメモリに保存
+      this.temporaryTasks.set(temporaryTaskId, temporaryTask)
+      
+      logger.logTemporaryTaskLifecycle('created', temporaryTaskId, temporaryTask.name, {
+        isTemporary: true,
+        parentId,
+        level
+      })
+      
+      return {
+        success: true,
+        task: temporaryTask,
+        action: 'created'
+      }
+    } catch (error) {
+      logger.error('Temporary task creation failed', { parentId, level, error })
+      handleTemporaryTaskError(error as Error, { parentId, level })
+      return {
+        success: false,
+        error: '一時的タスクの作成に失敗しました',
+        action: 'created'
+      }
+    }
+  }
+
+  /**
+   * システムプロンプト準拠：一時的タスク保存処理（新機能）
+   * 一時的タスクを正式なタスクとしてバックエンドに保存
+   */
+  async saveTemporaryTask(taskId: string, taskData: Partial<Task>): Promise<TemporaryTaskResult> {
+    try {
+      const temporaryTask = this.temporaryTasks.get(taskId)
+      if (!temporaryTask) {
+        throw new Error(`Temporary task not found: ${taskId}`)
+      }
+
+      // タスク名の必須チェック
+      const taskName = taskData.name?.trim() || temporaryTask.name?.trim()
+      if (!taskName) {
+        logger.warn('Attempted to save temporary task without name', { taskId })
+        return {
+          success: false,
+          error: 'タスク名を入力してから保存してください',
+          action: 'saved'
+        }
+      }
+
+      logger.logTemporaryTaskLifecycle('saving', taskId, taskName)
+
+      // 正式なタスクデータを構築
+      const taskToSave = {
+        ...temporaryTask,
+        ...taskData,
+        name: taskName,
+        // isTemporaryフラグを除去
+        isTemporary: undefined
+      }
+
+      // システムプロンプト準拠：日付の安全な処理
+      if (taskToSave.startDate && !isValidDate(taskToSave.startDate)) {
+        taskToSave.startDate = new Date()
+      }
+      if (taskToSave.dueDate && !isValidDate(taskToSave.dueDate)) {
+        taskToSave.dueDate = new Date()
+      }
+
+      // バックエンドにタスクを作成
+      const createdTask = await this.apiActions.createTask(taskToSave)
+      
+      // 一時的タスクをメモリから削除
+      this.temporaryTasks.delete(taskId)
+      
+      logger.logTemporaryTaskLifecycle('saved', taskId, createdTask.name, {
+        newTaskId: createdTask.id,
+        wasTemporary: true
+      })
+      
+      return {
+        success: true,
+        task: createdTask,
+        action: 'saved'
+      }
+    } catch (error) {
+      logger.error('Temporary task save failed', { taskId, taskData, error })
+      handleTemporaryTaskSaveError(error as Error, taskId, { taskData })
+      return {
+        success: false,
+        error: '一時的タスクの保存に失敗しました',
+        action: 'saved'
+      }
+    }
+  }
+
+  /**
+   * システムプロンプト準拠：一時的タスク削除処理（新機能）
+   */
+  removeTemporaryTask(taskId: string): TemporaryTaskResult {
+    try {
+      const temporaryTask = this.temporaryTasks.get(taskId)
+      if (!temporaryTask) {
+        logger.warn('Temporary task not found for removal', { taskId })
+        return {
+          success: false,
+          error: '一時的タスクが見つかりません',
+          action: 'removed'
+        }
+      }
+
+      this.temporaryTasks.delete(taskId)
+      
+      logger.logTemporaryTaskLifecycle('removed', taskId, temporaryTask.name, {
+        wasTemporary: true,
+        reason: 'cancelled'
+      })
+      
+      return {
+        success: true,
+        task: temporaryTask,
+        action: 'removed'
+      }
+    } catch (error) {
+      logger.error('Temporary task removal failed', { taskId, error })
+      handleTemporaryTaskError(error as Error, { taskId, operation: 'remove' })
+      return {
+        success: false,
+        error: '一時的タスクの削除に失敗しました',
+        action: 'removed'
+      }
+    }
+  }
+
+  /**
+   * システムプロンプト準拠：すべてのタスクを取得（一時的タスク含む）
+   */
+  getAllTasksIncludingTemporary(): Task[] {
+    const temporaryTasksArray = Array.from(this.temporaryTasks.values())
+    return [...this.allTasks, ...temporaryTasksArray]
+  }
+
+  /**
+   * システムプロンプト準拠：一時的タスクかどうかの判定
+   */
+  isTemporaryTask(taskId: string): boolean {
+    return this.temporaryTasks.has(taskId)
+  }
+
+  /**
+   * システムプロンプト準拠：一時的タスクの取得
+   */
+  getTemporaryTask(taskId: string): Task | undefined {
+    return this.temporaryTasks.get(taskId)
+  }
+
+  /**
+   * 既存の通常タスク追加処理（UI用）
    */
   async addTask(
     parentId: string | null = null, 
@@ -41,7 +252,7 @@ export class TaskOperations {
     }
 
     try {
-      logger.info('Creating new task', { 
+      logger.info('Creating new task via UI', { 
         parentId, 
         level, 
         projectId: this.selectedProjectId,
@@ -61,8 +272,7 @@ export class TaskOperations {
         : new Date()
 
       const newTaskData = {
-        // システムプロンプト準拠：KISS原則 - 1行修正で空名前対応
-        name: name || '',
+        name: name || TASK_OPERATION_CONSTANTS.DEFAULT_TASK_NAME,
         projectId: this.selectedProjectId,
         parentId,
         completed: false,
@@ -77,26 +287,31 @@ export class TaskOperations {
 
       const createdTask = await this.apiActions.createTask(newTaskData)
       
-      logger.info('Task created successfully', { 
+      logger.info('Task created successfully via UI', { 
         taskId: createdTask.id, 
-        taskName: createdTask.name,
-        isEmpty: !createdTask.name.trim()
+        taskName: createdTask.name
       })
       
       return createdTask
     } catch (error) {
-      logger.error('Task creation failed', { parentId, level, error })
+      logger.error('Task creation via UI failed', { parentId, level, error })
       handleError(error, 'タスクの作成に失敗しました')
       return null
     }
   }
 
   /**
-   * タスク削除処理（ショートカット・UI共通）
-   * システムプロンプト準拠：KISS原則 - 正しいAPI呼び出し
+   * タスク削除処理（一時的タスク対応）
    */
   async deleteTask(taskId: string): Promise<boolean> {
     try {
+      // 一時的タスクの場合
+      if (this.isTemporaryTask(taskId)) {
+        const result = this.removeTemporaryTask(taskId)
+        return result.success
+      }
+
+      // 通常タスクの場合
       logger.info('Deleting task', { taskId })
 
       const task = this.allTasks.find(t => t.id === taskId)
@@ -105,7 +320,6 @@ export class TaskOperations {
         return false
       }
 
-      // システムプロンプト準拠：正しい削除API呼び出し
       await this.apiActions.deleteTask(taskId)
       
       logger.info('Task deleted successfully', { taskId, taskName: task.name })
@@ -118,10 +332,16 @@ export class TaskOperations {
   }
 
   /**
-   * タスク完了状態切り替え処理（ショートカット・UI共通）
+   * タスク完了状態切り替え処理（一時的タスク対応）
    */
   async toggleTaskCompletion(taskId: string): Promise<boolean> {
     try {
+      // 一時的タスクの場合は完了状態切り替えを無効化
+      if (this.isTemporaryTask(taskId)) {
+        logger.debug('Completion toggle skipped for temporary task', { taskId })
+        return false
+      }
+
       logger.info('Toggling task completion', { taskId })
 
       const task = this.allTasks.find(t => t.id === taskId)
@@ -151,10 +371,16 @@ export class TaskOperations {
   }
 
   /**
-   * タスク折りたたみ切り替え処理
+   * タスク折りたたみ切り替え処理（一時的タスク対応）
    */
   async toggleTaskCollapse(taskId: string): Promise<boolean> {
     try {
+      // 一時的タスクの場合は折りたたみを無効化
+      if (this.isTemporaryTask(taskId)) {
+        logger.debug('Collapse toggle skipped for temporary task', { taskId })
+        return false
+      }
+
       logger.debug('Toggling task collapse', { taskId })
 
       const task = this.allTasks.find(t => t.id === taskId)
@@ -197,20 +423,29 @@ export class TaskOperations {
   }
 
   /**
-   * タスクコピー処理
+   * タスクコピー処理（一時的タスクは除外）
    */
   async copyTasks(taskIds: string[]): Promise<Task[]> {
     try {
       logger.info('Copying tasks', { taskCount: taskIds.length, taskIds })
 
-      const tasksToCopy = this.allTasks.filter(task => taskIds.includes(task.id))
+      // 一時的タスクを除外
+      const validTaskIds = taskIds.filter(id => !this.isTemporaryTask(id))
+      if (validTaskIds.length !== taskIds.length) {
+        logger.warn('Some temporary tasks excluded from copy operation', {
+          originalCount: taskIds.length,
+          validCount: validTaskIds.length
+        })
+      }
+
+      const tasksToCopy = this.allTasks.filter(task => validTaskIds.includes(task.id))
       let allTasksToCopy: Task[] = [...tasksToCopy]
 
       // 子タスクも含める
       tasksToCopy.forEach(task => {
         const childTasks = this.getChildTasks(task.id, this.allTasks)
         const unselectedChildTasks = childTasks.filter(childTask => 
-          !taskIds.includes(childTask.id)
+          !validTaskIds.includes(childTask.id)
         )
         allTasksToCopy = [...allTasksToCopy, ...unselectedChildTasks]
       })

@@ -58,7 +58,7 @@ class Logger {
     this.log(LogLevel.TRACE, message, context)
   }
 
-  // システムプロンプト準拠：フォーカス関連ログ専用メソッド（新規追加）
+  // システムプロンプト準拠：フォーカス関連ログ専用メソッド（既存）
   logFocusEvent(event: string, details?: any): void {
     this.debug(`Focus Event: ${event}`, {
       type: 'focus',
@@ -87,6 +87,38 @@ class Logger {
       from,
       to,
       reason,
+      timestamp: new Date().toISOString()
+    })
+  }
+
+  // システムプロンプト準拠：一時的タスク管理専用ログメソッド（新規追加）
+  logTemporaryTaskOperation(operation: string, taskId: string, details?: any): void {
+    this.debug(`Temporary Task Operation: ${operation}`, {
+      type: 'temporary_task',
+      operation,
+      taskId,
+      details,
+      timestamp: new Date().toISOString()
+    })
+  }
+
+  logTemporaryTaskLifecycle(phase: string, taskId: string, taskName?: string, context?: any): void {
+    this.info(`Temporary Task Lifecycle: ${phase}`, {
+      type: 'temporary_task_lifecycle',
+      phase,
+      taskId,
+      taskName,
+      context,
+      timestamp: new Date().toISOString()
+    })
+  }
+
+  logTaskCreationFlow(step: string, source: string, details?: any): void {
+    this.debug(`Task Creation Flow: ${step}`, {
+      type: 'task_creation_flow',
+      step,
+      source,
+      details,
       timestamp: new Date().toISOString()
     })
   }

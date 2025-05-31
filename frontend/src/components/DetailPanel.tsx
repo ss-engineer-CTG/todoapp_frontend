@@ -2,7 +2,7 @@ import React, { RefObject, useEffect, useState, useCallback } from 'react'
 import { Task, Project, TaskEditingState } from '../types'
 import { safeFormatDate, isValidDate } from '../utils/dateUtils'
 import { logger } from '../utils/logger'
-import { handleError } from '../utils/errorHandler'
+import { handleError, handleTemporaryTaskSaveError } from '../utils/errorHandler'
 import { CalendarIcon, X, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,10 +10,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
+import { ERROR_MESSAGES } from '../config/constants'
 
 interface DetailPanelProps {
   selectedTask: Task | undefined
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => void
+  // システムプロンプト準拠：一時的タスク保存処理追加
+  onTemporaryTaskSave: (taskId: string, taskData: Partial<Task>) => Promise<Task | null>
   projects: Project[]
   activeArea: string
   setActiveArea: (area: "projects" | "tasks" | "details") => void
@@ -29,6 +32,7 @@ interface DetailPanelProps {
 export const DetailPanel: React.FC<DetailPanelProps> = ({
   selectedTask,
   onTaskUpdate,
+  onTemporaryTaskSave, // システムプロンプト準拠：一時的タスク保存処理追加
   projects,
   activeArea,
   setActiveArea,
@@ -40,7 +44,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   taskNotesRef,
   saveButtonRef
 }) => {
-  // システムプロンプト準拠：編集状態管理（カレンダー制御追加）
+  // システムプロンプト準拠：編集状態管理（一時的タスク対応強化）
   const [editingState, setEditingState] = useState<TaskEditingState>({
     name: '',
     startDate: null,
@@ -50,7 +54,9 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     hasChanges: false,
     isStartDateCalendarOpen: false,
     isDueDateCalendarOpen: false,
-    focusTransitionMode: 'navigation'
+    focusTransitionMode: 'navigation',
+    isTemporaryTask: false,
+    canSave: false
   })
 
   const [isSaving, setIsSaving] = useState<boolean>(false)
@@ -62,10 +68,17 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
-  // タスク変更時の編集状態初期化
+  // システムプロンプト準拠：一時的タスクの判定
+  const isTemporaryTask = selectedTask?.isTemporary === true
+
+  // タスク変更時の編集状態初期化（一時的タスク対応）
   useEffect(() => {
     if (selectedTask) {
-      logger.debug('Initializing editing state for task', { taskId: selectedTask.id })
+      logger.debug('Initializing editing state for task', { 
+        taskId: selectedTask.id,
+        isTemporary: isTemporaryTask,
+        taskName: selectedTask.name
+      })
       
       setEditingState({
         name: selectedTask.name || '',
@@ -76,20 +89,30 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         hasChanges: false,
         isStartDateCalendarOpen: false,
         isDueDateCalendarOpen: false,
-        focusTransitionMode: 'navigation'
+        focusTransitionMode: 'navigation',
+        isTemporaryTask,
+        canSave: isTemporaryTask // 一時的タスクの場合は初期から保存可能
       })
     }
-  }, [selectedTask?.id])
+  }, [selectedTask?.id, isTemporaryTask])
 
-  // システムプロンプト準拠：フォーカス管理（詳細パネルアクティブ時のみ）
+  // システムプロンプト準拠：一時的タスクの場合は自動フォーカス
   useEffect(() => {
     if (activeArea === "details" && selectedTask && taskNameInputRef.current) {
-      logger.debug('Detail panel activated - focusing task name input')
-      setTimeout(() => {
-        taskNameInputRef.current?.focus()
-      }, 0)
+      if (isTemporaryTask) {
+        logger.debug('Temporary task selected - focusing task name input immediately')
+        setTimeout(() => {
+          taskNameInputRef.current?.focus()
+          taskNameInputRef.current?.select() // 一時的タスクの場合は全選択
+        }, 0)
+      } else {
+        logger.debug('Regular task selected - focusing task name input')
+        setTimeout(() => {
+          taskNameInputRef.current?.focus()
+        }, 0)
+      }
     }
-  }, [activeArea, selectedTask, taskNameInputRef])
+  }, [activeArea, selectedTask, taskNameInputRef, isTemporaryTask])
 
   // システムプロンプト準拠：開始日ボタンフォーカス時のカレンダー自動表示
   useEffect(() => {
@@ -131,27 +154,43 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }, [selectedTask])
 
-  // 編集状態更新関数
-  const updateEditingState = (field: keyof Omit<TaskEditingState, 'hasChanges' | 'isStartDateCalendarOpen' | 'isDueDateCalendarOpen' | 'focusTransitionMode'>, value: any) => {
+  // 編集状態更新関数（一時的タスク対応）
+  const updateEditingState = (field: keyof Omit<TaskEditingState, 'hasChanges' | 'isStartDateCalendarOpen' | 'isDueDateCalendarOpen' | 'focusTransitionMode' | 'isTemporaryTask' | 'canSave'>, value: any) => {
     if (!selectedTask) return
 
     try {
-      logger.trace('Updating editing state', { taskId: selectedTask.id, field, value })
+      logger.trace('Updating editing state', { taskId: selectedTask.id, field, value, isTemporary: isTemporaryTask })
       
       setEditingState(prev => {
         const newState = { ...prev, [field]: value }
         
-        const hasActualChanges = Boolean(
-          newState.name !== selectedTask.name ||
-          newState.assignee !== selectedTask.assignee ||
-          newState.notes !== selectedTask.notes ||
-          (newState.startDate && selectedTask.startDate && 
-          newState.startDate.getTime() !== selectedTask.startDate.getTime()) ||
-          (newState.dueDate && selectedTask.dueDate && 
-          newState.dueDate.getTime() !== selectedTask.dueDate.getTime())
-        )
+        // システムプロンプト準拠：一時的タスクの場合の変更検知
+        let hasActualChanges = false
+        let canSave = false
+
+        if (isTemporaryTask) {
+          // 一時的タスクの場合：名前があれば保存可能
+          canSave = !!newState.name.trim()
+          hasActualChanges = canSave // 名前があれば変更ありとみなす
+        } else {
+          // 通常タスクの場合：従来通りの変更検知
+          hasActualChanges = Boolean(
+            newState.name !== selectedTask.name ||
+            newState.assignee !== selectedTask.assignee ||
+            newState.notes !== selectedTask.notes ||
+            (newState.startDate && selectedTask.startDate && 
+            newState.startDate.getTime() !== selectedTask.startDate.getTime()) ||
+            (newState.dueDate && selectedTask.dueDate && 
+            newState.dueDate.getTime() !== selectedTask.dueDate.getTime())
+          )
+          canSave = hasActualChanges && !!newState.name.trim()
+        }
       
-        return { ...newState, hasChanges: hasActualChanges }
+        return { 
+          ...newState, 
+          hasChanges: hasActualChanges,
+          canSave
+        }
       })
     } catch (error) {
       logger.error('Error updating editing state', { taskId: selectedTask.id, field, value, error })
@@ -164,7 +203,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
     logger.debug('Start date selected, transitioning to due date', { 
       taskId: selectedTask.id, 
-      selectedDate: date.toISOString() 
+      selectedDate: date.toISOString(),
+      isTemporary: isTemporaryTask
     })
 
     updateEditingState('startDate', date)
@@ -180,7 +220,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     setTimeout(() => {
       dueDateButtonRef.current?.focus()
     }, 100)
-  }, [selectedTask, dueDateButtonRef])
+  }, [selectedTask, dueDateButtonRef, isTemporaryTask])
 
   // システムプロンプト準拠：期限日選択完了時の自動遷移
   const handleDueDateSelect = useCallback((date: Date | undefined) => {
@@ -188,7 +228,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
     logger.debug('Due date selected, transitioning to notes', { 
       taskId: selectedTask.id, 
-      selectedDate: date.toISOString() 
+      selectedDate: date.toISOString(),
+      isTemporary: isTemporaryTask
     })
 
     updateEditingState('dueDate', date)
@@ -204,14 +245,14 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     setTimeout(() => {
       taskNotesRef.current?.focus()
     }, 100)
-  }, [selectedTask, taskNotesRef])
+  }, [selectedTask, taskNotesRef, isTemporaryTask])
 
-  // システムプロンプト準拠：保存処理（必須バリデーション強化）
+  // システムプロンプト準拠：統一保存処理（一時的タスク対応）
   const handleSave = async () => {
-    if (!selectedTask || !editingState.hasChanges || isSaving) {
+    if (!selectedTask || !editingState.canSave || isSaving) {
       logger.debug('Save skipped', { 
         hasTask: !!selectedTask, 
-        hasChanges: editingState.hasChanges, 
+        canSave: editingState.canSave, 
         isSaving 
       })
       return
@@ -219,8 +260,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
     // システムプロンプト準拠：空名前時のバリデーション強化
     if (!editingState.name.trim()) {
-      logger.warn('Attempted to save task with empty name', { taskId: selectedTask.id })
-      handleError(new Error('タスク名は必須です'), 'タスク名を入力してください')
+      logger.warn('Attempted to save task with empty name', { taskId: selectedTask.id, isTemporary: isTemporaryTask })
+      handleError(new Error(ERROR_MESSAGES.TEMPORARY_TASK_NAME_REQUIRED), 'タスク名を入力してください')
       setTimeout(() => {
         taskNameInputRef.current?.focus()
         taskNameInputRef.current?.select()
@@ -231,58 +272,98 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     setIsSaving(true)
 
     try {
-      logger.info('Starting manual save operation', { 
-        taskId: selectedTask.id, 
-        taskName: editingState.name 
-      })
+      if (isTemporaryTask) {
+        // システムプロンプト準拠：一時的タスクの保存処理
+        logger.logTemporaryTaskOperation('save_attempt', selectedTask.id, { 
+          taskName: editingState.name,
+          hasValidName: !!editingState.name.trim()
+        })
 
-      const updates: Partial<Task> = {}
-      
-      if (editingState.name !== selectedTask.name) {
-        updates.name = editingState.name.trim()
-      }
-      
-      if (editingState.assignee !== selectedTask.assignee) {
-        updates.assignee = editingState.assignee.trim()
-      }
-      
-      if (editingState.notes !== selectedTask.notes) {
-        updates.notes = editingState.notes
-      }
-      
-      if (editingState.startDate && isValidDate(editingState.startDate) &&
-          editingState.startDate.getTime() !== selectedTask.startDate?.getTime()) {
-        updates.startDate = editingState.startDate
-      }
-      
-      if (editingState.dueDate && isValidDate(editingState.dueDate) &&
-          editingState.dueDate.getTime() !== selectedTask.dueDate?.getTime()) {
-        updates.dueDate = editingState.dueDate
-      }
+        const taskData: Partial<Task> = {
+          name: editingState.name.trim(),
+          assignee: editingState.assignee.trim(),
+          notes: editingState.notes,
+          startDate: editingState.startDate && isValidDate(editingState.startDate) ? editingState.startDate : new Date(),
+          dueDate: editingState.dueDate && isValidDate(editingState.dueDate) ? editingState.dueDate : new Date()
+        }
 
-      await onTaskUpdate(selectedTask.id, updates)
-      
-      setEditingState(prev => ({ ...prev, hasChanges: false }))
-      
-      logger.info('Manual save completed successfully', { 
-        taskId: selectedTask.id, 
-        updatedFields: Object.keys(updates) 
-      })
+        const savedTask = await onTemporaryTaskSave(selectedTask.id, taskData)
+        
+        if (savedTask) {
+          logger.logTemporaryTaskOperation('save_success', selectedTask.id, {
+            newTaskId: savedTask.id,
+            taskName: savedTask.name
+          })
+          
+          // 編集状態をリセット
+          setEditingState(prev => ({ 
+            ...prev, 
+            hasChanges: false,
+            canSave: false,
+            isTemporaryTask: false
+          }))
+        }
+      } else {
+        // システムプロンプト準拠：通常タスクの更新処理
+        logger.info('Starting regular task save operation', { 
+          taskId: selectedTask.id, 
+          taskName: editingState.name 
+        })
+
+        const updates: Partial<Task> = {}
+        
+        if (editingState.name !== selectedTask.name) {
+          updates.name = editingState.name.trim()
+        }
+        
+        if (editingState.assignee !== selectedTask.assignee) {
+          updates.assignee = editingState.assignee.trim()
+        }
+        
+        if (editingState.notes !== selectedTask.notes) {
+          updates.notes = editingState.notes
+        }
+        
+        if (editingState.startDate && isValidDate(editingState.startDate) &&
+            editingState.startDate.getTime() !== selectedTask.startDate?.getTime()) {
+          updates.startDate = editingState.startDate
+        }
+        
+        if (editingState.dueDate && isValidDate(editingState.dueDate) &&
+            editingState.dueDate.getTime() !== selectedTask.dueDate?.getTime()) {
+          updates.dueDate = editingState.dueDate
+        }
+
+        await onTaskUpdate(selectedTask.id, updates)
+        
+        setEditingState(prev => ({ ...prev, hasChanges: false, canSave: false }))
+        
+        logger.info('Regular task save completed successfully', { 
+          taskId: selectedTask.id, 
+          updatedFields: Object.keys(updates) 
+        })
+      }
 
     } catch (error) {
-      logger.error('Manual save failed', { 
+      logger.error('Task save failed', { 
         taskId: selectedTask.id, 
+        isTemporary: isTemporaryTask,
         editingState, 
         error 
       })
-      handleError(error, 'タスクの保存に失敗しました')
+      
+      if (isTemporaryTask) {
+        handleTemporaryTaskSaveError(error as Error, selectedTask.id, { editingState })
+      } else {
+        handleError(error, 'タスクの保存に失敗しました')
+      }
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleSaveButtonClick = async () => {
-    logger.debug('Save button clicked')
+    logger.debug('Save button clicked', { isTemporary: isTemporaryTask })
     await handleSave()
   }
 
@@ -339,15 +420,16 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
   const projectInfo = getProjectInfo(selectedTask.projectId)
   
-  // システムプロンプト準拠：空名前タスクの視覚的強調
+  // システムプロンプト準拠：一時的タスクと空名前タスクの視覚的強調
   const isEmptyName = !selectedTask.name.trim()
+  const showTemporaryIndicator = isTemporaryTask
 
   return (
     <div
       className={cn(
         "w-80 border-l h-full",
         activeArea === "details" ? "bg-accent/40 ring-1 ring-primary/20" : "",
-        isEmptyName ? "border-l-orange-300" : ""
+        isEmptyName || showTemporaryIndicator ? "border-l-orange-300" : ""
       )}
       onClick={handlePanelClick}
     >
@@ -360,7 +442,12 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                 •未保存
               </span>
             )}
-            {isEmptyName && (
+            {showTemporaryIndicator && (
+              <span className="ml-2 text-xs text-blue-500 font-normal">
+                •新規作成中
+              </span>
+            )}
+            {isEmptyName && !showTemporaryIndicator && (
               <span className="ml-2 text-xs text-red-500 font-normal">
                 •名前未設定
               </span>
@@ -378,10 +465,13 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         </div>
 
         <div className="space-y-4 flex-grow overflow-y-auto">
-          {/* システムプロンプト準拠：タスク名（必須バリデーション強化） */}
+          {/* システムプロンプト準拠：タスク名（一時的タスク対応強化） */}
           <div>
             <label className="text-sm font-medium mb-1 block">
               タスク名 <span className="text-red-500">*</span>
+              {showTemporaryIndicator && (
+                <span className="ml-2 text-xs text-blue-500">（必須：保存時に確定されます）</span>
+              )}
             </label>
             <Input
               ref={taskNameInputRef}
@@ -390,13 +480,20 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               tabIndex={activeArea === "details" ? 1 : -1}
               className={cn(
                 editingState.name !== selectedTask.name ? "border-orange-300" : "",
-                !editingState.name.trim() ? "border-red-300 bg-red-50" : ""
+                !editingState.name.trim() ? "border-red-300 bg-red-50" : "",
+                showTemporaryIndicator ? "border-blue-300 bg-blue-50" : ""
               )}
-              placeholder="タスク名を入力してください"
+              placeholder={showTemporaryIndicator ? "タスク名を入力してください" : "タスク名を入力してください"}
+              autoFocus={showTemporaryIndicator}
             />
             {!editingState.name.trim() && (
               <p className="text-red-500 text-xs mt-1">
                 ⚠ タスク名は必須です
+              </p>
+            )}
+            {showTemporaryIndicator && editingState.name.trim() && (
+              <p className="text-blue-500 text-xs mt-1">
+                ✓ 保存ボタンで確定できます
               </p>
             )}
           </div>
@@ -417,7 +514,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                       "w-full justify-start text-left font-normal",
                       editingState.startDate && selectedTask.startDate &&
                       editingState.startDate.getTime() !== selectedTask.startDate.getTime()
-                        ? "border-orange-300" : ""
+                        ? "border-orange-300" : "",
+                      showTemporaryIndicator ? "border-blue-200" : ""
                     )}
                     tabIndex={activeArea === "details" ? 2 : -1}
                   >
@@ -450,7 +548,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                       "w-full justify-start text-left font-normal",
                       editingState.dueDate && selectedTask.dueDate &&
                       editingState.dueDate.getTime() !== selectedTask.dueDate.getTime()
-                        ? "border-orange-300" : ""
+                        ? "border-orange-300" : "",
+                      showTemporaryIndicator ? "border-blue-200" : ""
                     )}
                     tabIndex={activeArea === "details" ? 3 : -1}
                   >
@@ -470,8 +569,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             </div>
           </div>
 
-          {/* 完了日 */}
-          {selectedTask.completionDate && (
+          {/* 完了日（一時的タスクは非表示） */}
+          {!showTemporaryIndicator && selectedTask.completionDate && (
             <div>
               <label className="text-sm font-medium mb-1 block">完了日</label>
               <div className="text-sm p-2 border rounded-md">
@@ -489,6 +588,9 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                 style={{ backgroundColor: projectInfo.color }}
               />
               {projectInfo.name}
+              {showTemporaryIndicator && (
+                <span className="ml-2 text-xs text-blue-500">（保存時に確定）</span>
+              )}
             </div>
           </div>
 
@@ -499,7 +601,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               value={editingState.assignee}
               onChange={(e) => updateEditingState('assignee', e.target.value)}
               tabIndex={activeArea === "details" ? 4 : -1}
-              className={editingState.assignee !== selectedTask.assignee ? "border-orange-300" : ""}
+              className={cn(
+                editingState.assignee !== selectedTask.assignee ? "border-orange-300" : "",
+                showTemporaryIndicator ? "border-blue-200" : ""
+              )}
             />
           </div>
 
@@ -512,40 +617,55 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               onChange={(e) => updateEditingState('notes', e.target.value)}
               className={cn(
                 "min-h-[100px] resize-none",
-                editingState.notes !== selectedTask.notes ? "border-orange-300" : ""
+                editingState.notes !== selectedTask.notes ? "border-orange-300" : "",
+                showTemporaryIndicator ? "border-blue-200" : ""
               )}
               placeholder="メモを追加..."
               tabIndex={activeArea === "details" ? 5 : -1}
             />
           </div>
 
-          {/* 保存ボタン */}
+          {/* 保存ボタン（一時的タスク対応） */}
           <div className="flex justify-end pt-2">
             <Button
               ref={saveButtonRef}
               onClick={handleSaveButtonClick}
-              disabled={!editingState.hasChanges || isSaving || !editingState.name.trim()}
+              disabled={!editingState.canSave || isSaving}
               tabIndex={activeArea === "details" ? 6 : -1}
               className={cn(
                 "min-w-[80px]",
-                editingState.hasChanges && editingState.name.trim()
-                  ? "bg-orange-600 hover:bg-orange-700 text-white" 
+                editingState.canSave
+                  ? showTemporaryIndicator 
+                    ? "bg-blue-600 hover:bg-blue-700 text-white"
+                    : "bg-orange-600 hover:bg-orange-700 text-white"
                   : ""
               )}
             >
               {isSaving ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  保存中...
+                  {showTemporaryIndicator ? "作成中..." : "保存中..."}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-1" />
-                  保存
+                  {showTemporaryIndicator ? "タスク作成" : "保存"}
                 </>
               )}
             </Button>
           </div>
+
+          {/* 一時的タスクの説明 */}
+          {showTemporaryIndicator && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm">
+              <p className="text-blue-800 font-medium mb-1">📝 新規タスク作成中</p>
+              <ul className="text-blue-700 text-xs space-y-1">
+                <li>• タスク名を入力して「タスク作成」ボタンで確定</li>
+                <li>• キャンセルする場合は他のタスクを選択</li>
+                <li>• 確定後は通常のタスクとして編集可能</li>
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>

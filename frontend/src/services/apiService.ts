@@ -137,6 +137,11 @@ class ApiService {
         delete converted.parentId
       }
 
+      // システムプロンプト準拠：一時的タスクフラグの除去
+      if (converted.isTemporary !== undefined) {
+        delete converted.isTemporary
+      }
+
       return converted
     } catch (error) {
       logger.error('Request date conversion failed', { error })
@@ -178,7 +183,20 @@ class ApiService {
   }
 
   async createTask(task: Omit<Task, 'id'>): Promise<Task> {
+    // システムプロンプト準拠：一時的タスクフラグの除去とバリデーション強化
     const convertedTask = this.convertRequestDates(task)
+    
+    // タスク名の必須チェック（バックエンドエラー回避）
+    if (!convertedTask.name || !convertedTask.name.trim()) {
+      throw new Error('タスク名は必須です')
+    }
+    
+    logger.debug('Creating task via API', { 
+      taskName: convertedTask.name,
+      isTemporary: task.isTemporary,
+      hasValidName: !!convertedTask.name?.trim()
+    })
+    
     return this.request<Task>(TASK_API_ENDPOINTS.CREATE, {
       method: 'POST',
       body: JSON.stringify(convertedTask),
@@ -187,6 +205,18 @@ class ApiService {
 
   async updateTask(id: string, task: Partial<Task>): Promise<Task> {
     const convertedTask = this.convertRequestDates(task)
+    
+    // システムプロンプト準拠：一時的タスクの更新時のバリデーション
+    if (convertedTask.name !== undefined && (!convertedTask.name || !convertedTask.name.trim())) {
+      throw new Error('タスク名は必須です')
+    }
+    
+    logger.debug('Updating task via API', { 
+      taskId: id,
+      hasNameUpdate: 'name' in convertedTask,
+      isValidName: !convertedTask.name || !!convertedTask.name.trim()
+    })
+    
     return this.request<Task>(TASK_API_ENDPOINTS.UPDATE(id), {
       method: 'PUT',
       body: JSON.stringify(convertedTask),
@@ -194,12 +224,15 @@ class ApiService {
   }
 
   async deleteTask(id: string): Promise<void> {
+    logger.debug('Deleting task via API', { taskId: id })
     return this.request<void>(TASK_API_ENDPOINTS.DELETE(id), {
       method: 'DELETE',
     })
   }
 
   async batchUpdateTasks(operation: string, taskIds: string[]): Promise<BatchOperationResult> {
+    logger.debug('Batch updating tasks via API', { operation, taskCount: taskIds.length })
+    
     const response = await this.request<{
       message: string
       affected_count: number

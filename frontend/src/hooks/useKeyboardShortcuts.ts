@@ -19,7 +19,8 @@ interface UseKeyboardShortcutsProps {
   setIsMultiSelectMode: (mode: boolean) => void
   taskRelationMap: TaskRelationMap
   copiedTasks: Task[]
-  onAddTask: (parentId: string | null, level: number) => void
+  // システムプロンプト準拠：一時的タスク作成への変更
+  onAddTemporaryTask: (parentId: string | null, level: number) => void
   onDeleteTask: (taskId: string) => void
   onCopyTask: (taskId: string) => void
   onPasteTask: () => void
@@ -49,7 +50,7 @@ export const useKeyboardShortcuts = ({
   setIsMultiSelectMode,
   taskRelationMap,
   copiedTasks,
-  onAddTask,
+  onAddTemporaryTask, // システムプロンプト準拠：一時的タスク作成に変更
   onDeleteTask,
   onCopyTask,
   onPasteTask,
@@ -179,7 +180,13 @@ export const useKeyboardShortcuts = ({
     return handled
   }, [selectedTaskId, isDetailPanelInputFocused])
 
-  // システムプロンプト準拠：統一されたキーボードショートカット処理（修正版）
+  // システムプロンプト準拠：一時的タスクの判定（新機能）
+  const isTemporaryTask = useCallback((taskId: string): boolean => {
+    const task = tasks.find(t => t.id === taskId)
+    return task?.isTemporary === true
+  }, [tasks])
+
+  // システムプロンプト準拠：統一されたキーボードショートカット処理（一時的タスク対応）
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       try {
@@ -209,7 +216,7 @@ export const useKeyboardShortcuts = ({
           }
         }
 
-        // システムプロンプト準拠：修正 - 詳細パネル内で実際にフォーカスがある場合のみTab制限
+        // システムプロンプト準拠：詳細パネル内で実際にフォーカスがある場合のみTab制限
         if (e.key === "Tab" && isDetailPanelInputFocused()) {
           const handled = handleDetailTabNavigation(e)
           if (handled) {
@@ -226,12 +233,16 @@ export const useKeyboardShortcuts = ({
               if (selectedTaskId) {
                 const task = tasks.find((t) => t.id === selectedTaskId)
                 if (task) {
-                  logger.info('Adding task via Enter key', { parentId: task.parentId, level: task.level })
-                  onAddTask(task.parentId, task.level)
+                  logger.logTaskCreationFlow('enter_key_pressed', 'shortcut', { 
+                    parentId: task.parentId, 
+                    level: task.level,
+                    isTemporary: task.isTemporary
+                  })
+                  onAddTemporaryTask(task.parentId, task.level)
                 }
               } else {
-                logger.info('Adding root task via Enter key')
-                onAddTask(null, 0)
+                logger.logTaskCreationFlow('enter_key_pressed_no_selection', 'shortcut')
+                onAddTemporaryTask(null, 0)
               }
             }
             break
@@ -243,8 +254,12 @@ export const useKeyboardShortcuts = ({
               if (selectedTaskId) {
                 const task = tasks.find((t) => t.id === selectedTaskId)
                 const level = task ? task.level + 1 : 1
-                logger.info('Adding child task via Tab key', { parentId: selectedTaskId, level })
-                onAddTask(selectedTaskId, level)
+                logger.logTaskCreationFlow('tab_key_pressed', 'shortcut', { 
+                  parentId: selectedTaskId, 
+                  level,
+                  parentIsTemporary: task?.isTemporary
+                })
+                onAddTemporaryTask(selectedTaskId, level)
               }
             }
             break
@@ -253,13 +268,22 @@ export const useKeyboardShortcuts = ({
           case "Backspace":
             if ((activeArea === "tasks" || selectedTaskId) && selectedTaskId && !isDetailPanelInputFocused()) {
               e.preventDefault()
-              logger.info('Deleting task via keyboard', { taskId: selectedTaskId })
+              const isTemp = isTemporaryTask(selectedTaskId)
+              logger.info('Deleting task via keyboard', { 
+                taskId: selectedTaskId,
+                isTemporary: isTemp
+              })
               onDeleteTask(selectedTaskId)
             }
             break
 
           case "c":
             if (e.ctrlKey && (activeArea === "tasks" || selectedTaskId) && selectedTaskId && !isDetailPanelInputFocused()) {
+              // 一時的タスクはコピー不可
+              if (isTemporaryTask(selectedTaskId)) {
+                logger.debug('Copy skipped for temporary task', { taskId: selectedTaskId })
+                break
+              }
               e.preventDefault()
               logger.info('Copying task via keyboard', { taskId: selectedTaskId })
               onCopyTask(selectedTaskId)
@@ -276,6 +300,11 @@ export const useKeyboardShortcuts = ({
 
           case " ":
             if ((activeArea === "tasks" || selectedTaskId) && selectedTaskId && !isDetailPanelInputFocused()) {
+              // 一時的タスクは完了状態切り替え不可
+              if (isTemporaryTask(selectedTaskId)) {
+                logger.debug('Completion toggle skipped for temporary task', { taskId: selectedTaskId })
+                break
+              }
               e.preventDefault()
               logger.info('Toggling task completion via keyboard', { taskId: selectedTaskId })
               onToggleTaskCompletion(selectedTaskId)
@@ -350,6 +379,11 @@ export const useKeyboardShortcuts = ({
 
           case "ArrowRight":
             if (e.ctrlKey && activeArea === "tasks" && selectedTaskId) {
+              // 一時的タスクは折りたたみ不可
+              if (isTemporaryTask(selectedTaskId)) {
+                logger.debug('Collapse toggle skipped for temporary task', { taskId: selectedTaskId })
+                break
+              }
               const hasChildren = taskRelationMap.childrenMap[selectedTaskId]?.length > 0
               if (hasChildren) {
                 e.preventDefault()
@@ -448,7 +482,7 @@ export const useKeyboardShortcuts = ({
     isAddingProject,
     isAddingTask,
     isEditingProject,
-    onAddTask,
+    onAddTemporaryTask, // システムプロンプト準拠：一時的タスク作成に変更
     onDeleteTask,
     onCopyTask,
     onPasteTask,
@@ -465,7 +499,8 @@ export const useKeyboardShortcuts = ({
     isNewTaskInputActive,
     isCalendarActive,
     isGeneralInputActive,
-    isDetailPanelInputFocused
+    isDetailPanelInputFocused,
+    isTemporaryTask
   ])
 
   return {

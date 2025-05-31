@@ -14,7 +14,8 @@ import {
   ChevronDown,
   ChevronRight,
   Moon,
-  Sun
+  Sun,
+  Edit3
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -85,7 +86,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   const [newTaskLevel, setNewTaskLevel] = useState(0)
 
   const newTaskInputRef = useRef<HTMLInputElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null) // システムプロンプト準拠：フォーカス管理改善
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // システムプロンプト準拠：DRY原則 - TaskOperationsを活用
   const taskOperations = createTaskOperations(apiActions, allTasks, selectedProjectId)
@@ -197,6 +198,11 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     setActiveArea("tasks")
   }
 
+  // システムプロンプト準拠：一時的タスクの判定
+  const isTemporaryTask = (task: Task): boolean => {
+    return task.isTemporary === true
+  }
+
   const renderTask = (task: Task) => {
     try {
       if (!task.id) {
@@ -206,6 +212,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
 
       const taskDisplayName = task.name.trim() || '（タスク名未設定）'
       const isEmptyName = !task.name.trim()
+      const isTemp = isTemporaryTask(task)
       const dueDateDisplay = safeFormatDate(task.dueDate, '期限未設定')
 
       return (
@@ -217,13 +224,15 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             selectedTaskId === task.id ? "bg-accent" : "hover:bg-accent/50",
             selectedTaskIds.includes(task.id) ? "bg-accent/80 ring-1 ring-primary" : "",
             task.completed ? "text-muted-foreground" : "",
-            isEmptyName ? "border border-orange-200 bg-orange-50" : ""
+            isEmptyName ? "border border-orange-200 bg-orange-50" : "",
+            // システムプロンプト準拠：一時的タスクの視覚的強調
+            isTemp ? "border border-blue-200 bg-blue-50" : ""
           )}
           style={{ marginLeft: `${task.level * 1.5}rem` }}
           onClick={(e) => onTaskSelect(task.id, e)}
         >
           <div className="w-4 flex justify-center">
-            {(taskRelationMap.childrenMap[task.id]?.length || 0) > 0 ? (
+            {(taskRelationMap.childrenMap[task.id]?.length || 0) > 0 && !isTemp ? (
               <button
                 className="text-muted-foreground hover:text-foreground"
                 onClick={(e) => {
@@ -242,40 +251,58 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             )}
           </div>
 
+          {/* システムプロンプト準拠：一時的タスクはチェックボックス無効化 */}
           <Checkbox
             checked={task.completed}
-            onCheckedChange={() => onToggleTaskCompletion(task.id)}
-            className="mr-2 mt-0.5"
+            onCheckedChange={() => !isTemp && onToggleTaskCompletion(task.id)}
+            className={cn(
+              "mr-2 mt-0.5",
+              isTemp ? "opacity-50 cursor-not-allowed" : ""
+            )}
             onClick={(e) => e.stopPropagation()}
+            disabled={isTemp}
           />
 
           <div className="flex-grow">
             <div className={cn(
-              "font-medium", 
+              "font-medium flex items-center", 
               task.completed ? "line-through" : "",
-              isEmptyName ? "text-orange-600 italic" : ""
+              isEmptyName ? "text-orange-600 italic" : "",
+              isTemp ? "text-blue-700 font-medium" : ""
             )}>
               {taskDisplayName}
+              {/* システムプロンプト準拠：一時的タスクのインジケーター */}
+              {isTemp && (
+                <Edit3 className="h-3 w-3 ml-2 text-blue-500" title="編集中のタスク" />
+              )}
             </div>
             <div className="flex items-center text-xs text-muted-foreground mt-1">
               <span className="mr-2">
                 期限: {dueDateDisplay}
               </span>
               {task.notes && <span className="mr-2">📝</span>}
-              {isEmptyName && <span className="text-orange-500 ml-2">⚠ 名前未設定</span>}
+              {isEmptyName && !isTemp && <span className="text-orange-500 ml-2">⚠ 名前未設定</span>}
+              {isTemp && <span className="text-blue-500 ml-2">🔄 作成中</span>}
             </div>
           </div>
 
-          <div className="flex opacity-0 group-hover:opacity-100">
+          <div className={cn(
+            "flex",
+            isTemp ? "opacity-50" : "opacity-0 group-hover:opacity-100"
+          )}>
+            {/* 一時的タスクの場合はサブタスク追加ボタンを無効化 */}
             <Button
               variant="ghost"
               size="icon"
               className="h-6 w-6"
               onClick={(e) => {
                 e.stopPropagation()
-                handleAddTaskClick(task.id, task.level + 1)
+                if (!isTemp) {
+                  handleAddTaskClick(task.id, task.level + 1)
+                }
               }}
-              title="サブタスク追加"
+              title={isTemp ? "作成中のタスクにはサブタスクを追加できません" : "サブタスク追加"}
+              disabled={isTemp}
             >
               <Plus className="h-3 w-3" />
             </Button>
@@ -287,22 +314,26 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                   size="icon"
                   className="h-6 w-6"
                   onClick={(e) => e.stopPropagation()}
+                  disabled={isTemp}
                 >
                   <MoreHorizontal className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onCopyTask(task.id)
-                  }}
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  {isMultiSelectMode && selectedTaskIds.includes(task.id)
-                    ? `${selectedTaskIds.length}個のタスクをコピー`
-                    : "コピー"}
-                </DropdownMenuItem>
+                {/* 一時的タスクの場合はコピー無効化 */}
+                {!isTemp && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onCopyTask(task.id)
+                    }}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    {isMultiSelectMode && selectedTaskIds.includes(task.id)
+                      ? `${selectedTaskIds.length}個のタスクをコピー`
+                      : "コピー"}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation()
@@ -311,9 +342,10 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                   className="text-destructive"
                 >
                   <Trash className="h-4 w-4 mr-2" />
-                  {isMultiSelectMode && selectedTaskIds.includes(task.id)
-                    ? `${selectedTaskIds.length}個のタスクを削除`
-                    : "削除"}
+                  {isTemp ? "キャンセル" :
+                    isMultiSelectMode && selectedTaskIds.includes(task.id)
+                      ? `${selectedTaskIds.length}個のタスクを削除`
+                      : "削除"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -330,10 +362,14 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }
   }
 
+  // システムプロンプト準拠：一時的タスクの統計情報
+  const temporaryTasksCount = tasks.filter(isTemporaryTask).length
+  const regularTasksCount = tasks.length - temporaryTasksCount
+
   return (
     <div
       ref={panelRef}
-      tabIndex={0} // システムプロンプト準拠：フォーカス可能にする
+      tabIndex={0}
       onFocus={handlePanelFocus}
       onClick={handlePanelClick}
       className={cn(
@@ -347,6 +383,13 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
       <div className="border-b p-4 flex items-center justify-between">
         <div className="flex items-center">
           <h1 className="text-xl font-semibold">タスク一覧</h1>
+
+          {/* システムプロンプト準拠：一時的タスクの表示統計 */}
+          {temporaryTasksCount > 0 && (
+            <div className="ml-4 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm">
+              作成中: {temporaryTasksCount}個
+            </div>
+          )}
 
           {isMultiSelectMode && (
             <div className="ml-4 px-2 py-1 bg-primary/10 text-primary rounded-md text-sm">
@@ -469,9 +512,17 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         )}
       </div>
 
+      {/* システムプロンプト準拠：一時的タスクを除外した一括操作 */}
       {isMultiSelectMode && selectedTaskIds.length > 0 && (
         <div className="border-t p-2 bg-muted/50 flex items-center justify-between">
-          <div className="text-sm font-medium">{selectedTaskIds.length}個のタスクを選択中</div>
+          <div className="text-sm font-medium">
+            {selectedTaskIds.length}個のタスクを選択中
+            {temporaryTasksCount > 0 && (
+              <span className="ml-2 text-xs text-muted-foreground">
+                （作成中タスクは一括操作対象外）
+              </span>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -510,6 +561,21 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
               選択解除
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* システムプロンプト準拠：一時的タスクの説明 */}
+      {temporaryTasksCount > 0 && (
+        <div className="border-t bg-blue-50 p-3 text-sm">
+          <div className="flex items-center text-blue-800">
+            <Edit3 className="h-4 w-4 mr-2" />
+            <span className="font-medium">
+              {temporaryTasksCount}個のタスクが作成中です
+            </span>
+          </div>
+          <p className="text-blue-700 text-xs mt-1">
+            詳細パネルでタスク名を入力して確定してください
+          </p>
         </div>
       )}
     </div>

@@ -7,7 +7,10 @@ export enum ErrorType {
   NETWORK_ERROR = 'NETWORK_ERROR',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   API_ERROR = 'API_ERROR',
-  DATE_CONVERSION_ERROR = 'DATE_CONVERSION_ERROR', // 新規追加
+  DATE_CONVERSION_ERROR = 'DATE_CONVERSION_ERROR',
+  // システムプロンプト準拠：一時的タスク関連エラータイプ追加
+  TEMPORARY_TASK_ERROR = 'TEMPORARY_TASK_ERROR',
+  TEMPORARY_TASK_SAVE_ERROR = 'TEMPORARY_TASK_SAVE_ERROR',
   UNKNOWN_ERROR = 'UNKNOWN_ERROR'
 }
 
@@ -56,7 +59,29 @@ export const handleError = (
         originalError: error.message,
         stack: error.stack
       })
-    } else if (error.name === 'TypeError' || error.message.includes('fetch')) {
+    } 
+    // システムプロンプト準拠：一時的タスク関連エラーの処理
+    else if (error.message.includes('temporary task') || 
+             error.message.includes('一時的タスク')) {
+      errorType = ErrorType.TEMPORARY_TASK_ERROR
+      finalUserMessage = userMessage || ERROR_MESSAGES.TEMPORARY_TASK_ERROR
+      
+      logger.warn('Temporary task error detected', {
+        originalError: error.message,
+        stack: error.stack
+      })
+    }
+    else if (error.message.includes('temporary task save') || 
+             error.message.includes('一時的タスクの保存')) {
+      errorType = ErrorType.TEMPORARY_TASK_SAVE_ERROR
+      finalUserMessage = userMessage || ERROR_MESSAGES.TEMPORARY_TASK_SAVE_ERROR
+      
+      logger.warn('Temporary task save error detected', {
+        originalError: error.message,
+        stack: error.stack
+      })
+    }
+    else if (error.name === 'TypeError' || error.message.includes('fetch')) {
       errorType = ErrorType.NETWORK_ERROR
       finalUserMessage = userMessage || ERROR_MESSAGES.NETWORK_ERROR
     } else if (error.message.includes('validation')) {
@@ -91,7 +116,8 @@ export const handleError = (
   }
 
   // システムプロンプト準拠：適切なログレベルでの出力
-  if (finalError.type === ErrorType.DATE_CONVERSION_ERROR) {
+  if (finalError.type === ErrorType.DATE_CONVERSION_ERROR || 
+      finalError.type === ErrorType.TEMPORARY_TASK_ERROR) {
     logger.warn(`${finalError.type}: ${finalError.message}`, finalError.context)
   } else {
     logger.error(`${finalError.type}: ${finalError.message}`, finalError.context)
@@ -119,7 +145,7 @@ export const handleApiError = (error: Error): void => {
   handleError(error, ERROR_MESSAGES.SERVER_ERROR)
 }
 
-// システムプロンプト準拠：新規追加 - 日付変換エラー専用ハンドラー
+// システムプロンプト準拠：日付変換エラー専用ハンドラー（既存）
 export const handleDateConversionError = (error: Error, context?: any): void => {
   const dateError = new AppError(
     ErrorType.DATE_CONVERSION_ERROR,
@@ -134,6 +160,40 @@ export const handleDateConversionError = (error: Error, context?: any): void => 
   )
   
   handleError(dateError)
+}
+
+// システムプロンプト準拠：一時的タスクエラー専用ハンドラー（新規追加）
+export const handleTemporaryTaskError = (error: Error, context?: any): void => {
+  const tempTaskError = new AppError(
+    ErrorType.TEMPORARY_TASK_ERROR,
+    error.message,
+    '一時的タスクの操作中にエラーが発生しました。再試行してください。',
+    {
+      ...context,
+      originalError: error.name,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    }
+  )
+  
+  handleError(tempTaskError)
+}
+
+export const handleTemporaryTaskSaveError = (error: Error, taskId: string, context?: any): void => {
+  const tempTaskSaveError = new AppError(
+    ErrorType.TEMPORARY_TASK_SAVE_ERROR,
+    error.message,
+    'タスクの保存に失敗しました。タスク名を確認して再試行してください。',
+    {
+      ...context,
+      taskId,
+      originalError: error.name,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    }
+  )
+  
+  handleError(tempTaskSaveError)
 }
 
 /**

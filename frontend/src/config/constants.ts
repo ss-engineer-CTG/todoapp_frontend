@@ -60,6 +60,10 @@ export const ERROR_MESSAGES = {
   SHORTCUT_ERROR: 'ショートカット操作でエラーが発生しました',
   TASK_OPERATION_ERROR: 'タスク操作でエラーが発生しました',
   COPY_PASTE_ERROR: 'コピー・ペースト操作でエラーが発生しました',
+  // システムプロンプト準拠：一時的タスク関連エラーメッセージ追加
+  TEMPORARY_TASK_ERROR: '一時的タスクの操作でエラーが発生しました',
+  TEMPORARY_TASK_SAVE_ERROR: '一時的タスクの保存に失敗しました',
+  TEMPORARY_TASK_NAME_REQUIRED: 'タスク名を入力してから保存してください',
 } as const
 
 // UI設定定数
@@ -99,4 +103,16 @@ export const TASK_OPERATION_CONSTANTS = {
   COPY_SUFFIX: ' (コピー)',
   MAX_TASK_LEVEL: 10,
   AUTO_SAVE_DELAY: 500,
+  // システムプロンプト準拠：一時的タスク関連定数追加
+  TEMPORARY_TASK_PREFIX: 'temp_',
+  TEMPORARY_TASK_PLACEHOLDER: 'タスク名を入力してください',
+  TEMPORARY_TASK_DEFAULT_NAME: '',
+} as const
+
+// システムプロンプト準拠：一時的タスク操作タイプ
+export const TEMPORARY_TASK_OPERATIONS = {
+  CREATE: 'create_temporary',
+  SAVE: 'save_temporary',
+  CANCEL: 'cancel_temporary',
+  REMOVE: 'remove_temporary'
 } as const
