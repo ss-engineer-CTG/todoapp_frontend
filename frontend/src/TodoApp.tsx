@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Project, Task, AreaType, BatchOperation } from './types'
+import { Project, Task, AreaType, BatchOperation, TaskCreationFlow, FocusManagement } from './types'
 import { ProjectPanel } from './components/ProjectPanel'
 import { TaskPanel } from './components/TaskPanel'
 import { DetailPanel } from './components/DetailPanel'
@@ -41,6 +41,25 @@ const TodoApp: React.FC = () => {
   const [isAddingProject, setIsAddingProject] = useState<boolean>(false)
   const [isAddingTask, setIsAddingTask] = useState<boolean>(false)
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
+
+  // システムプロンプト準拠：新規追加 - タスク作成フロー管理
+  const [taskCreationFlow, setTaskCreationFlow] = useState<TaskCreationFlow>({
+    isActive: false,
+    parentId: null,
+    level: 0,
+    source: 'shortcut',
+    createdTaskId: null,
+    shouldFocusOnCreation: false
+  })
+
+  // システムプロンプト準拠：新規追加 - フォーカス管理
+  const [focusManagement, setFocusManagement] = useState<FocusManagement>({
+    activeArea: "tasks",
+    lastFocusedTaskId: null,
+    shouldMaintainTaskFocus: true,
+    detailPanelAutoShow: true,
+    preventNextFocusChange: false
+  })
 
   const currentProjects = projects.data || []
   const currentTasks = tasks.data || []
@@ -121,12 +140,16 @@ const TodoApp: React.FC = () => {
 
   const taskOperations = createTaskOperations(taskApiActions, currentTasks, selectedProjectId)
 
-  // システムプロンプト準拠：タスクフォーカス時の詳細パネル自動表示
+  // システムプロンプト準拠：フォーカス管理の改善
   useEffect(() => {
     if (selectedTaskId && isInitialized && !isAddingTask && !isEditingProject) {
-      // 不適切なタイミングでの表示を抑制
-      const shouldShowDetail = !isMultiSelectMode && selectedProjectId && !isAddingProject
-      
+      // システムプロンプト準拠：適切なタイミングでの詳細パネル表示
+      const shouldShowDetail = focusManagement.detailPanelAutoShow && 
+                              !isMultiSelectMode && 
+                              selectedProjectId && 
+                              !isAddingProject &&
+                              !focusManagement.preventNextFocusChange
+
       if (shouldShowDetail) {
         logger.debug('Auto-showing detail panel for selected task', { 
           taskId: selectedTaskId,
@@ -134,31 +157,100 @@ const TodoApp: React.FC = () => {
           selectedProjectId 
         })
         setIsDetailPanelVisible(true)
+        
+        // アクティブエリアをタスクに維持（ショートカット継続のため）
+        if (activeArea !== "details") {
+          setActiveArea("tasks")
+        }
       }
+      
+      // フォーカス管理状態の更新
+      setFocusManagement(prev => ({
+        ...prev,
+        lastFocusedTaskId: selectedTaskId,
+        preventNextFocusChange: false
+      }))
     }
-  }, [selectedTaskId, isInitialized, isMultiSelectMode, selectedProjectId, isAddingTask, isEditingProject, isAddingProject])
+  }, [selectedTaskId, isInitialized, isMultiSelectMode, selectedProjectId, isAddingTask, isEditingProject, isAddingProject, focusManagement.detailPanelAutoShow, focusManagement.preventNextFocusChange, activeArea])
 
+  // システムプロンプト準拠：タスク作成フロー管理
   const handleAddTask = async (parentId: string | null = null, level = 0) => {
     try {
-      logger.info('Adding task via shortcut', { parentId, level })
+      logger.info('Starting task creation via shortcut', { 
+        parentId, 
+        level,
+        activeArea,
+        isAddingTask: taskCreationFlow.isActive
+      })
+      
+      // システムプロンプト準拠：作成中の重複防止
+      if (taskCreationFlow.isActive) {
+        logger.debug('Task creation already in progress, skipping')
+        return
+      }
+
+      // タスク作成フロー開始
+      setTaskCreationFlow({
+        isActive: true,
+        parentId,
+        level,
+        source: 'shortcut',
+        createdTaskId: null,
+        shouldFocusOnCreation: true
+      })
       
       const createdTask = await taskOperations.addTask(parentId, level)
       if (createdTask) {
         await loadTasks(selectedProjectId)
         
+        // システムプロンプト準拠：ショートカット継続のための状態管理
         setSelectedTaskId(createdTask.id)
         setSelectedTaskIds([createdTask.id])
-        setActiveArea("tasks")
-        setIsDetailPanelVisible(true)
         
-        logger.info('Task added successfully via shortcut', { 
+        // アクティブエリアをタスクに維持
+        setActiveArea("tasks")
+        
+        // フォーカス管理の更新
+        setFocusManagement(prev => ({
+          ...prev,
+          activeArea: "tasks",
+          lastFocusedTaskId: createdTask.id,
+          shouldMaintainTaskFocus: true,
+          preventNextFocusChange: false
+        }))
+        
+        // 詳細パネルは条件に応じて表示
+        if (!isMultiSelectMode) {
+          setIsDetailPanelVisible(true)
+        }
+        
+        // タスク作成フロー完了
+        setTaskCreationFlow(prev => ({
+          ...prev,
+          isActive: false,
+          createdTaskId: createdTask.id
+        }))
+        
+        logger.info('Task created successfully via shortcut', { 
           taskId: createdTask.id,
           taskName: createdTask.name 
         })
+      } else {
+        // 作成失敗時のフロー終了
+        setTaskCreationFlow(prev => ({
+          ...prev,
+          isActive: false
+        }))
       }
     } catch (error) {
-      logger.error('Task addition via shortcut failed', { parentId, level, error })
+      logger.error('Task creation via shortcut failed', { parentId, level, error })
       handleError(error, 'ショートカットによるタスク追加に失敗しました')
+      
+      // エラー時のフロー終了
+      setTaskCreationFlow(prev => ({
+        ...prev,
+        isActive: false
+      }))
     }
   }
 
@@ -339,9 +431,19 @@ const TodoApp: React.FC = () => {
     logger.debug('Task update requested', { count: updatedTasks.length })
   }
 
+  // システムプロンプト準拠：タスク選択処理の改善
   const handleTaskSelectWrapper = (taskId: string, event?: React.MouseEvent) => {
-    logger.debug('Task selected', { taskId })
+    logger.debug('Task selected', { taskId, source: 'user-click' })
     handleTaskSelect(taskId, event)
+    
+    // フォーカス管理の更新
+    setFocusManagement(prev => ({
+      ...prev,
+      activeArea: "tasks",
+      lastFocusedTaskId: taskId,
+      shouldMaintainTaskFocus: true
+    }))
+    
     setActiveArea("tasks")
     setIsDetailPanelVisible(true)
   }

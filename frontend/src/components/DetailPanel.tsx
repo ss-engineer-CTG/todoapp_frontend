@@ -81,9 +81,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }, [selectedTask?.id])
 
-  // フォーカス管理
+  // システムプロンプト準拠：フォーカス管理（詳細パネルアクティブ時のみ）
   useEffect(() => {
-    if (activeArea === "details" && selectedTask) {
+    if (activeArea === "details" && selectedTask && taskNameInputRef.current) {
+      logger.debug('Detail panel activated - focusing task name input')
       setTimeout(() => {
         taskNameInputRef.current?.focus()
       }, 0)
@@ -205,7 +206,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }, 100)
   }, [selectedTask, taskNotesRef])
 
-  // システムプロンプト準拠：保存処理（要件①対応：空名前バリデーション追加）
+  // システムプロンプト準拠：保存処理（必須バリデーション強化）
   const handleSave = async () => {
     if (!selectedTask || !editingState.hasChanges || isSaving) {
       logger.debug('Save skipped', { 
@@ -216,11 +217,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
       return
     }
 
-    // 要件①対応：空名前時のバリデーション強化
+    // システムプロンプト準拠：空名前時のバリデーション強化
     if (!editingState.name.trim()) {
       logger.warn('Attempted to save task with empty name', { taskId: selectedTask.id })
       handleError(new Error('タスク名は必須です'), 'タスク名を入力してください')
-      // 名前フィールドにフォーカスを戻す
       setTimeout(() => {
         taskNameInputRef.current?.focus()
         taskNameInputRef.current?.select()
@@ -333,7 +333,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
   const projectInfo = getProjectInfo(selectedTask.projectId)
   
-  // 要件①対応：空名前タスクの視覚的強調
+  // システムプロンプト準拠：空名前タスクの視覚的強調
   const isEmptyName = !selectedTask.name.trim()
 
   return (
@@ -372,7 +372,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         </div>
 
         <div className="space-y-4 flex-grow overflow-y-auto">
-          {/* タスク名（要件①対応：必須バリデーション強化） */}
+          {/* システムプロンプト準拠：タスク名（必須バリデーション強化） */}
           <div>
             <label className="text-sm font-medium mb-1 block">
               タスク名 <span className="text-red-500">*</span>

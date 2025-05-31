@@ -100,6 +100,70 @@ class Logger {
     }
   }
 
+  // システムプロンプト準拠：新規追加 - ショートカット操作専用ログメソッド
+  logShortcutOperation(
+    operation: string, 
+    key: string, 
+    success: boolean, 
+    context?: any
+  ): void {
+    const logContext = {
+      operation,
+      key,
+      success,
+      timestamp: new Date().toISOString(),
+      ...this.sanitizeLogData(context)
+    }
+    
+    if (success) {
+      this.info(`Shortcut operation: ${operation}`, logContext)
+    } else {
+      this.warn(`Shortcut operation failed: ${operation}`, logContext)
+    }
+  }
+
+  // システムプロンプト準拠：新規追加 - タスク操作専用ログメソッド
+  logTaskOperation(
+    operation: 'create' | 'update' | 'delete' | 'copy' | 'paste',
+    taskId: string,
+    success: boolean,
+    context?: any
+  ): void {
+    const logContext = {
+      operation,
+      taskId,
+      success,
+      timestamp: new Date().toISOString(),
+      ...this.sanitizeLogData(context)
+    }
+    
+    if (success) {
+      this.info(`Task ${operation} completed`, logContext)
+    } else {
+      this.error(`Task ${operation} failed`, logContext)
+    }
+  }
+
+  // システムプロンプト準拠：新規追加 - 状態管理専用ログメソッド
+  logStateChange(
+    component: string,
+    property: string,
+    oldValue: any,
+    newValue: any,
+    context?: any
+  ): void {
+    const logContext = {
+      component,
+      property,
+      oldValue: this.sanitizeLogData(oldValue),
+      newValue: this.sanitizeLogData(newValue),
+      timestamp: new Date().toISOString(),
+      ...this.sanitizeLogData(context)
+    }
+    
+    this.debug(`State change: ${component}.${property}`, logContext)
+  }
+
   private log(level: LogLevel, message: string, context?: any): void {
     if (level <= this.level) {
       // システムプロンプト準拠: タイムスタンプを含める
@@ -151,7 +215,7 @@ class Logger {
     return `tx_${Date.now()}_${this.transactionCounter.toString().padStart(4, '0')}`
   }
 
-  // システムプロンプト準拠：新規追加 - ログデータの安全化（機密情報除去）
+  // システムプロンプト準拠：ログデータの安全化（機密情報除去）
   private sanitizeLogData(data: any): any {
     if (!data) return data
     
@@ -218,5 +282,16 @@ export class LogFormatter {
   static formatDataConversion(operation: string, inputType: string, outputType: string, recordCount?: number): string {
     const countInfo = recordCount ? ` (${recordCount} records)` : ''
     return `Data conversion: ${operation} - ${inputType} → ${outputType}${countInfo}`
+  }
+
+  // システムプロンプト準拠：新規追加 - ショートカットログフォーマット
+  static formatShortcut(key: string, operation: string, activeArea: string): string {
+    return `Shortcut [${key}]: ${operation} in ${activeArea} area`
+  }
+
+  // システムプロンプト準拠：新規追加 - タスク操作ログフォーマット
+  static formatTaskOperation(operation: string, taskName: string, context?: any): string {
+    const contextInfo = context ? ` (${JSON.stringify(context)})` : ''
+    return `Task ${operation}: ${taskName}${contextInfo}`
   }
 }

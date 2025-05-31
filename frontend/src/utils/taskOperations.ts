@@ -27,8 +27,8 @@ export class TaskOperations {
   }
 
   /**
-   * タスク追加処理（ショートカット・UI共通）
-   * システムプロンプト準拠：KISS原則 - 名前空データ化（要件①）
+   * システムプロンプト準拠：タスク追加処理（ショートカット・UI共通）
+   * KISS原則：空名前対応の最小限修正
    */
   async addTask(
     parentId: string | null = null, 
@@ -45,7 +45,8 @@ export class TaskOperations {
         parentId, 
         level, 
         projectId: this.selectedProjectId,
-        hasName: !!name
+        hasName: !!name,
+        source: name ? 'UI' : 'shortcut'
       })
 
       // 親タスクの情報を取得（日付継承用）
@@ -60,7 +61,7 @@ export class TaskOperations {
         : new Date()
 
       const newTaskData = {
-        // 要件①：空データ化（KISS原則：1行変更のみ）
+        // システムプロンプト準拠：KISS原則 - 1行修正で空名前対応
         name: name || '',
         projectId: this.selectedProjectId,
         parentId,
@@ -78,7 +79,8 @@ export class TaskOperations {
       
       logger.info('Task created successfully', { 
         taskId: createdTask.id, 
-        taskName: createdTask.name 
+        taskName: createdTask.name,
+        isEmpty: !createdTask.name.trim()
       })
       
       return createdTask
@@ -91,7 +93,7 @@ export class TaskOperations {
 
   /**
    * タスク削除処理（ショートカット・UI共通）
-   * システムプロンプト準拠：KISS原則 - 正しいAPI呼び出しに修正
+   * システムプロンプト準拠：KISS原則 - 正しいAPI呼び出し
    */
   async deleteTask(taskId: string): Promise<boolean> {
     try {
@@ -103,7 +105,7 @@ export class TaskOperations {
         return false
       }
 
-      // 🎯 修正：正しい削除API呼び出しに変更
+      // システムプロンプト準拠：正しい削除API呼び出し
       await this.apiActions.deleteTask(taskId)
       
       logger.info('Task deleted successfully', { taskId, taskName: task.name })

@@ -93,6 +93,23 @@ export type TaskEditingState = {
   focusTransitionMode: 'navigation' | 'calendar-selection'
 }
 
+// システムプロンプト準拠：新規追加 - ショートカット操作状態管理
+export type ShortcutOperationState = {
+  isProcessing: boolean
+  lastOperation: string | null
+  lastOperationTime: number | null
+  suppressNextOperation: boolean
+}
+
+// システムプロンプト準拠：新規追加 - 入力状態判定用型定義
+export type InputState = {
+  isNewTaskInput: boolean
+  isGeneralInput: boolean
+  isCalendarActive: boolean
+  isProjectEditing: boolean
+  activeInputType: 'none' | 'task-name' | 'project-name' | 'calendar' | 'general'
+}
+
 // API関連の型定義（システムプロンプト準拠：バックエンド応答形式追加）
 export interface ApiResponse<T> {
   data: T
@@ -196,4 +213,23 @@ export interface DataValidationResult {
   isValid: boolean
   errors: DateConversionError[]
   data: any
+}
+
+// システムプロンプト準拠：新規追加 - タスク作成フロー管理用型定義
+export type TaskCreationFlow = {
+  isActive: boolean
+  parentId: string | null
+  level: number
+  source: 'shortcut' | 'ui' | 'api'
+  createdTaskId: string | null
+  shouldFocusOnCreation: boolean
+}
+
+// システムプロンプト準拠：新規追加 - フォーカス管理用型定義
+export type FocusManagement = {
+  activeArea: AreaType
+  lastFocusedTaskId: string | null
+  shouldMaintainTaskFocus: boolean
+  detailPanelAutoShow: boolean
+  preventNextFocusChange: boolean
 }

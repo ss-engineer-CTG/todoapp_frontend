@@ -92,6 +92,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   const taskOperations = createTaskOperations(apiActions, allTasks, selectedProjectId)
 
   const handleAddTaskClick = (parentId: string | null = null, level = 0) => {
+    logger.info('Starting new task creation via UI', { parentId, level })
     setIsAddingTask(true)
     setNewTaskParentId(parentId)
     setNewTaskLevel(level)
@@ -113,10 +114,13 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         const createdTask = await taskOperations.addTask(newTaskParentId, newTaskLevel, newTaskName)
         
         if (createdTask) {
-          onTasksUpdate([...allTasks, createdTask])
+          // システムプロンプト準拠：状態の適切な更新
           setNewTaskName("")
           setIsAddingTask(false)
+          
+          // タスク選択とアクティブエリア設定（ショートカット継続のため）
           onTaskSelect(createdTask.id)
+          setActiveArea("tasks")
           
           logger.info('Task created successfully via UI', { 
             taskId: createdTask.id, 
@@ -128,8 +132,20 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         setIsAddingTask(false)
       }
     } else {
+      // システムプロンプト準拠：KISS原則 - シンプルなキャンセル処理
+      logger.debug('New task creation cancelled - empty name')
       setIsAddingTask(false)
+      setNewTaskName("")
     }
+  }
+
+  // システムプロンプト準拠：新規タスク作成のキャンセル処理
+  const handleCancelNewTask = () => {
+    logger.debug('New task creation cancelled')
+    setIsAddingTask(false)
+    setNewTaskName("")
+    setNewTaskParentId(null)
+    setNewTaskLevel(0)
   }
 
   const toggleDetailPanel = () => {
@@ -177,7 +193,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }
   }
 
-  // システムプロンプト準拠：データ検証付きタスク表示（要件①対応：空名前表示）
+  // システムプロンプト準拠：データ検証付きタスク表示
   const renderTask = (task: Task) => {
     try {
       // 必須フィールドの検証
@@ -186,7 +202,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         return null
       }
 
-      // 要件①対応：空名前時のプレースホルダー表示
+      // システムプロンプト準拠：空名前時のプレースホルダー表示
       const taskDisplayName = task.name.trim() || '（タスク名未設定）'
       const isEmptyName = !task.name.trim()
 
@@ -202,7 +218,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             selectedTaskId === task.id ? "bg-accent" : "hover:bg-accent/50",
             selectedTaskIds.includes(task.id) ? "bg-accent/80 ring-1 ring-primary" : "",
             task.completed ? "text-muted-foreground" : "",
-            isEmptyName ? "border border-orange-200 bg-orange-50" : "" // 空名前時の視覚的強調
+            isEmptyName ? "border border-orange-200 bg-orange-50" : ""
           )}
           style={{ marginLeft: `${task.level * 1.5}rem` }}
           onClick={(e) => onTaskSelect(task.id, e)}
@@ -433,7 +449,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             {/* システムプロンプト準拠：エラー境界付きタスクレンダリング */}
             {tasks.map(renderTask).filter(Boolean)}
 
-            {/* 新規タスク追加フォーム */}
+            {/* システムプロンプト準拠：新規タスク追加フォーム（data属性追加） */}
             {isAddingTask && (
               <div className="flex items-center p-2" style={{ marginLeft: `${newTaskLevel * 1.5}rem` }}>
                 <div className="w-4 mr-2" />
@@ -444,11 +460,18 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                   onChange={(e) => setNewTaskName(e.target.value)}
                   onBlur={handleSaveNewTask}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveNewTask()
-                    if (e.key === "Escape") setIsAddingTask(false)
+                    if (e.key === "Enter") {
+                      e.stopPropagation()
+                      handleSaveNewTask()
+                    }
+                    if (e.key === "Escape") {
+                      e.stopPropagation()
+                      handleCancelNewTask()
+                    }
                   }}
                   placeholder="新しいタスク"
                   className="border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+                  data-new-task-input="true"
                 />
               </div>
             )}

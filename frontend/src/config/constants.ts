@@ -1,4 +1,4 @@
-// システムプロンプト準拠: DRY原則 - 重複定数統一、utils/constants.tsを削除して統合
+// システムプロンプト準拠: DRY原則 - 重複定数統一、ショートカット定義整理
 import { ProjectColor, KeyboardShortcut } from '../types'
 
 // プロジェクトカラー（重複排除）
@@ -13,7 +13,7 @@ export const PROJECT_COLORS: ProjectColor[] = [
   { name: "ティール", value: "#14b8a6" },
 ] as const
 
-// システムプロンプト準拠：修正 - キーボードショートカット（改善版）
+// システムプロンプト準拠：修正 - 実装と一致するキーボードショートカット定義
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Enter", description: "同じレベルで新規タスク追加" },
   { key: "Tab", description: "選択したタスクの子タスクを追加" },
@@ -85,7 +85,7 @@ export const APP_CONFIG = {
   }
 } as const
 
-// システムプロンプト準拠：修正 - キーボードマッピング（実際の処理と一致）
+// システムプロンプト準拠：修正 - 実装と一致するキーボードマッピング
 export const KEYBOARD_MAPPINGS = {
   TASK_OPERATIONS: {
     ADD_SAME_LEVEL: 'Enter',
@@ -142,4 +142,33 @@ export const SHORTCUT_LOG_MESSAGES = {
   COLLAPSE_TOGGLED: 'Task collapse toggled via shortcut',
   NAVIGATION: 'Navigation via shortcut',
   SELECTION_CHANGED: 'Selection changed via shortcut',
+} as const
+
+// システムプロンプト準拠：新規追加 - 入力状態判定用定数
+export const INPUT_STATE_CONSTANTS = {
+  NEW_TASK_INPUT_SELECTOR: '[data-new-task-input]',
+  NEW_TASK_PLACEHOLDER: '新しいタスク',
+  CALENDAR_SELECTORS: [
+    '[role="dialog"]',
+    '[data-state="open"]',
+    '.calendar',
+    '[role="gridcell"]',
+    '[role="button"][aria-label*="日"]'
+  ],
+  NAVIGATION_KEYS: [
+    'ArrowUp', 
+    'ArrowDown', 
+    'ArrowLeft', 
+    'ArrowRight', 
+    'Escape'
+  ]
+} as const
+
+// システムプロンプト準拠：新規追加 - デバッグ用設定
+export const DEBUG_CONSTANTS = {
+  LOG_SHORTCUT_OPERATIONS: true,
+  LOG_STATE_CHANGES: true,
+  LOG_TASK_OPERATIONS: true,
+  LOG_API_CALLS: true,
+  DETAILED_ERROR_LOGGING: true
 } as const
