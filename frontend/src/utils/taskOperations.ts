@@ -28,6 +28,7 @@ export class TaskOperations {
 
   /**
    * タスク追加処理（ショートカット・UI共通）
+   * システムプロンプト準拠：KISS原則 - 名前空データ化（要件①）
    */
   async addTask(
     parentId: string | null = null, 
@@ -59,7 +60,8 @@ export class TaskOperations {
         : new Date()
 
       const newTaskData = {
-        name: name || '新しいタスク',
+        // 要件①：空データ化（KISS原則：1行変更のみ）
+        name: name || '',
         projectId: this.selectedProjectId,
         parentId,
         completed: false,

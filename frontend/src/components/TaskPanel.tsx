@@ -177,14 +177,18 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }
   }
 
-  // システムプロンプト準拠：データ検証付きタスク表示
+  // システムプロンプト準拠：データ検証付きタスク表示（要件①対応：空名前表示）
   const renderTask = (task: Task) => {
     try {
       // 必須フィールドの検証
-      if (!task.id || !task.name) {
+      if (!task.id) {
         logger.warn('Task missing required fields', { task })
         return null
       }
+
+      // 要件①対応：空名前時のプレースホルダー表示
+      const taskDisplayName = task.name.trim() || '（タスク名未設定）'
+      const isEmptyName = !task.name.trim()
 
       // 日付フィールドの安全な表示
       const dueDateDisplay = safeFormatDate(task.dueDate, '期限未設定')
@@ -197,7 +201,8 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             "flex items-start p-2 rounded-md cursor-pointer group transition-colors",
             selectedTaskId === task.id ? "bg-accent" : "hover:bg-accent/50",
             selectedTaskIds.includes(task.id) ? "bg-accent/80 ring-1 ring-primary" : "",
-            task.completed ? "text-muted-foreground" : ""
+            task.completed ? "text-muted-foreground" : "",
+            isEmptyName ? "border border-orange-200 bg-orange-50" : "" // 空名前時の視覚的強調
           )}
           style={{ marginLeft: `${task.level * 1.5}rem` }}
           onClick={(e) => onTaskSelect(task.id, e)}
@@ -233,14 +238,19 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
 
           {/* タスク内容 */}
           <div className="flex-grow">
-            <div className={cn("font-medium", task.completed ? "line-through" : "")}>
-              {task.name}
+            <div className={cn(
+              "font-medium", 
+              task.completed ? "line-through" : "",
+              isEmptyName ? "text-orange-600 italic" : ""
+            )}>
+              {taskDisplayName}
             </div>
             <div className="flex items-center text-xs text-muted-foreground mt-1">
               <span className="mr-2">
                 期限: {dueDateDisplay}
               </span>
               {task.notes && <span className="mr-2">📝</span>}
+              {isEmptyName && <span className="text-orange-500 ml-2">⚠ 名前未設定</span>}
             </div>
           </div>
 

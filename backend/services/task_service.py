@@ -20,13 +20,18 @@ class TaskService:
         """タスク一覧取得"""
         try:
             if project_id:
+                # システムプロンプト準拠：KISS原則 - SQLのORDER BY句のみ変更
+                # 要件③④を満たす：親子グループ化 + 階層順序 + 開始日順
                 tasks = self.db_manager.execute_query(
-                    "SELECT * FROM tasks WHERE project_id = ? ORDER BY level, created_at",
+                    """SELECT * FROM tasks 
+                       WHERE project_id = ? 
+                       ORDER BY COALESCE(parent_id, id), level, start_date ASC""",
                     (project_id,)
                 )
             else:
                 tasks = self.db_manager.execute_query(
-                    "SELECT * FROM tasks ORDER BY project_id, level, created_at"
+                    """SELECT * FROM tasks 
+                       ORDER BY project_id, COALESCE(parent_id, id), level, start_date ASC"""
                 )
             
             # システムプロンプト準拠：データ変換ログの出力
@@ -266,7 +271,7 @@ class TaskService:
             # 再帰的に子タスクを取得
             def get_children(parent_id: str) -> List[Dict[str, Any]]:
                 children = self.db_manager.execute_query(
-                    "SELECT * FROM tasks WHERE parent_id = ? ORDER BY created_at",
+                    "SELECT * FROM tasks WHERE parent_id = ? ORDER BY start_date ASC",
                     (parent_id,)
                 )
                 result = []

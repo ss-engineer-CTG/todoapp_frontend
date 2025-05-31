@@ -205,7 +205,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }, 100)
   }, [selectedTask, taskNotesRef])
 
-  // システムプロンプト準拠：保存処理（完了後の詳細パネル非表示削除）
+  // システムプロンプト準拠：保存処理（要件①対応：空名前バリデーション追加）
   const handleSave = async () => {
     if (!selectedTask || !editingState.hasChanges || isSaving) {
       logger.debug('Save skipped', { 
@@ -213,6 +213,18 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         hasChanges: editingState.hasChanges, 
         isSaving 
       })
+      return
+    }
+
+    // 要件①対応：空名前時のバリデーション強化
+    if (!editingState.name.trim()) {
+      logger.warn('Attempted to save task with empty name', { taskId: selectedTask.id })
+      handleError(new Error('タスク名は必須です'), 'タスク名を入力してください')
+      // 名前フィールドにフォーカスを戻す
+      setTimeout(() => {
+        taskNameInputRef.current?.focus()
+        taskNameInputRef.current?.select()
+      }, 0)
       return
     }
 
@@ -246,10 +258,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
       if (editingState.dueDate && isValidDate(editingState.dueDate) &&
           editingState.dueDate.getTime() !== selectedTask.dueDate?.getTime()) {
         updates.dueDate = editingState.dueDate
-      }
-
-      if (!updates.name?.trim() && editingState.name !== selectedTask.name) {
-        throw new Error('タスク名は必須です')
       }
 
       await onTaskUpdate(selectedTask.id, updates)
@@ -311,7 +319,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     )
   }
 
-  if (!selectedTask.id || !selectedTask.name) {
+  if (!selectedTask.id) {
     logger.warn('Selected task has invalid data', { task: selectedTask })
     return (
       <div className="w-80 border-l h-full p-4">
@@ -324,12 +332,16 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   }
 
   const projectInfo = getProjectInfo(selectedTask.projectId)
+  
+  // 要件①対応：空名前タスクの視覚的強調
+  const isEmptyName = !selectedTask.name.trim()
 
   return (
     <div
       className={cn(
         "w-80 border-l h-full",
-        activeArea === "details" ? "bg-accent/40" : ""
+        activeArea === "details" ? "bg-accent/40" : "",
+        isEmptyName ? "border-l-orange-300" : ""
       )}
       onClick={() => setActiveArea("details")}
     >
@@ -340,6 +352,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             {editingState.hasChanges && (
               <span className="ml-2 text-xs text-orange-500 font-normal">
                 •未保存
+              </span>
+            )}
+            {isEmptyName && (
+              <span className="ml-2 text-xs text-red-500 font-normal">
+                •名前未設定
               </span>
             )}
           </h2>
@@ -355,16 +372,27 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         </div>
 
         <div className="space-y-4 flex-grow overflow-y-auto">
-          {/* タスク名 */}
+          {/* タスク名（要件①対応：必須バリデーション強化） */}
           <div>
-            <label className="text-sm font-medium mb-1 block">タスク名</label>
+            <label className="text-sm font-medium mb-1 block">
+              タスク名 <span className="text-red-500">*</span>
+            </label>
             <Input
               ref={taskNameInputRef}
               value={editingState.name}
               onChange={(e) => updateEditingState('name', e.target.value)}
               tabIndex={activeArea === "details" ? 1 : -1}
-              className={editingState.name !== selectedTask.name ? "border-orange-300" : ""}
+              className={cn(
+                editingState.name !== selectedTask.name ? "border-orange-300" : "",
+                !editingState.name.trim() ? "border-red-300 bg-red-50" : ""
+              )}
+              placeholder="タスク名を入力してください"
             />
+            {!editingState.name.trim() && (
+              <p className="text-red-500 text-xs mt-1">
+                ⚠ タスク名は必須です
+              </p>
+            )}
           </div>
 
           {/* 開始日・期限日 */}
@@ -490,11 +518,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <Button
               ref={saveButtonRef}
               onClick={handleSaveButtonClick}
-              disabled={!editingState.hasChanges || isSaving}
+              disabled={!editingState.hasChanges || isSaving || !editingState.name.trim()}
               tabIndex={activeArea === "details" ? 6 : -1}
               className={cn(
                 "min-w-[80px]",
-                editingState.hasChanges 
+                editingState.hasChanges && editingState.name.trim()
                   ? "bg-orange-600 hover:bg-orange-700 text-white" 
                   : ""
               )}
