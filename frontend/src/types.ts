@@ -71,12 +71,23 @@ export type RangeSelectionState = {
   direction: 'up' | 'down' | null
 }
 
-// タブナビゲーション関連の型定義
+// 🔄 修正：タブナビゲーション関連の型定義（保存ボタン追加）
 export type TabNavigationRefs = {
   taskNameInputRef: React.RefObject<HTMLInputElement>
   startDateButtonRef: React.RefObject<HTMLButtonElement>
   dueDateButtonRef: React.RefObject<HTMLButtonElement>
   taskNotesRef: React.RefObject<HTMLTextAreaElement>
+  saveButtonRef: React.RefObject<HTMLButtonElement> // 🆕 追加
+}
+
+// 🆕 新規追加：編集状態管理用の型定義
+export type TaskEditingState = {
+  name: string
+  startDate: Date | null
+  dueDate: Date | null
+  assignee: string
+  notes: string
+  hasChanges: boolean
 }
 
 // API関連の型定義（システムプロンプト準拠：バックエンド応答形式追加）
@@ -132,7 +143,6 @@ export interface ProjectApiActions {
   deleteProject: (id: string) => Promise<void>
 }
 
-// 🎯 修正：TaskApiActionsにdeleteTaskを追加
 export interface TaskApiActions {
   createTask: (task: Omit<Task, 'id'>) => Promise<Task>
   updateTask: (id: string, updates: Partial<Task>) => Promise<Task>

@@ -28,7 +28,7 @@ const TodoApp: React.FC = () => {
     loadTasks,
     createTask,
     updateTask,
-    deleteTask, // 🎯 修正：deleteTaskを追加
+    deleteTask,
     batchUpdateTasks
   } = useApi()
 
@@ -115,11 +115,11 @@ const TodoApp: React.FC = () => {
     }
   })()
 
-  // 🎯 修正：TaskOperationsインスタンス作成（deleteTask追加）
+  // TaskOperationsインスタンス作成
   const taskApiActions = {
     createTask,
     updateTask,
-    deleteTask, // 🎯 修正：deleteTaskを追加
+    deleteTask,
     loadTasks: async () => {
       const result = await loadTasks(selectedProjectId)
       return result
@@ -364,8 +364,8 @@ const TodoApp: React.FC = () => {
     setIsDetailPanelVisible(true)
   }
 
-  // キーボードショートカット
-  const { taskNameInputRef, startDateButtonRef, dueDateButtonRef, taskNotesRef } = useKeyboardShortcuts({
+  // 🔧 修正：キーボードショートカット（saveButtonRefを取得）
+  const { taskNameInputRef, startDateButtonRef, dueDateButtonRef, taskNotesRef, saveButtonRef } = useKeyboardShortcuts({
     tasks: currentTasks,
     projects: currentProjects,
     selectedProjectId,
@@ -475,6 +475,7 @@ const TodoApp: React.FC = () => {
           apiActions={taskApiActions}
         />
 
+        {/* 🔧 修正：DetailPanelにsaveButtonRefを追加 */}
         {isDetailPanelVisible && (
           <DetailPanel
             selectedTask={selectedTask}
@@ -488,6 +489,7 @@ const TodoApp: React.FC = () => {
             startDateButtonRef={startDateButtonRef}
             dueDateButtonRef={dueDateButtonRef}
             taskNotesRef={taskNotesRef}
+            saveButtonRef={saveButtonRef} // 🆕 追加
           />
         )}
       </div>

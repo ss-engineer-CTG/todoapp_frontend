@@ -62,50 +62,98 @@ export const useKeyboardShortcuts = ({
   isEditingProject
 }: UseKeyboardShortcutsProps) => {
   
-  // 詳細パネル内のフォーカス管理用ref（page.tsx準拠）
+  // 🔄 修正：詳細パネル内のフォーカス管理用ref（保存ボタン追加）
   const taskNameInputRef = useRef<HTMLInputElement>(null)
   const startDateButtonRef = useRef<HTMLButtonElement>(null)
   const dueDateButtonRef = useRef<HTMLButtonElement>(null)
   const taskNotesRef = useRef<HTMLTextAreaElement>(null)
+  const saveButtonRef = useRef<HTMLButtonElement>(null) // 🆕 追加
 
-  // システムプロンプト準拠：修正 - 詳細パネル内のTab navigation
+  // 🆕 新規追加：詳細パネル内のEnterキーナビゲーション
+  const handleDetailEnterNavigation = useCallback((e: KeyboardEvent) => {
+    if (!selectedTaskId || activeArea !== "details") return
+
+    const activeElement = document.activeElement
+
+    // Enterキーでの順次移動：タスク名 → 開始日 → 期限日 → メモ → 保存ボタン
+    if (activeElement === taskNameInputRef.current) {
+      e.preventDefault()
+      startDateButtonRef.current?.focus()
+      logger.trace('Enter navigation: moved to start date button')
+    } else if (activeElement === startDateButtonRef.current) {
+      e.preventDefault()
+      dueDateButtonRef.current?.focus()
+      logger.trace('Enter navigation: moved to due date button')
+    } else if (activeElement === dueDateButtonRef.current) {
+      e.preventDefault()
+      taskNotesRef.current?.focus()
+      logger.trace('Enter navigation: moved to notes textarea')
+    } else if (activeElement === taskNotesRef.current) {
+      e.preventDefault()
+      saveButtonRef.current?.focus()
+      logger.trace('Enter navigation: moved to save button')
+    } else if (activeElement === saveButtonRef.current) {
+      // 保存ボタンでのEnterキーは保存処理を実行（DetailPanel側で処理）
+      logger.debug('Enter on save button - save action will be handled by DetailPanel')
+      // ここでは何もしない（DetailPanel側のイベントリスナーが処理）
+    }
+  }, [selectedTaskId, activeArea])
+
+  // システムプロンプト準拠：修正 - 詳細パネル内のTab navigation（保存ボタン追加）
   const handleDetailTabNavigation = useCallback((e: KeyboardEvent) => {
     if (!selectedTaskId || activeArea !== "details") return
 
     const isShiftTab = e.shiftKey
     const activeElement = document.activeElement
 
-    // タスク名 → 開始日 → 期限日 → メモ の順序でTab移動
+    // タスク名 → 開始日 → 期限日 → メモ → 保存ボタン の順序でTab移動
     if (activeElement === taskNameInputRef.current) {
       if (!isShiftTab) {
         e.preventDefault()
         startDateButtonRef.current?.focus()
+        logger.trace('Tab navigation: moved to start date button')
       }
     } else if (activeElement === startDateButtonRef.current) {
       if (isShiftTab) {
         e.preventDefault()
         taskNameInputRef.current?.focus()
+        logger.trace('Shift+Tab navigation: moved to task name input')
       } else {
         e.preventDefault()
         dueDateButtonRef.current?.focus()
+        logger.trace('Tab navigation: moved to due date button')
       }
     } else if (activeElement === dueDateButtonRef.current) {
       if (isShiftTab) {
         e.preventDefault()
         startDateButtonRef.current?.focus()
+        logger.trace('Shift+Tab navigation: moved to start date button')
       } else {
         e.preventDefault()
         taskNotesRef.current?.focus()
+        logger.trace('Tab navigation: moved to notes textarea')
       }
     } else if (activeElement === taskNotesRef.current) {
       if (isShiftTab) {
         e.preventDefault()
         dueDateButtonRef.current?.focus()
+        logger.trace('Shift+Tab navigation: moved to due date button')
+      } else {
+        e.preventDefault()
+        saveButtonRef.current?.focus()
+        logger.trace('Tab navigation: moved to save button')
       }
+    } else if (activeElement === saveButtonRef.current) {
+      if (isShiftTab) {
+        e.preventDefault()
+        taskNotesRef.current?.focus()
+        logger.trace('Shift+Tab navigation: moved to notes textarea')
+      }
+      // 順方向のTabでは保存ボタンが最後の要素なので何もしない
     }
   }, [selectedTaskId, activeArea])
 
-  // システムプロンプト準拠：修正 - イベントハンドリング改善
+  // システムプロンプト準拠：修正 - イベントハンドリング改善（Enterキー処理追加）
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       try {
@@ -127,6 +175,12 @@ export const useKeyboardShortcuts = ({
           return
         }
 
+        // 🆕 新規追加：詳細パネル内でのEnterキー処理
+        if (activeArea === "details" && e.key === "Enter") {
+          handleDetailEnterNavigation(e)
+          return
+        }
+
         // 詳細パネル内でのTabキー処理
         if (activeArea === "details" && e.key === "Tab") {
           handleDetailTabNavigation(e)
@@ -144,7 +198,7 @@ export const useKeyboardShortcuts = ({
 
         switch (e.key) {
           case "Enter":
-            // 同じレベルで新規タスク追加
+            // タスクエリア以外では通常のEnter処理
             if (activeArea === "tasks") {
               e.preventDefault()
               if (selectedTaskId) {
@@ -417,14 +471,16 @@ export const useKeyboardShortcuts = ({
     setSelectedProjectId,
     setActiveArea,
     setIsMultiSelectMode,
-    handleDetailTabNavigation
+    handleDetailTabNavigation,
+    handleDetailEnterNavigation // 🆕 追加
   ])
 
-  // 詳細パネル用のrefを返す
+  // 🔄 修正：詳細パネル用のrefを返す（保存ボタン追加）
   return {
     taskNameInputRef,
     startDateButtonRef,
     dueDateButtonRef,
-    taskNotesRef
+    taskNotesRef,
+    saveButtonRef // 🆕 追加
   }
 }
