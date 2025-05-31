@@ -271,9 +271,11 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
               isTemp ? "text-blue-700 font-medium" : ""
             )}>
               {taskDisplayName}
-              {/* システムプロンプト準拠：一時的タスクのインジケーター */}
+              {/* システムプロンプト準拠：一時的タスクのインジケーター（title属性を親divに移動） */}
               {isTemp && (
-                <Edit3 className="h-3 w-3 ml-2 text-blue-500" title="編集中のタスク" />
+                <div title="編集中のタスク">
+                  <Edit3 className="h-3 w-3 ml-2 text-blue-500" />
+                </div>
               )}
             </div>
             <div className="flex items-center text-xs text-muted-foreground mt-1">
@@ -364,7 +366,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
 
   // システムプロンプト準拠：一時的タスクの統計情報
   const temporaryTasksCount = tasks.filter(isTemporaryTask).length
-  const regularTasksCount = tasks.length - temporaryTasksCount
 
   return (
     <div

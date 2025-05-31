@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { apiService } from '../services/apiService'
 import { logger } from '../utils/logger'
 import { handleError, handleDateConversionError, handleTemporaryTaskError } from '../utils/errorHandler'
-import { Project, Task, BatchOperationResult, TemporaryTaskResult } from '../types'
+import { Project, Task, BatchOperationResult } from '../types'
 import { isValidDate } from '../utils/dateUtils'
 import { TASK_OPERATION_CONSTANTS } from '../config/constants'
 

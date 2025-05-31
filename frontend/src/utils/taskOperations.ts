@@ -3,7 +3,7 @@ import { Task, TaskApiActions, TemporaryTaskResult } from '../types'
 import { logger } from './logger'
 import { handleError, handleTemporaryTaskError, handleTemporaryTaskSaveError } from './errorHandler'
 import { isValidDate } from './dateUtils'
-import { TASK_OPERATION_CONSTANTS, TEMPORARY_TASK_OPERATIONS } from '../config/constants'
+import { TASK_OPERATION_CONSTANTS } from '../config/constants'
 
 /**
  * 一時的タスク管理統合クラス

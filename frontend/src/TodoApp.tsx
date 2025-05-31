@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Project, Task, AreaType, BatchOperation, TaskCreationFlow, FocusManagement } from './types'
+import { Task, AreaType, BatchOperation, TaskCreationFlow, FocusManagement } from './types'
 import { ProjectPanel } from './components/ProjectPanel'
 import { TaskPanel } from './components/TaskPanel'
 import { DetailPanel } from './components/DetailPanel'
@@ -19,7 +19,6 @@ import { BATCH_OPERATIONS } from './config/constants'
 const TodoApp: React.FC = () => {
   const {
     projects,
-    tasks,
     loadProjects,
     createProject,
     updateProject,
@@ -152,6 +151,13 @@ const TodoApp: React.FC = () => {
   }
 
   const taskOperations = createTaskOperations(taskApiActions, currentTasks, selectedProjectId)
+
+  // システムプロンプト準拠：プロジェクト一覧更新処理
+  const handleProjectsUpdate = (updatedProjects: any[]) => {
+    // 内部的にはuseApiのstateが管理しているため、
+    // 特別な処理は不要（APIの結果で自動更新される）
+    logger.debug('Projects update requested', { count: updatedProjects.length })
+  }
 
   // システムプロンプト準拠：軽量化されたフォーカス管理
   useEffect(() => {
@@ -552,6 +558,7 @@ const TodoApp: React.FC = () => {
       <div className="flex h-screen bg-background">
         <ProjectPanel
           projects={currentProjects}
+          onProjectsUpdate={handleProjectsUpdate}
           selectedProjectId={selectedProjectId}
           onProjectSelect={handleProjectSelect}
           activeArea={activeArea}
