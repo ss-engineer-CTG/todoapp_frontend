@@ -1,6 +1,7 @@
 """
 タスクサービス
 システムプロンプト準拠：DRY原則、ビジネスロジック集約
+階層タスク表示順序問題対応：シンプルなSQL ORDER BY句に変更
 """
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -19,115 +20,39 @@ class TaskService:
     def get_tasks(self, project_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         タスク一覧取得
-        システムプロンプト準拠：要求仕様に基づく表示順序実装
-        ①レベル0タスクを期限日昇順
-        ②下位レベルをレベル順&同階層期限日昇順
+        システムプロンプト準拠：KISS原則 - 階層ソートをフロントエンドに移管
         """
         try:
             if project_id:
-                # システムプロンプト準拠：シンプルで確実なソート実装
-                # まず全タスクを取得し、アプリケーション側で並び替え
+                # システムプロンプト準拠：KISS原則 - シンプルなSQL ORDER BY句
+                # 階層構造の維持はフロントエンド側で処理
                 tasks = self.db_manager.execute_query(
                     """SELECT * FROM tasks 
                        WHERE project_id = ? 
-                       ORDER BY level ASC, due_date ASC""",
+                       ORDER BY created_at ASC, id ASC""",
                     (project_id,)
                 )
             else:
                 tasks = self.db_manager.execute_query(
                     """SELECT * FROM tasks 
-                       ORDER BY project_id, level ASC, due_date ASC"""
+                       ORDER BY project_id, created_at ASC, id ASC"""
                 )
-            
-            # システムプロンプト準拠：要求仕様に基づく階層ソート
-            if project_id:
-                tasks = self._sort_tasks_hierarchically(tasks)
             
             # システムプロンプト準拠：データ変換ログの出力
             log_data_conversion(
                 logger, 
-                'get_tasks_ordered', 
+                'get_tasks', 
                 {'project_id': project_id}, 
                 tasks, 
                 True,
-                {'task_count': len(tasks), 'order_rule': 'hierarchical_due_date_sort'}
+                {'task_count': len(tasks), 'sort_method': 'created_at_asc'}
             )
             
-            logger.info(f"Retrieved {len(tasks)} tasks with hierarchical ordering" + (f" for project {project_id}" if project_id else ""))
+            logger.info(f"Retrieved {len(tasks)} tasks" + (f" for project {project_id}" if project_id else "") + " (frontend hierarchy sort enabled)")
             return tasks
         except Exception as e:
             logger.error(f"Failed to retrieve tasks: {e}")
             raise
-    
-    def _sort_tasks_hierarchically(self, tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        システムプロンプト準拠：階層構造を考慮したタスクソート
-        ①レベル0タスクを期限日昇順
-        ②各レベル0タスクの下に子タスクをレベル順&期限日順で配置
-        """
-        try:
-            # レベル0タスクとその他を分離
-            level0_tasks = [task for task in tasks if task.get('level', 0) == 0]
-            child_tasks = [task for task in tasks if task.get('level', 0) > 0]
-            
-            # レベル0タスクを期限日順でソート
-            level0_tasks.sort(key=lambda task: task.get('due_date', ''))
-            
-            # 結果リスト
-            sorted_tasks = []
-            
-            # 各レベル0タスクとその子タスクを処理
-            for root_task in level0_tasks:
-                sorted_tasks.append(root_task)
-                
-                # この親タスクに属する子タスクを再帰的に追加
-                self._add_child_tasks(sorted_tasks, root_task['id'], child_tasks, set())
-            
-            # 親を持たない子タスク（データ不整合の場合）も末尾に追加
-            orphan_tasks = [task for task in child_tasks 
-                          if not any(task['id'] in [t['id'] for t in sorted_tasks])]
-            orphan_tasks.sort(key=lambda task: (task.get('level', 0), task.get('due_date', '')))
-            sorted_tasks.extend(orphan_tasks)
-            
-            logger.debug(f"Hierarchical sort completed: {len(sorted_tasks)} tasks")
-            return sorted_tasks
-            
-        except Exception as e:
-            logger.error(f"Error in hierarchical sort: {e}")
-            # フォールバック：元のリストを返す
-            return tasks
-    
-    def _add_child_tasks(self, result_list: List[Dict[str, Any]], parent_id: str, 
-                        all_child_tasks: List[Dict[str, Any]], processed_ids: set):
-        """
-        指定された親タスクの子タスクを再帰的に追加
-        システムプロンプト準拠：循環参照防止とレベル順ソート
-        """
-        try:
-            # 循環参照防止
-            if parent_id in processed_ids:
-                logger.warn(f"Circular reference detected for task {parent_id}")
-                return
-            
-            processed_ids.add(parent_id)
-            
-            # 直接の子タスクを検索
-            direct_children = [task for task in all_child_tasks 
-                             if task.get('parent_id') == parent_id]
-            
-            # 子タスクをレベル順、同レベルでは期限日順でソート
-            direct_children.sort(key=lambda task: (task.get('level', 0), task.get('due_date', '')))
-            
-            # 各子タスクを追加し、その子タスクも再帰的に処理
-            for child_task in direct_children:
-                # 既に処理済みでない場合のみ追加
-                if not any(child_task['id'] == t['id'] for t in result_list):
-                    result_list.append(child_task)
-                    # 孫タスクも再帰的に追加
-                    self._add_child_tasks(result_list, child_task['id'], all_child_tasks, processed_ids)
-                    
-        except Exception as e:
-            logger.error(f"Error adding child tasks for parent {parent_id}: {e}")
     
     def get_task_by_id(self, task_id: str) -> Dict[str, Any]:
         """タスクID指定取得"""
@@ -350,7 +275,7 @@ class TaskService:
             # 再帰的に子タスクを取得
             def get_children(parent_id: str) -> List[Dict[str, Any]]:
                 children = self.db_manager.execute_query(
-                    "SELECT * FROM tasks WHERE parent_id = ? ORDER BY due_date ASC",
+                    "SELECT * FROM tasks WHERE parent_id = ? ORDER BY created_at ASC",
                     (parent_id,)
                 )
                 result = []

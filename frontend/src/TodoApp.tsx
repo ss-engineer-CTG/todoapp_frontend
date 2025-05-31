@@ -11,6 +11,8 @@ import { useMultiSelect } from './hooks/useMultiSelect'
 import { useScrollToTask } from './hooks/useScrollToTask'
 import { useApi } from './hooks/useApi'
 import { createTaskOperations } from './utils/taskOperations'
+// システムプロンプト準拠：軽量な階層ソート機能のインポート
+import { sortTasksHierarchically } from './utils/hierarchySort'
 import { logger } from './utils/logger'
 import { handleError, handleTemporaryTaskError } from './utils/errorHandler'
 import { isValidDate } from './utils/dateUtils'
@@ -71,34 +73,79 @@ const TodoApp: React.FC = () => {
 
   const { taskRelationMap } = useTaskRelations(currentTasks)
 
-  const filteredTasks = currentTasks.filter((task) => {
+  // システムプロンプト準拠：軽量な階層ソート適用によるfilteredTasks生成
+  const filteredTasks = (() => {
     try {
-      if (!task.id || !task.projectId) {
-        logger.warn('Task missing required fields during filtering', { task })
-        return false
-      }
+      // 基本フィルタリング
+      const basicFilteredTasks = currentTasks.filter((task) => {
+        try {
+          if (!task.id || !task.projectId) {
+            logger.warn('Task missing required fields during filtering', { task })
+            return false
+          }
 
-      if (task.projectId !== selectedProjectId) return false
-      if (!showCompleted && task.completed) return false
+          if (task.projectId !== selectedProjectId) return false
+          if (!showCompleted && task.completed) return false
 
-      // システムプロンプト準拠：一時的タスクは常に表示
-      if (task.isTemporary) return true
+          // システムプロンプト準拠：一時的タスクは常に表示
+          if (task.isTemporary) return true
 
-      if (task.parentId) {
-        let currentParentId: string | null = task.parentId
-        while (currentParentId) {
-          const currentParent = currentTasks.find((t) => t.id === currentParentId)
-          if (currentParent && currentParent.collapsed) return false
-          currentParentId = taskRelationMap.parentMap[currentParentId] || null
+          if (task.parentId) {
+            let currentParentId: string | null = task.parentId
+            while (currentParentId) {
+              const currentParent = currentTasks.find((t) => t.id === currentParentId)
+              if (currentParent && currentParent.collapsed) return false
+              currentParentId = taskRelationMap.parentMap[currentParentId] || null
+            }
+          }
+
+          return true
+        } catch (error) {
+          logger.error('Error during task filtering', { task, error })
+          return false
         }
+      })
+
+      logger.debug('Basic filtering completed', {
+        total: currentTasks.length,
+        filtered: basicFilteredTasks.length,
+        projectId: selectedProjectId
+      })
+
+      // システムプロンプト準拠：KISS原則 - 軽量な階層ソートの適用
+      if (basicFilteredTasks.length === 0) {
+        return []
       }
 
-      return true
+      // 階層ソート実行
+      const hierarchicallySortedTasks = sortTasksHierarchically(
+        basicFilteredTasks,
+        taskRelationMap
+      )
+
+      logger.debug('Hierarchy sort applied', {
+        originalCount: basicFilteredTasks.length,
+        sortedCount: hierarchicallySortedTasks.length
+      })
+
+      return hierarchicallySortedTasks
+
     } catch (error) {
-      logger.error('Error during task filtering', { task, error })
-      return false
+      logger.error('Task filtering and sorting failed', { 
+        projectId: selectedProjectId, 
+        taskCount: currentTasks.length,
+        error 
+      })
+      
+      // フォールバック：基本フィルタリングのみ適用
+      return currentTasks.filter((task) => {
+        if (!task.id || !task.projectId) return false
+        if (task.projectId !== selectedProjectId) return false
+        if (!showCompleted && task.completed) return false
+        return true
+      })
     }
-  })
+  })()
 
   const {
     selectedId: selectedTaskId,
