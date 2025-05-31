@@ -286,6 +286,12 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     await handleSave()
   }
 
+  // システムプロンプト準拠：フォーカス管理改善
+  const handlePanelClick = () => {
+    logger.debug('Detail panel clicked, setting active area')
+    setActiveArea("details")
+  }
+
   // システムプロンプト準拠：安全なプロジェクト情報取得
   const getProjectInfo = (projectId: string) => {
     try {
@@ -308,9 +314,9 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
       <div
         className={cn(
           "w-80 border-l h-full",
-          activeArea === "details" ? "bg-accent/40" : ""
+          activeArea === "details" ? "bg-accent/40 ring-1 ring-primary/20" : ""
         )}
-        onClick={() => setActiveArea("details")}
+        onClick={handlePanelClick}
       >
         <div className="flex items-center justify-center h-full text-muted-foreground">
           <p>タスクを選択して詳細を表示</p>
@@ -340,10 +346,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     <div
       className={cn(
         "w-80 border-l h-full",
-        activeArea === "details" ? "bg-accent/40" : "",
+        activeArea === "details" ? "bg-accent/40 ring-1 ring-primary/20" : "",
         isEmptyName ? "border-l-orange-300" : ""
       )}
-      onClick={() => setActiveArea("details")}
+      onClick={handlePanelClick}
     >
       <div className="p-4 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">

@@ -8,6 +8,7 @@ import { ColorPicker } from './ColorPicker'
 import { PROJECT_COLORS } from '../config/constants'
 import { cn } from '@/lib/utils'
 import { handleError } from '../utils/errorHandler'
+import { logger } from '../utils/logger'
 
 interface ProjectPanelProps {
   projects: Project[]
@@ -44,6 +45,7 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
 
   const newProjectInputRef = useRef<HTMLInputElement>(null)
   const editProjectInputRef = useRef<HTMLInputElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null) // システムプロンプト準拠：フォーカス管理改善
 
   function getRandomColor() {
     return PROJECT_COLORS[Math.floor(Math.random() * PROJECT_COLORS.length)].value
@@ -137,13 +139,33 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
     }
   }
 
+  // システムプロンプト準拠：フォーカス管理改善
+  const handlePanelClick = () => {
+    logger.debug('Project panel clicked, setting active area')
+    setActiveArea("projects")
+    // パネル自体にフォーカスを設定
+    if (panelRef.current) {
+      panelRef.current.focus()
+    }
+  }
+
+  const handlePanelFocus = () => {
+    logger.debug('Project panel focused')
+    setActiveArea("projects")
+  }
+
   return (
     <div
+      ref={panelRef}
       className={cn(
-        "w-64 border-r p-4 flex flex-col h-full",
-        activeArea === "projects" ? "bg-accent/40" : ""
+        "w-64 border-r p-4 flex flex-col h-full outline-none",
+        activeArea === "projects" ? "bg-accent/40 ring-1 ring-primary/20" : ""
       )}
-      onClick={() => setActiveArea("projects")}
+      onClick={handlePanelClick}
+      onFocus={handlePanelFocus}
+      tabIndex={0} // システムプロンプト準拠：フォーカス可能にする
+      role="region"
+      aria-label="プロジェクト一覧"
     >
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">プロジェクト</h2>
@@ -211,7 +233,10 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
               "flex items-center p-2 rounded-md cursor-pointer group transition-colors",
               selectedProjectId === project.id ? "bg-accent" : "hover:bg-accent/50"
             )}
-            onClick={() => onProjectSelect(project.id)}
+            onClick={() => {
+              logger.debug('Project selected', { projectId: project.id })
+              onProjectSelect(project.id)
+            }}
             style={{
               borderLeft: `4px solid ${project.color}`,
             }}

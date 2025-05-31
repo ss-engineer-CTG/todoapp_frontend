@@ -68,7 +68,21 @@ export const useKeyboardShortcuts = ({
   const taskNotesRef = useRef<HTMLTextAreaElement>(null)
   const saveButtonRef = useRef<HTMLButtonElement>(null)
 
-  // システムプロンプト準拠：KISS原則 - シンプルな判定関数
+  // システムプロンプト準拠：KISS原則 - 実際のDOMフォーカス位置を直接確認
+  const isDetailPanelInputFocused = useCallback((): boolean => {
+    const activeElement = document.activeElement
+    if (!activeElement) return false
+
+    // 詳細パネル内の入力フィールドに実際にフォーカスがある場合のみtrue
+    return !!(
+      activeElement === taskNameInputRef.current ||
+      activeElement === taskNotesRef.current ||
+      activeElement === startDateButtonRef.current ||
+      activeElement === dueDateButtonRef.current ||
+      activeElement === saveButtonRef.current
+    )
+  }, [])
+
   const isNewTaskInputActive = useCallback((target: EventTarget | null): boolean => {
     if (!target || !(target instanceof Element)) return false
     
@@ -102,51 +116,70 @@ export const useKeyboardShortcuts = ({
     return (isInput && !isNewTaskInput) || isProjectEditing
   }, [isAddingProject, isEditingProject, isNewTaskInputActive])
 
-  // システムプロンプト準拠：詳細パネル内のTab navigation
+  // システムプロンプト準拠：詳細パネル内のTab navigation（実際にフォーカスがある場合のみ）
   const handleDetailTabNavigation = useCallback((e: KeyboardEvent) => {
-    if (!selectedTaskId || activeArea !== "details") return
+    if (!selectedTaskId || !isDetailPanelInputFocused()) return false
 
     const isShiftTab = e.shiftKey
     const activeElement = document.activeElement
+
+    let handled = false
 
     if (activeElement === taskNameInputRef.current) {
       if (!isShiftTab) {
         e.preventDefault()
         startDateButtonRef.current?.focus()
+        handled = true
       }
     } else if (activeElement === startDateButtonRef.current) {
       if (isShiftTab) {
         e.preventDefault()
         taskNameInputRef.current?.focus()
+        handled = true
       } else {
         e.preventDefault()
         dueDateButtonRef.current?.focus()
+        handled = true
       }
     } else if (activeElement === dueDateButtonRef.current) {
       if (isShiftTab) {
         e.preventDefault()
         startDateButtonRef.current?.focus()
+        handled = true
       } else {
         e.preventDefault()
         taskNotesRef.current?.focus()
+        handled = true
       }
     } else if (activeElement === taskNotesRef.current) {
       if (isShiftTab) {
         e.preventDefault()
         dueDateButtonRef.current?.focus()
+        handled = true
       } else {
         e.preventDefault()
         saveButtonRef.current?.focus()
+        handled = true
       }
     } else if (activeElement === saveButtonRef.current) {
       if (isShiftTab) {
         e.preventDefault()
         taskNotesRef.current?.focus()
+        handled = true
       }
     }
-  }, [selectedTaskId, activeArea])
 
-  // システムプロンプト準拠：統一されたキーボードショートカット処理
+    if (handled) {
+      logger.debug('Detail panel tab navigation handled', { 
+        from: activeElement?.tagName, 
+        shift: isShiftTab 
+      })
+    }
+
+    return handled
+  }, [selectedTaskId, isDetailPanelInputFocused])
+
+  // システムプロンプト準拠：統一されたキーボードショートカット処理（修正版）
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       try {
@@ -157,11 +190,13 @@ export const useKeyboardShortcuts = ({
 
         // 新規タスク名入力中はショートカット無効
         if (isNewTaskInput) {
+          logger.trace('Keyboard shortcut skipped: new task input active')
           return
         }
 
         // 一般入力フィールド中はスキップ（カレンダー以外）
         if (isGeneralInput && !isCalendar) {
+          logger.trace('Keyboard shortcut skipped: general input active')
           return
         }
 
@@ -169,66 +204,80 @@ export const useKeyboardShortcuts = ({
         if (isCalendar) {
           const navigationKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Escape']
           if (!navigationKeys.includes(e.key) && !e.ctrlKey) {
+            logger.trace('Keyboard shortcut skipped: calendar active, non-navigation key')
             return
           }
         }
 
-        // 詳細パネル内でのTabキー処理
-        if (activeArea === "details" && e.key === "Tab") {
-          handleDetailTabNavigation(e)
-          return
+        // システムプロンプト準拠：修正 - 詳細パネル内で実際にフォーカスがある場合のみTab制限
+        if (e.key === "Tab" && isDetailPanelInputFocused()) {
+          const handled = handleDetailTabNavigation(e)
+          if (handled) {
+            return
+          }
         }
 
-        // システムプロンプト準拠：DRY原則 - activeAreaベースの統一判定
+        // システムプロンプト準拠：KISS原則 - シンプルなキーベース判定
         switch (e.key) {
           case "Enter":
-            if (activeArea === "tasks") {
+            // タスクパネル関連またはタスクが選択されている場合
+            if (activeArea === "tasks" || (selectedTaskId && !isDetailPanelInputFocused())) {
               e.preventDefault()
               if (selectedTaskId) {
                 const task = tasks.find((t) => t.id === selectedTaskId)
                 if (task) {
+                  logger.info('Adding task via Enter key', { parentId: task.parentId, level: task.level })
                   onAddTask(task.parentId, task.level)
                 }
               } else {
+                logger.info('Adding root task via Enter key')
                 onAddTask(null, 0)
               }
             }
             break
 
           case "Tab":
-            if (activeArea === "tasks" && selectedTaskId) {
+            // タスクパネル関連またはタスクが選択されていて、詳細パネル入力欄にフォーカスがない場合
+            if ((activeArea === "tasks" || selectedTaskId) && !isDetailPanelInputFocused()) {
               e.preventDefault()
-              const task = tasks.find((t) => t.id === selectedTaskId)
-              const level = task ? task.level + 1 : 1
-              onAddTask(selectedTaskId, level)
+              if (selectedTaskId) {
+                const task = tasks.find((t) => t.id === selectedTaskId)
+                const level = task ? task.level + 1 : 1
+                logger.info('Adding child task via Tab key', { parentId: selectedTaskId, level })
+                onAddTask(selectedTaskId, level)
+              }
             }
             break
 
           case "Delete":
           case "Backspace":
-            if (activeArea === "tasks" && selectedTaskId) {
+            if ((activeArea === "tasks" || selectedTaskId) && selectedTaskId && !isDetailPanelInputFocused()) {
               e.preventDefault()
+              logger.info('Deleting task via keyboard', { taskId: selectedTaskId })
               onDeleteTask(selectedTaskId)
             }
             break
 
           case "c":
-            if (e.ctrlKey && activeArea === "tasks" && selectedTaskId) {
+            if (e.ctrlKey && (activeArea === "tasks" || selectedTaskId) && selectedTaskId && !isDetailPanelInputFocused()) {
               e.preventDefault()
+              logger.info('Copying task via keyboard', { taskId: selectedTaskId })
               onCopyTask(selectedTaskId)
             }
             break
 
           case "v":
-            if (e.ctrlKey && activeArea === "tasks" && copiedTasks.length > 0) {
+            if (e.ctrlKey && (activeArea === "tasks" || selectedTaskId) && copiedTasks.length > 0 && !isDetailPanelInputFocused()) {
               e.preventDefault()
+              logger.info('Pasting task via keyboard', { copiedTasksCount: copiedTasks.length })
               onPasteTask()
             }
             break
 
           case " ":
-            if (activeArea === "tasks" && selectedTaskId) {
+            if ((activeArea === "tasks" || selectedTaskId) && selectedTaskId && !isDetailPanelInputFocused()) {
               e.preventDefault()
+              logger.info('Toggling task completion via keyboard', { taskId: selectedTaskId })
               onToggleTaskCompletion(selectedTaskId)
             }
             break
@@ -237,6 +286,7 @@ export const useKeyboardShortcuts = ({
             e.preventDefault()
             if (activeArea === "tasks" && filteredTasks.length > 0) {
               if (e.shiftKey && selectedTaskId) {
+                logger.debug('Range select up via keyboard')
                 onHandleKeyboardRangeSelect('up')
               } else {
                 if (selectedTaskId) {
@@ -247,16 +297,20 @@ export const useKeyboardShortcuts = ({
                     if (!isMultiSelectMode) {
                       setSelectedTaskIds([prevTaskId])
                     }
+                    logger.debug('Moved to previous task', { taskId: prevTaskId })
                   }
                 } else if (filteredTasks.length > 0) {
                   setSelectedTaskId(filteredTasks[0].id)
                   setSelectedTaskIds([filteredTasks[0].id])
+                  logger.debug('Selected first task', { taskId: filteredTasks[0].id })
                 }
               }
             } else if (activeArea === "projects" && projects.length > 0) {
               const currentIndex = projects.findIndex((p) => p.id === selectedProjectId)
               if (currentIndex > 0) {
-                setSelectedProjectId(projects[currentIndex - 1].id)
+                const prevProjectId = projects[currentIndex - 1].id
+                setSelectedProjectId(prevProjectId)
+                logger.debug('Moved to previous project', { projectId: prevProjectId })
               }
             }
             break
@@ -265,6 +319,7 @@ export const useKeyboardShortcuts = ({
             e.preventDefault()
             if (activeArea === "tasks" && filteredTasks.length > 0) {
               if (e.shiftKey && selectedTaskId) {
+                logger.debug('Range select down via keyboard')
                 onHandleKeyboardRangeSelect('down')
               } else {
                 if (selectedTaskId) {
@@ -275,16 +330,20 @@ export const useKeyboardShortcuts = ({
                     if (!isMultiSelectMode) {
                       setSelectedTaskIds([nextTaskId])
                     }
+                    logger.debug('Moved to next task', { taskId: nextTaskId })
                   }
                 } else if (filteredTasks.length > 0) {
                   setSelectedTaskId(filteredTasks[0].id)
                   setSelectedTaskIds([filteredTasks[0].id])
+                  logger.debug('Selected first task', { taskId: filteredTasks[0].id })
                 }
               }
             } else if (activeArea === "projects" && projects.length > 0) {
               const currentIndex = projects.findIndex((p) => p.id === selectedProjectId)
               if (currentIndex < projects.length - 1) {
-                setSelectedProjectId(projects[currentIndex + 1].id)
+                const nextProjectId = projects[currentIndex + 1].id
+                setSelectedProjectId(nextProjectId)
+                logger.debug('Moved to next project', { projectId: nextProjectId })
               }
             }
             break
@@ -294,6 +353,7 @@ export const useKeyboardShortcuts = ({
               const hasChildren = taskRelationMap.childrenMap[selectedTaskId]?.length > 0
               if (hasChildren) {
                 e.preventDefault()
+                logger.debug('Toggling task collapse via keyboard', { taskId: selectedTaskId })
                 onToggleTaskCollapse(selectedTaskId)
               }
             } else {
@@ -304,11 +364,13 @@ export const useKeyboardShortcuts = ({
                   setSelectedTaskId(filteredTasks[0].id)
                   setSelectedTaskIds([filteredTasks[0].id])
                 }
-              } else if (activeArea === "tasks" && isDetailPanelVisible && selectedTaskId) {
+                logger.debug('Moved from projects to tasks area')
+              } else if (activeArea === "tasks" && isDetailPanelVisible && selectedTaskId && !isDetailPanelInputFocused()) {
                 setActiveArea("details")
                 setTimeout(() => {
                   taskNameInputRef.current?.focus()
                 }, 0)
+                logger.debug('Moved from tasks to details area')
               }
             }
             break
@@ -321,13 +383,17 @@ export const useKeyboardShortcuts = ({
                 setSelectedTaskId(task.parentId)
                 setSelectedTaskIds([task.parentId])
                 setIsMultiSelectMode(false)
+                logger.debug('Moved to parent task', { taskId: task.parentId })
               } else {
                 setActiveArea("projects")
+                logger.debug('Moved from tasks to projects area')
               }
             } else if (activeArea === "details") {
               setActiveArea("tasks")
+              logger.debug('Moved from details to tasks area')
             } else if (activeArea === "tasks") {
               setActiveArea("projects")
+              logger.debug('Moved from tasks to projects area')
             }
             break
 
@@ -340,12 +406,14 @@ export const useKeyboardShortcuts = ({
               } else {
                 setSelectedTaskIds([])
               }
+              logger.debug('Exited multi-select mode')
             }
             break
 
           case "a":
-            if (e.ctrlKey && activeArea === "tasks" && filteredTasks.length > 0) {
+            if (e.ctrlKey && activeArea === "tasks" && filteredTasks.length > 0 && !isDetailPanelInputFocused()) {
               e.preventDefault()
+              logger.debug('Selecting all tasks via keyboard')
               onSelectAll()
             }
             break
@@ -396,7 +464,8 @@ export const useKeyboardShortcuts = ({
     handleDetailTabNavigation,
     isNewTaskInputActive,
     isCalendarActive,
-    isGeneralInputActive
+    isGeneralInputActive,
+    isDetailPanelInputFocused
   ])
 
   return {

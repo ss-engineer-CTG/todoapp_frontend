@@ -87,6 +87,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   const [newTaskLevel, setNewTaskLevel] = useState(0)
 
   const newTaskInputRef = useRef<HTMLInputElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null) // システムプロンプト準拠：フォーカス管理改善
 
   // システムプロンプト準拠：DRY原則 - TaskOperationsを活用
   const taskOperations = createTaskOperations(apiActions, allTasks, selectedProjectId)
@@ -181,6 +182,21 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     } catch (error) {
       handleError(error, `一括${operation}操作に失敗しました`)
     }
+  }
+
+  // システムプロンプト準拠：フォーカス管理改善
+  const handlePanelClick = () => {
+    logger.debug('Task panel clicked, setting active area')
+    setActiveArea("tasks")
+    // パネル自体にフォーカスを設定
+    if (panelRef.current) {
+      panelRef.current.focus()
+    }
+  }
+
+  const handlePanelFocus = () => {
+    logger.debug('Task panel focused')
+    setActiveArea("tasks")
   }
 
   const renderTask = (task: Task) => {
@@ -318,13 +334,13 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
 
   return (
     <div
-      // システムプロンプト準拠：KISS原則 - 最小限のフォーカス管理
-      tabIndex={0}
-      onFocus={() => setActiveArea("tasks")}
-      onClick={() => setActiveArea("tasks")}
+      ref={panelRef}
+      tabIndex={0} // システムプロンプト準拠：フォーカス可能にする
+      onFocus={handlePanelFocus}
+      onClick={handlePanelClick}
       className={cn(
         "flex-1 flex flex-col h-full overflow-hidden outline-none",
-        activeArea === "tasks" ? "bg-accent/40" : ""
+        activeArea === "tasks" ? "bg-accent/40 ring-1 ring-primary/20" : ""
       )}
       role="region"
       aria-label="タスク一覧"

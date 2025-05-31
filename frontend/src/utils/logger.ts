@@ -58,6 +58,39 @@ class Logger {
     this.log(LogLevel.TRACE, message, context)
   }
 
+  // システムプロンプト準拠：フォーカス関連ログ専用メソッド（新規追加）
+  logFocusEvent(event: string, details?: any): void {
+    this.debug(`Focus Event: ${event}`, {
+      type: 'focus',
+      event,
+      details,
+      activeElement: document.activeElement?.tagName,
+      activeElementId: document.activeElement?.id,
+      timestamp: new Date().toISOString()
+    })
+  }
+
+  logKeyboardEvent(key: string, handled: boolean, context?: any): void {
+    this.debug(`Keyboard Event: ${key}`, {
+      type: 'keyboard',
+      key,
+      handled,
+      activeElement: document.activeElement?.tagName,
+      context,
+      timestamp: new Date().toISOString()
+    })
+  }
+
+  logAreaTransition(from: string, to: string, reason?: string): void {
+    this.debug(`Area Transition: ${from} → ${to}`, {
+      type: 'area_transition',
+      from,
+      to,
+      reason,
+      timestamp: new Date().toISOString()
+    })
+  }
+
   private log(level: LogLevel, message: string, context?: any): void {
     if (level <= this.level) {
       const timestamp = new Date().toISOString()
