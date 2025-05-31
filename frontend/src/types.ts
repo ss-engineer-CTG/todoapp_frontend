@@ -39,7 +39,7 @@ export type ProjectColor = {
 
 export type AreaType = "projects" | "tasks" | "details"
 
-// 複数選択関連の型定義（page.tsx準拠）
+// 複数選択関連の型定義
 export type SelectionState = {
   selectedId: string | null
   selectedIds: string[]
@@ -64,7 +64,7 @@ export type BatchOperationResult = {
   errors?: string[]
 }
 
-// 範囲選択関連の型定義（page.tsx準拠）
+// 範囲選択関連の型定義
 export type RangeSelectionState = {
   startIndex: number
   endIndex: number
@@ -79,7 +79,7 @@ export type TabNavigationRefs = {
   taskNotesRef: React.RefObject<HTMLTextAreaElement>
 }
 
-// API関連の型定義
+// API関連の型定義（システムプロンプト準拠：バックエンド応答形式追加）
 export interface ApiResponse<T> {
   data: T
   success: boolean
@@ -90,6 +90,33 @@ export interface ApiError {
   message: string
   code?: string
   details?: any
+}
+
+// システムプロンプト準拠：新規追加 - バックエンドから返される日付フィールド形式
+export interface ApiTaskResponse {
+  id: string
+  name: string
+  project_id: string // バックエンド形式
+  parent_id: string | null // バックエンド形式
+  completed: boolean
+  start_date: string // バックエンド形式（ISO文字列）
+  due_date: string // バックエンド形式（ISO文字列）
+  completion_date: string | null // バックエンド形式（ISO文字列）
+  notes: string
+  assignee: string
+  level: number
+  collapsed: boolean
+  created_at: string // バックエンド形式
+  updated_at: string // バックエンド形式
+}
+
+export interface ApiProjectResponse {
+  id: string
+  name: string
+  color: string
+  collapsed: boolean
+  created_at: string // バックエンド形式
+  updated_at: string // バックエンド形式
 }
 
 export interface PaginationParams {
@@ -119,7 +146,7 @@ export type KeyboardShortcutMap = {
   [key: string]: KeyboardEventHandler
 }
 
-// 複数選択操作の型定義（page.tsx準拠）
+// 複数選択操作の型定義
 export type MultiSelectActions = {
   handleSelect: (itemId: string, event?: React.MouseEvent) => void
   handleKeyboardRangeSelect: (direction: 'up' | 'down') => void
@@ -140,4 +167,18 @@ export type PerformanceMetric = {
   operation: string
   duration: number
   timestamp: number
+}
+
+// システムプロンプト準拠：新規追加 - データ変換エラー用の型定義
+export interface DateConversionError {
+  field: string
+  originalValue: any
+  convertedValue: Date | null
+  error: string
+}
+
+export interface DataValidationResult {
+  isValid: boolean
+  errors: DateConversionError[]
+  data: any
 }

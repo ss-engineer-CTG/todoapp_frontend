@@ -5,8 +5,8 @@
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from core.database import DatabaseManager
-from core.exceptions import NotFoundError, ValidationError
-from core.logger import get_logger
+from core.exceptions import NotFoundError, ValidationError, handle_date_conversion_error
+from core.logger import get_logger, log_data_conversion
 
 logger = get_logger(__name__)
 
@@ -29,6 +29,16 @@ class TaskService:
                     "SELECT * FROM tasks ORDER BY project_id, level, created_at"
                 )
             
+            # システムプロンプト準拠：データ変換ログの出力
+            log_data_conversion(
+                logger, 
+                'get_tasks', 
+                {'project_id': project_id}, 
+                tasks, 
+                True,
+                {'task_count': len(tasks)}
+            )
+            
             logger.info(f"Retrieved {len(tasks)} tasks" + (f" for project {project_id}" if project_id else ""))
             return tasks
         except Exception as e:
@@ -45,8 +55,13 @@ class TaskService:
             if not tasks:
                 raise NotFoundError(f"Task not found: {task_id}")
             
+            task = tasks[0]
+            
+            # システムプロンプト準拠：取得データの検証
+            self._validate_task_data(task)
+            
             logger.debug(f"Retrieved task: {task_id}")
-            return tasks[0]
+            return task
         except Exception as e:
             logger.error(f"Failed to retrieve task {task_id}: {e}")
             raise
@@ -61,6 +76,9 @@ class TaskService:
             if not task_data.get('project_id', '').strip():
                 raise ValidationError("Project ID is required")
             
+            # システムプロンプト準拠：日付フィールドの正規化
+            normalized_task_data = self._normalize_task_dates(task_data)
+            
             # ID生成
             task_id = f"t{int(datetime.now().timestamp() * 1000)}"
             now = datetime.now()
@@ -73,19 +91,19 @@ class TaskService:
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     task_id,
-                    task_data['name'],
-                    task_data['project_id'],
-                    task_data.get('parent_id'),
-                    task_data.get('completed', False),
-                    task_data.get('start_date', now),
-                    task_data.get('due_date', now),
-                    task_data.get('completion_date'),
-                    task_data.get('notes', ''),
-                    task_data.get('assignee', '自分'),
-                    task_data.get('level', 0),
-                    task_data.get('collapsed', False),
-                    now,
-                    now
+                    normalized_task_data['name'],
+                    normalized_task_data['project_id'],
+                    normalized_task_data.get('parent_id'),
+                    normalized_task_data.get('completed', False),
+                    normalized_task_data.get('start_date', now.isoformat()),
+                    normalized_task_data.get('due_date', now.isoformat()),
+                    normalized_task_data.get('completion_date'),
+                    normalized_task_data.get('notes', ''),
+                    normalized_task_data.get('assignee', '自分'),
+                    normalized_task_data.get('level', 0),
+                    normalized_task_data.get('collapsed', False),
+                    now.isoformat(),
+                    now.isoformat()
                 )
             )
             
@@ -104,6 +122,9 @@ class TaskService:
             # 存在確認
             self.get_task_by_id(task_id)
             
+            # システムプロンプト準拠：日付フィールドの正規化
+            normalized_updates = self._normalize_task_dates(updates)
+            
             # 更新フィールド構築
             update_fields = []
             values = []
@@ -113,14 +134,14 @@ class TaskService:
                 'completion_date', 'notes', 'assignee', 'level', 'collapsed'
             ]
             
-            for field, value in updates.items():
+            for field, value in normalized_updates.items():
                 if field in allowed_fields:
                     update_fields.append(f"{field} = ?")
                     values.append(value)
             
             if update_fields:
                 update_fields.append("updated_at = ?")
-                values.append(datetime.now())
+                values.append(datetime.now().isoformat())
                 values.append(task_id)
                 
                 query = f"UPDATE tasks SET {', '.join(update_fields)} WHERE id = ?"
@@ -156,13 +177,13 @@ class TaskService:
             raise
     
     def batch_update_tasks(self, operation: str, task_ids: List[str]) -> Dict[str, Any]:
-        """タスク一括操作（page.tsx準拠の詳細実装）"""
+        """タスク一括操作"""
         try:
             if not task_ids:
                 raise ValidationError("Task IDs are required")
             
             placeholders = ",".join(["?" for _ in task_ids])
-            now = datetime.now()
+            now = datetime.now().isoformat()
             affected_rows = 0
             
             logger.info(f"Starting batch operation: {operation}", {
@@ -180,7 +201,7 @@ class TaskService:
                 params = [True, now, now] + task_ids
                 affected_rows = self.db_manager.execute_update(query, tuple(params))
                 
-                # 子タスクも一括完了（page.tsx準拠）
+                # 子タスクも一括完了
                 child_query = f"""UPDATE tasks SET 
                                 completed = ?, 
                                 completion_date = ?, 
@@ -263,3 +284,69 @@ class TaskService:
         except Exception as e:
             logger.error(f"Failed to get task hierarchy for {task_id}: {e}")
             raise
+    
+    def _normalize_task_dates(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        システムプロンプト準拠：DRY原則によるタスク日付フィールド正規化
+        """
+        normalized_data = task_data.copy()
+        date_fields = ['start_date', 'due_date', 'completion_date']
+        
+        for field in date_fields:
+            if field in normalized_data and normalized_data[field] is not None:
+                try:
+                    value = normalized_data[field]
+                    
+                    # 既にISO文字列形式の場合
+                    if isinstance(value, str):
+                        # 妥当性検証
+                        datetime.fromisoformat(value.replace('Z', '+00:00'))
+                        continue
+                    
+                    # datetime型の場合
+                    if isinstance(value, datetime):
+                        normalized_data[field] = value.isoformat()
+                        log_data_conversion(
+                            logger, 
+                            f'normalize_{field}', 
+                            value, 
+                            normalized_data[field], 
+                            True
+                        )
+                        continue
+                    
+                    # その他の型は現在時刻で置換
+                    logger.warn(f"Invalid date type for {field}: {type(value)}")
+                    normalized_data[field] = datetime.now().isoformat()
+                    
+                except Exception as e:
+                    # 変換失敗時のエラーハンドリング
+                    date_error = handle_date_conversion_error(
+                        field, 
+                        normalized_data[field], 
+                        e
+                    )
+                    logger.warn(f"Date conversion failed for {field}, using current time")
+                    normalized_data[field] = datetime.now().isoformat()
+        
+        return normalized_data
+    
+    def _validate_task_data(self, task: Dict[str, Any]) -> None:
+        """
+        システムプロンプト準拠：タスクデータの検証
+        """
+        required_fields = ['id', 'name', 'project_id']
+        for field in required_fields:
+            if not task.get(field):
+                raise ValidationError(f"Required field '{field}' is missing or empty")
+        
+        # 日付フィールドの検証
+        date_fields = ['start_date', 'due_date']
+        for field in date_fields:
+            if field in task and task[field]:
+                try:
+                    if isinstance(task[field], str):
+                        datetime.fromisoformat(task[field].replace('Z', '+00:00'))
+                except ValueError as e:
+                    logger.warn(f"Invalid date format in {field}: {task[field]}")
+                    raise ValidationError(f"Invalid date format in {field}: {task[field]}")

@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from core.database import DatabaseManager
 from core.exceptions import NotFoundError, ValidationError
-from core.logger import get_logger
+from core.logger import get_logger, log_data_conversion
 
 logger = get_logger(__name__)
 
@@ -22,6 +22,17 @@ class ProjectService:
             projects = self.db_manager.execute_query(
                 "SELECT * FROM projects ORDER BY created_at"
             )
+            
+            # システムプロンプト準拠：データ変換ログの出力
+            log_data_conversion(
+                logger, 
+                'get_all_projects', 
+                None, 
+                projects, 
+                True,
+                {'project_count': len(projects)}
+            )
+            
             logger.info(f"Retrieved {len(projects)} projects")
             return projects
         except Exception as e:
@@ -38,8 +49,13 @@ class ProjectService:
             if not projects:
                 raise NotFoundError(f"Project not found: {project_id}")
             
+            project = projects[0]
+            
+            # システムプロンプト準拠：取得データの検証
+            self._validate_project_data(project)
+            
             logger.debug(f"Retrieved project: {project_id}")
-            return projects[0]
+            return project
         except Exception as e:
             logger.error(f"Failed to retrieve project {project_id}: {e}")
             raise
@@ -67,8 +83,8 @@ class ProjectService:
                     project_data['name'],
                     project_data['color'],
                     project_data.get('collapsed', False),
-                    now,
-                    now
+                    now.isoformat(),
+                    now.isoformat()
                 )
             )
             
@@ -98,7 +114,7 @@ class ProjectService:
             
             if update_fields:
                 update_fields.append("updated_at = ?")
-                values.append(datetime.now())
+                values.append(datetime.now().isoformat())
                 values.append(project_id)
                 
                 query = f"UPDATE projects SET {', '.join(update_fields)} WHERE id = ?"
@@ -132,3 +148,18 @@ class ProjectService:
         except Exception as e:
             logger.error(f"Failed to delete project {project_id}: {e}")
             raise
+    
+    def _validate_project_data(self, project: Dict[str, Any]) -> None:
+        """
+        システムプロンプト準拠：プロジェクトデータの検証
+        """
+        required_fields = ['id', 'name', 'color']
+        for field in required_fields:
+            if not project.get(field):
+                raise ValidationError(f"Required field '{field}' is missing or empty")
+        
+        # カラーフィールドの形式検証
+        color = project.get('color', '')
+        if not color.startswith('#') or len(color) != 7:
+            logger.warn(f"Invalid color format: {color}")
+            # 警告レベルに留める（致命的ではない）

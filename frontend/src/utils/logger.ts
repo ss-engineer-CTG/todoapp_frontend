@@ -65,6 +65,41 @@ class Logger {
     this.log(LogLevel.TRACE, message, context)
   }
 
+  // システムプロンプト準拠：新規追加 - データ変換専用ログメソッド
+  logDataConversion(operation: string, input: any, output: any, success: boolean): void {
+    const context = {
+      operation,
+      input: this.sanitizeLogData(input),
+      output: this.sanitizeLogData(output),
+      success,
+      timestamp: new Date().toISOString()
+    }
+    
+    if (success) {
+      this.debug(`Data conversion successful: ${operation}`, context)
+    } else {
+      this.warn(`Data conversion failed: ${operation}`, context)
+    }
+  }
+
+  // システムプロンプト準拠：新規追加 - API通信専用ログメソッド
+  logApiOperation(method: string, url: string, success: boolean, duration?: number, error?: any): void {
+    const context = {
+      method,
+      url,
+      success,
+      duration: duration ? `${duration}ms` : undefined,
+      error: error ? this.sanitizeLogData(error) : undefined,
+      timestamp: new Date().toISOString()
+    }
+    
+    if (success) {
+      this.info(`API operation completed: ${method} ${url}`, context)
+    } else {
+      this.error(`API operation failed: ${method} ${url}`, context)
+    }
+  }
+
   private log(level: LogLevel, message: string, context?: any): void {
     if (level <= this.level) {
       // システムプロンプト準拠: タイムスタンプを含める
@@ -79,7 +114,7 @@ class Logger {
         level: levelName,
         transactionId,
         message,
-        context,
+        context: this.sanitizeLogData(context),
         source: 'frontend'
       }
 
@@ -116,6 +151,36 @@ class Logger {
     return `tx_${Date.now()}_${this.transactionCounter.toString().padStart(4, '0')}`
   }
 
+  // システムプロンプト準拠：新規追加 - ログデータの安全化（機密情報除去）
+  private sanitizeLogData(data: any): any {
+    if (!data) return data
+    
+    try {
+      // 循環参照を避けるため、JSONで一度変換
+      const serialized = JSON.stringify(data, (key, value) => {
+        // 機密情報の可能性があるフィールドをマスク
+        if (typeof key === 'string' && 
+            (key.toLowerCase().includes('password') || 
+             key.toLowerCase().includes('token') || 
+             key.toLowerCase().includes('secret'))) {
+          return '***MASKED***'
+        }
+        
+        // 大きすぎるデータを制限
+        if (typeof value === 'string' && value.length > 1000) {
+          return value.substring(0, 1000) + '...[TRUNCATED]'
+        }
+        
+        return value
+      })
+      
+      return JSON.parse(serialized)
+    } catch (error) {
+      // JSON化に失敗した場合は安全な文字列として返す
+      return String(data).substring(0, 500)
+    }
+  }
+
   // ログレベル設定
   setLevel(level: LogLevel): void {
     this.level = level
@@ -147,5 +212,11 @@ export class LogFormatter {
   // パフォーマンス測定のログフォーマット
   static formatPerformance(operation: string, duration: number): string {
     return `Performance: ${operation} completed in ${duration}ms`
+  }
+
+  // システムプロンプト準拠：新規追加 - データ変換ログフォーマット
+  static formatDataConversion(operation: string, inputType: string, outputType: string, recordCount?: number): string {
+    const countInfo = recordCount ? ` (${recordCount} records)` : ''
+    return `Data conversion: ${operation} - ${inputType} → ${outputType}${countInfo}`
   }
 }

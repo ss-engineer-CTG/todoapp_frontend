@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { Task, TaskRelationMap, TaskApiActions, BatchOperation } from '../types'
-import { format } from 'date-fns'
-import { ja } from 'date-fns/locale'
+import { safeFormatDate } from '../utils/dateUtils'
+import { logger } from '../utils/logger'
 import {
   Plus,
   MoreHorizontal,
@@ -23,7 +23,6 @@ import { ShortcutGuideDialog } from './ShortcutGuideDialog'
 import { useTheme } from './ThemeProvider'
 import { cn } from '@/lib/utils'
 import { handleError } from '../utils/errorHandler'
-import { logger } from '../utils/logger'
 import { BATCH_OPERATIONS } from '../config/constants'
 
 interface TaskPanelProps {
@@ -116,6 +115,12 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
           collapsed: false,
         }
 
+        logger.info('Creating new task', { 
+          taskName: newTask.name, 
+          parentId: newTaskParentId, 
+          level: newTaskLevel 
+        })
+
         const createdTask = await apiActions.createTask(newTask)
         onTasksUpdate([...allTasks, createdTask])
         setNewTaskName("")
@@ -152,7 +157,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }
   }
 
-  // 一括操作ハンドラー（page.tsx準拠）
+  // 一括操作ハンドラー
   const handleBatchOperation = async (operation: BatchOperation) => {
     if (!isMultiSelectMode || selectedTaskIds.length === 0) return
 
@@ -176,6 +181,138 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
       
     } catch (error) {
       handleError(error, `一括${operation}操作に失敗しました`)
+    }
+  }
+
+  // システムプロンプト準拠：データ検証付きタスク表示
+  const renderTask = (task: Task) => {
+    try {
+      // 必須フィールドの検証
+      if (!task.id || !task.name) {
+        logger.warn('Task missing required fields', { task })
+        return null
+      }
+
+      // 日付フィールドの安全な表示
+      const dueDateDisplay = safeFormatDate(task.dueDate, '期限未設定')
+
+      return (
+        <div
+          key={task.id}
+          ref={(el) => setTaskRef(task.id, el)}
+          className={cn(
+            "flex items-start p-2 rounded-md cursor-pointer group transition-colors",
+            selectedTaskId === task.id ? "bg-accent" : "hover:bg-accent/50",
+            selectedTaskIds.includes(task.id) ? "bg-accent/80 ring-1 ring-primary" : "",
+            task.completed ? "text-muted-foreground" : ""
+          )}
+          style={{ marginLeft: `${task.level * 1.5}rem` }}
+          onClick={(e) => onTaskSelect(task.id, e)}
+        >
+          {/* 折りたたみボタン */}
+          <div className="w-4 flex justify-center">
+            {(taskRelationMap.childrenMap[task.id]?.length || 0) > 0 ? (
+              <button
+                className="text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleTaskCollapse(task.id)
+                }}
+              >
+                {task.collapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+            ) : (
+              <div className="w-4" />
+            )}
+          </div>
+
+          {/* チェックボックス */}
+          <Checkbox
+            checked={task.completed}
+            onCheckedChange={() => onToggleTaskCompletion(task.id)}
+            className="mr-2 mt-0.5"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* タスク内容 */}
+          <div className="flex-grow">
+            <div className={cn("font-medium", task.completed ? "line-through" : "")}>
+              {task.name}
+            </div>
+            <div className="flex items-center text-xs text-muted-foreground mt-1">
+              <span className="mr-2">
+                期限: {dueDateDisplay}
+              </span>
+              {task.notes && <span className="mr-2">📝</span>}
+            </div>
+          </div>
+
+          {/* アクションボタン */}
+          <div className="flex opacity-0 group-hover:opacity-100">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleAddTaskClick(task.id, task.level + 1)
+              }}
+              title="サブタスク追加"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onCopyTask(task.id)
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  {isMultiSelectMode && selectedTaskIds.includes(task.id)
+                    ? `${selectedTaskIds.length}個のタスクをコピー`
+                    : "コピー"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteTask(task.id)
+                  }}
+                  className="text-destructive"
+                >
+                  <Trash className="h-4 w-4 mr-2" />
+                  {isMultiSelectMode && selectedTaskIds.includes(task.id)
+                    ? `${selectedTaskIds.length}個のタスクを削除`
+                    : "削除"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      )
+    } catch (error) {
+      logger.error('Error rendering task', { taskId: task.id, error })
+      return (
+        <div key={task.id} className="p-2 text-red-500 text-sm">
+          タスクの表示中にエラーが発生しました: {task.name || 'Unknown'}
+        </div>
+      )
     }
   }
 
@@ -290,116 +427,8 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
           </div>
         ) : (
           <div className="space-y-1">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                ref={(el) => setTaskRef(task.id, el)}
-                className={cn(
-                  "flex items-start p-2 rounded-md cursor-pointer group transition-colors",
-                  selectedTaskId === task.id ? "bg-accent" : "hover:bg-accent/50",
-                  selectedTaskIds.includes(task.id) ? "bg-accent/80 ring-1 ring-primary" : "",
-                  task.completed ? "text-muted-foreground" : ""
-                )}
-                style={{ marginLeft: `${task.level * 1.5}rem` }}
-                onClick={(e) => onTaskSelect(task.id, e)}
-              >
-                {/* 折りたたみボタン */}
-                <div className="w-4 flex justify-center">
-                  {(taskRelationMap.childrenMap[task.id]?.length || 0) > 0 ? (
-                    <button
-                      className="text-muted-foreground hover:text-foreground"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onToggleTaskCollapse(task.id)
-                      }}
-                    >
-                      {task.collapsed ? (
-                        <ChevronRight className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </button>
-                  ) : (
-                    <div className="w-4" />
-                  )}
-                </div>
-
-                {/* チェックボックス */}
-                <Checkbox
-                  checked={task.completed}
-                  onCheckedChange={() => onToggleTaskCompletion(task.id)}
-                  className="mr-2 mt-0.5"
-                  onClick={(e) => e.stopPropagation()}
-                />
-
-                {/* タスク内容 */}
-                <div className="flex-grow">
-                  <div className={cn("font-medium", task.completed ? "line-through" : "")}>
-                    {task.name}
-                  </div>
-                  <div className="flex items-center text-xs text-muted-foreground mt-1">
-                    <span className="mr-2">
-                      期限: {format(task.dueDate, "M月d日", { locale: ja })}
-                    </span>
-                    {task.notes && <span className="mr-2">📝</span>}
-                  </div>
-                </div>
-
-                {/* アクションボタン */}
-                <div className="flex opacity-0 group-hover:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleAddTaskClick(task.id, task.level + 1)
-                    }}
-                    title="サブタスク追加"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreHorizontal className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onCopyTask(task.id)
-                        }}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        {isMultiSelectMode && selectedTaskIds.includes(task.id)
-                          ? `${selectedTaskIds.length}個のタスクをコピー`
-                          : "コピー"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onDeleteTask(task.id)
-                        }}
-                        className="text-destructive"
-                      >
-                        <Trash className="h-4 w-4 mr-2" />
-                        {isMultiSelectMode && selectedTaskIds.includes(task.id)
-                          ? `${selectedTaskIds.length}個のタスクを削除`
-                          : "削除"}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-            ))}
+            {/* システムプロンプト準拠：エラー境界付きタスクレンダリング */}
+            {tasks.map(renderTask).filter(Boolean)}
 
             {/* 新規タスク追加フォーム */}
             {isAddingTask && (
@@ -424,7 +453,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         )}
       </div>
 
-      {/* 複数選択時のアクションバー（page.tsx完全準拠） */}
+      {/* 複数選択時のアクションバー */}
       {isMultiSelectMode && selectedTaskIds.length > 0 && (
         <div className="border-t p-2 bg-muted/50 flex items-center justify-between">
           <div className="text-sm font-medium">{selectedTaskIds.length}個のタスクを選択中</div>

@@ -12,6 +12,7 @@ import { useScrollToTask } from './hooks/useScrollToTask'
 import { useApi } from './hooks/useApi'
 import { logger } from './utils/logger'
 import { handleError } from './utils/errorHandler'
+import { isValidDate } from './utils/dateUtils'
 import { BATCH_OPERATIONS } from './config/constants'
 
 const TodoApp: React.FC = () => {
@@ -50,24 +51,36 @@ const TodoApp: React.FC = () => {
   // カスタムフック
   const { taskRelationMap } = useTaskRelations(currentTasks)
 
-  // フィルタリングされたタスク
+  // システムプロンプト準拠：安全なタスクフィルタリング
   const filteredTasks = currentTasks.filter((task) => {
-    if (task.projectId !== selectedProjectId) return false
-    if (!showCompleted && task.completed) return false
-
-    if (task.parentId) {
-      let currentParentId: string | null = task.parentId
-      while (currentParentId) {
-        const currentParent = currentTasks.find((t) => t.id === currentParentId)
-        if (currentParent && currentParent.collapsed) return false
-        currentParentId = taskRelationMap.parentMap[currentParentId] || null
+    try {
+      // 基本検証
+      if (!task.id || !task.projectId) {
+        logger.warn('Task missing required fields during filtering', { task })
+        return false
       }
-    }
 
-    return true
+      if (task.projectId !== selectedProjectId) return false
+      if (!showCompleted && task.completed) return false
+
+      // 親タスクの折りたたみ状態をチェック
+      if (task.parentId) {
+        let currentParentId: string | null = task.parentId
+        while (currentParentId) {
+          const currentParent = currentTasks.find((t) => t.id === currentParentId)
+          if (currentParent && currentParent.collapsed) return false
+          currentParentId = taskRelationMap.parentMap[currentParentId] || null
+        }
+      }
+
+      return true
+    } catch (error) {
+      logger.error('Error during task filtering', { task, error })
+      return false
+    }
   })
 
-  // 複数選択機能（page.tsx準拠）
+  // 複数選択機能
   const {
     selectedId: selectedTaskId,
     selectedIds: selectedTaskIds,
@@ -90,44 +103,74 @@ const TodoApp: React.FC = () => {
     selectedTaskId
   })
 
-  // 選択されたタスク
-  const selectedTask = currentTasks.find((task) => task.id === selectedTaskId)
+  // 選択されたタスク（システムプロンプト準拠：安全な取得）
+  const selectedTask = (() => {
+    try {
+      if (!selectedTaskId) return undefined
+      return currentTasks.find((task) => task.id === selectedTaskId)
+    } catch (error) {
+      logger.error('Error finding selected task', { selectedTaskId, error })
+      return undefined
+    }
+  })()
 
-  // 初期データ読み込み
+  // システムプロンプト準拠：初期データ読み込み（順序調整）
   useEffect(() => {
     const initializeApp = async () => {
       try {
         logger.info('Initializing application')
         
-        // プロジェクトとタスクを並行読み込み
-        const [projectsData] = await Promise.all([
-          loadProjects(),
-          loadTasks()
-        ])
+        // 1. プロジェクトを先に読み込み
+        const projectsData = await loadProjects()
+        logger.info('Projects loaded during initialization', { count: projectsData.length })
 
-        // 最初のプロジェクトを選択
+        // 2. 最初のプロジェクトを選択
         if (projectsData.length > 0) {
-          setSelectedProjectId(projectsData[0].id)
+          const firstProject = projectsData[0]
+          setSelectedProjectId(firstProject.id)
+          logger.info('Selected initial project', { projectId: firstProject.id, name: firstProject.name })
+          
+          // 3. 選択されたプロジェクトのタスクを読み込み
+          try {
+            const tasksData = await loadTasks(firstProject.id)
+            logger.info('Tasks loaded for initial project', { 
+              projectId: firstProject.id, 
+              taskCount: tasksData.length 
+            })
+          } catch (taskError) {
+            logger.warn('Failed to load tasks for initial project', { 
+              projectId: firstProject.id, 
+              error: taskError 
+            })
+            // プロジェクトは読み込めたので、初期化は継続
+          }
+        } else {
+          logger.warn('No projects found during initialization')
         }
 
         setIsInitialized(true)
         logger.info('Application initialized successfully')
       } catch (error) {
+        logger.error('Application initialization failed', { error })
         handleError(error, 'アプリケーションの初期化に失敗しました')
+        setIsInitialized(true) // エラーでも画面は表示する
       }
     }
 
     initializeApp()
   }, [])
 
-  // プロジェクト変更時のタスク読み込み
+  // プロジェクト変更時のタスク読み込み（システムプロンプト準拠：条件付き実行）
   useEffect(() => {
     if (selectedProjectId && isInitialized) {
+      logger.info('Project selection changed, loading tasks', { projectId: selectedProjectId })
+      
       loadTasks(selectedProjectId).catch(error => {
+        logger.error('Failed to load tasks for project', { projectId: selectedProjectId, error })
         handleError(error, 'タスクの読み込みに失敗しました')
       })
     }
-  }, [selectedProjectId, isInitialized])
+  }, [selectedProjectId, isInitialized, loadTasks])
 
   // プロジェクト操作
   const handleProjectUpdate = async (updatedProjects: Project[]) => {
@@ -135,6 +178,7 @@ const TodoApp: React.FC = () => {
   }
 
   const handleProjectSelect = (projectId: string) => {
+    logger.info('Project selected', { projectId })
     setSelectedProjectId(projectId)
     setSelectedTaskId(null)
     setSelectedTaskIds([])
@@ -148,6 +192,7 @@ const TodoApp: React.FC = () => {
   }
 
   const handleTaskSelectWrapper = (taskId: string, event?: React.MouseEvent) => {
+    logger.debug('Task selected', { taskId })
     handleTaskSelect(taskId, event)
     setActiveArea("tasks")
     setIsDetailPanelVisible(true)
@@ -158,17 +203,22 @@ const TodoApp: React.FC = () => {
     return `${prefix}${Date.now()}`
   }
 
-  // すべての子タスクを取得（page.tsx準拠）
+  // すべての子タスクを取得
   const getChildTasks = (parentId: string, taskList: Task[]): Task[] => {
-    const childIds = taskRelationMap.childrenMap[parentId] || []
-    const directChildren = childIds.map((id) => taskList.find((task) => task.id === id)).filter(Boolean) as Task[]
+    try {
+      const childIds = taskRelationMap.childrenMap[parentId] || []
+      const directChildren = childIds.map((id) => taskList.find((task) => task.id === id)).filter(Boolean) as Task[]
 
-    let allChildren: Task[] = [...directChildren]
-    directChildren.forEach((child) => {
-      allChildren = [...allChildren, ...getChildTasks(child.id, taskList)]
-    })
+      let allChildren: Task[] = [...directChildren]
+      directChildren.forEach((child) => {
+        allChildren = [...allChildren, ...getChildTasks(child.id, taskList)]
+      })
 
-    return allChildren
+      return allChildren
+    } catch (error) {
+      logger.error('Error getting child tasks', { parentId, error })
+      return []
+    }
   }
 
   // タスク追加
@@ -176,9 +226,11 @@ const TodoApp: React.FC = () => {
     // TaskPanelで実際の追加処理を行うため、ここでは何もしない
   }
 
-  // タスク削除（一括削除対応、page.tsx準拠）
+  // タスク削除（一括削除対応）
   const handleDeleteTask = async (taskId: string) => {
     try {
+      logger.info('Deleting task', { taskId, isMultiSelect: isMultiSelectMode })
+      
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
         // 複数選択の場合は一括削除
         await batchUpdateTasks(BATCH_OPERATIONS.DELETE, selectedTaskIds)
@@ -199,44 +251,52 @@ const TodoApp: React.FC = () => {
       // タスク一覧を再読み込み
       await loadTasks(selectedProjectId)
     } catch (error) {
+      logger.error('Task deletion failed', { taskId, error })
       handleError(error, 'タスクの削除に失敗しました')
     }
   }
 
-  // タスクコピー（page.tsx準拠）
+  // タスクコピー
   const handleCopyTask = (taskId: string) => {
-    if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-      const tasksToCopy = currentTasks.filter((task) => selectedTaskIds.includes(task.id))
-      let allTasksToCopy: Task[] = [...tasksToCopy]
+    try {
+      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
+        const tasksToCopy = currentTasks.filter((task) => selectedTaskIds.includes(task.id))
+        let allTasksToCopy: Task[] = [...tasksToCopy]
 
-      tasksToCopy.forEach((task) => {
-        const childTasks = getChildTasks(task.id, currentTasks)
-        const unselectedChildTasks = childTasks.filter((childTask) => !selectedTaskIds.includes(childTask.id))
-        allTasksToCopy = [...allTasksToCopy, ...unselectedChildTasks]
-      })
+        tasksToCopy.forEach((task) => {
+          const childTasks = getChildTasks(task.id, currentTasks)
+          const unselectedChildTasks = childTasks.filter((childTask) => !selectedTaskIds.includes(childTask.id))
+          allTasksToCopy = [...allTasksToCopy, ...unselectedChildTasks]
+        })
 
-      setCopiedTasks(allTasksToCopy)
-      logger.info('Multiple tasks copied', { taskCount: allTasksToCopy.length })
-    } else {
-      const taskToCopy = currentTasks.find((task) => task.id === taskId)
-      if (taskToCopy) {
-        const childTasks = getChildTasks(taskId, currentTasks)
-        setCopiedTasks([taskToCopy, ...childTasks])
-        logger.info('Single task copied', { taskId, childCount: childTasks.length })
+        setCopiedTasks(allTasksToCopy)
+        logger.info('Multiple tasks copied', { taskCount: allTasksToCopy.length })
+      } else {
+        const taskToCopy = currentTasks.find((task) => task.id === taskId)
+        if (taskToCopy) {
+          const childTasks = getChildTasks(taskId, currentTasks)
+          setCopiedTasks([taskToCopy, ...childTasks])
+          logger.info('Single task copied', { taskId, childCount: childTasks.length })
+        }
       }
+    } catch (error) {
+      logger.error('Task copy failed', { taskId, error })
+      handleError(error, 'タスクのコピーに失敗しました')
     }
   }
 
-  // タスク貼り付け（page.tsx準拠）
+  // タスク貼り付け
   const handlePasteTask = async () => {
     if (copiedTasks.length === 0 || !selectedProjectId) return
 
     try {
+      logger.info('Pasting tasks', { count: copiedTasks.length, projectId: selectedProjectId })
+      
       const currentTask = selectedTaskId ? currentTasks.find((t) => t.id === selectedTaskId) : null
       const targetParentId = currentTask ? currentTask.parentId : null
       const targetLevel = currentTask ? currentTask.level : 0
 
-      // ルートタスクを処理（page.tsx準拠）
+      // ルートタスクを処理
       const rootTasks = copiedTasks.filter((task) => 
         !task.parentId || !copiedTasks.some((t) => t.id === task.parentId)
       )
@@ -249,12 +309,17 @@ const TodoApp: React.FC = () => {
         const newTaskId = generateId("t")
         idMap[rootTask.id] = newTaskId
 
+        // システムプロンプト準拠：日付データの安全な処理
         const newTask = {
           ...rootTask,
           name: `${rootTask.name}${rootTasks.length === 1 ? " (コピー)" : ""}`,
           projectId: selectedProjectId,
           parentId: targetParentId,
           level: targetLevel,
+          // 日付の安全な処理
+          startDate: isValidDate(rootTask.startDate) ? rootTask.startDate : new Date(),
+          dueDate: isValidDate(rootTask.dueDate) ? rootTask.dueDate : new Date(),
+          completionDate: null // コピー時は未完了に設定
         }
 
         await createTask(newTask)
@@ -278,6 +343,10 @@ const TodoApp: React.FC = () => {
           projectId: selectedProjectId,
           parentId: newParentId,
           level: parentLevel + 1,
+          // 日付の安全な処理
+          startDate: isValidDate(childTask.startDate) ? childTask.startDate : new Date(),
+          dueDate: isValidDate(childTask.dueDate) ? childTask.dueDate : new Date(),
+          completionDate: null
         }
 
         await createTask(newTask)
@@ -288,13 +357,16 @@ const TodoApp: React.FC = () => {
       
       logger.info('Tasks pasted successfully', { count: copiedTasks.length })
     } catch (error) {
+      logger.error('Task paste failed', { error })
       handleError(error, 'タスクの貼り付けに失敗しました')
     }
   }
 
-  // タスク完了状態切り替え（一括対応、page.tsx準拠）
+  // タスク完了状態切り替え（一括対応）
   const handleToggleTaskCompletion = async (taskId: string) => {
     try {
+      logger.info('Toggling task completion', { taskId, isMultiSelect: isMultiSelectMode })
+      
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
         // 複数選択の場合は一括切り替え
         const targetTask = currentTasks.find(t => t.id === taskId)
@@ -325,6 +397,7 @@ const TodoApp: React.FC = () => {
       // タスク一覧を再読み込み
       await loadTasks(selectedProjectId)
     } catch (error) {
+      logger.error('Task completion toggle failed', { taskId, error })
       handleError(error, 'タスクの完了状態切り替えに失敗しました')
     }
   }
@@ -335,16 +408,19 @@ const TodoApp: React.FC = () => {
       const task = currentTasks.find(t => t.id === taskId)
       if (!task) return
 
+      logger.debug('Toggling task collapse', { taskId, currentState: task.collapsed })
+      
       await updateTask(taskId, { collapsed: !task.collapsed })
       
       // タスク一覧を再読み込み
       await loadTasks(selectedProjectId)
     } catch (error) {
+      logger.error('Task collapse toggle failed', { taskId, error })
       handleError(error, 'タスクの折りたたみ切り替えに失敗しました')
     }
   }
 
-  // TaskApiActions用のラッパー関数（修正）
+  // TaskApiActions用のラッパー関数
   const taskApiActions = {
     createTask,
     updateTask,
@@ -359,7 +435,7 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  // キーボードショートカット（page.tsx準拠）
+  // キーボードショートカット
   const { taskNameInputRef, startDateButtonRef, dueDateButtonRef, taskNotesRef } = useKeyboardShortcuts({
     tasks: currentTasks,
     projects: currentProjects,
@@ -397,6 +473,28 @@ const TodoApp: React.FC = () => {
         <LoadingSpinner size="lg" message="アプリケーションを初期化中..." className="m-auto" />
       </div>
     )
+  }
+
+  // システムプロンプト準拠：安全なタスク更新処理
+  const handleTaskDetailUpdate = async (taskId: string, updates: Partial<Task>) => {
+    try {
+      // 日付フィールドの検証
+      if (updates.startDate && !isValidDate(updates.startDate)) {
+        logger.warn('Invalid startDate in task update, using current date', { taskId, startDate: updates.startDate })
+        updates.startDate = new Date()
+      }
+      if (updates.dueDate && !isValidDate(updates.dueDate)) {
+        logger.warn('Invalid dueDate in task update, using current date', { taskId, dueDate: updates.dueDate })
+        updates.dueDate = new Date()
+      }
+
+      await updateTask(taskId, updates)
+      await loadTasks(selectedProjectId)
+      logger.debug('Task detail updated', { taskId, updates })
+    } catch (error) {
+      logger.error('Task detail update failed', { taskId, updates, error })
+      handleError(error, 'タスクの更新に失敗しました')
+    }
   }
 
   return (
@@ -451,14 +549,7 @@ const TodoApp: React.FC = () => {
         {isDetailPanelVisible && (
           <DetailPanel
             selectedTask={selectedTask}
-            onTaskUpdate={async (taskId, updates) => {
-              try {
-                await updateTask(taskId, updates)
-                await loadTasks(selectedProjectId)
-              } catch (error) {
-                handleError(error, 'タスクの更新に失敗しました')
-              }
-            }}
+            onTaskUpdate={handleTaskDetailUpdate}
             projects={currentProjects}
             activeArea={activeArea}
             setActiveArea={setActiveArea}

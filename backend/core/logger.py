@@ -5,7 +5,7 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any, Dict
 
 def setup_logging(level: str = "INFO", log_file: Optional[Path] = None) -> None:
     """ログ設定の初期化"""
@@ -47,3 +47,48 @@ def get_logger(name: str, level: str = "INFO", log_file: Optional[Path] = None) 
         setup_logging(level, log_file)
     
     return logger
+
+# システムプロンプト準拠：新規追加 - データ変換専用ログ関数
+def log_data_conversion(
+    logger: logging.Logger,
+    operation: str,
+    input_data: Any,
+    output_data: Any,
+    success: bool,
+    context: Optional[Dict[str, Any]] = None
+) -> None:
+    """データ変換操作のログ出力"""
+    log_context = {
+        'operation': operation,
+        'success': success,
+        'input_type': type(input_data).__name__,
+        'output_type': type(output_data).__name__ if output_data is not None else 'None',
+        **(context or {})
+    }
+    
+    if success:
+        logger.debug(f"Data conversion successful: {operation}", extra=log_context)
+    else:
+        logger.warn(f"Data conversion failed: {operation}", extra=log_context)
+
+def log_api_operation(
+    logger: logging.Logger,
+    method: str,
+    endpoint: str,
+    success: bool,
+    duration_ms: Optional[float] = None,
+    context: Optional[Dict[str, Any]] = None
+) -> None:
+    """API操作のログ出力"""
+    log_context = {
+        'method': method,
+        'endpoint': endpoint,
+        'success': success,
+        'duration_ms': duration_ms,
+        **(context or {})
+    }
+    
+    if success:
+        logger.info(f"API operation completed: {method} {endpoint}", extra=log_context)
+    else:
+        logger.error(f"API operation failed: {method} {endpoint}", extra=log_context)

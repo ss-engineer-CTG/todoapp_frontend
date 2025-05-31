@@ -7,6 +7,7 @@ export enum ErrorType {
   NETWORK_ERROR = 'NETWORK_ERROR',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   API_ERROR = 'API_ERROR',
+  DATE_CONVERSION_ERROR = 'DATE_CONVERSION_ERROR', // 新規追加
   UNKNOWN_ERROR = 'UNKNOWN_ERROR'
 }
 
@@ -43,7 +44,19 @@ export const handleError = (
     let errorType = ErrorType.UNKNOWN_ERROR
     let finalUserMessage = userMessage || ERROR_MESSAGES.UNKNOWN_ERROR
 
-    if (error.name === 'TypeError' || error.message.includes('fetch')) {
+    // システムプロンプト準拠：日付変換エラーの詳細処理
+    if (error.message.includes('Invalid time value') || 
+        error.message.includes('Date conversion') ||
+        error.message.includes('date') ||
+        error.name === 'RangeError') {
+      errorType = ErrorType.DATE_CONVERSION_ERROR
+      finalUserMessage = userMessage || '日付データの処理でエラーが発生しました'
+      
+      logger.warn('Date conversion error detected', {
+        originalError: error.message,
+        stack: error.stack
+      })
+    } else if (error.name === 'TypeError' || error.message.includes('fetch')) {
       errorType = ErrorType.NETWORK_ERROR
       finalUserMessage = userMessage || ERROR_MESSAGES.NETWORK_ERROR
     } else if (error.message.includes('validation')) {
@@ -58,7 +71,11 @@ export const handleError = (
       errorType,
       error.message,
       finalUserMessage,
-      { originalError: error.name, stack: error.stack }
+      { 
+        originalError: error.name, 
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      }
     )
   } else {
     // 不明なエラー
@@ -66,12 +83,19 @@ export const handleError = (
       ErrorType.UNKNOWN_ERROR,
       String(error),
       userMessage || ERROR_MESSAGES.UNKNOWN_ERROR,
-      { originalError: error }
+      { 
+        originalError: error,
+        timestamp: new Date().toISOString()
+      }
     )
   }
 
-  // ログ出力
-  logger.error(`${finalError.type}: ${finalError.message}`, finalError.context)
+  // システムプロンプト準拠：適切なログレベルでの出力
+  if (finalError.type === ErrorType.DATE_CONVERSION_ERROR) {
+    logger.warn(`${finalError.type}: ${finalError.message}`, finalError.context)
+  } else {
+    logger.error(`${finalError.type}: ${finalError.message}`, finalError.context)
+  }
 
   // ユーザー通知（現在はconsole.error、将来的にはToast等）
   console.error('ユーザー向けエラー:', finalError.userMessage)
@@ -93,4 +117,52 @@ export const handleValidationError = (error: Error): void => {
 
 export const handleApiError = (error: Error): void => {
   handleError(error, ERROR_MESSAGES.SERVER_ERROR)
+}
+
+// システムプロンプト準拠：新規追加 - 日付変換エラー専用ハンドラー
+export const handleDateConversionError = (error: Error, context?: any): void => {
+  const dateError = new AppError(
+    ErrorType.DATE_CONVERSION_ERROR,
+    error.message,
+    '日付データの処理中にエラーが発生しました。データ形式を確認してください。',
+    {
+      ...context,
+      originalError: error.name,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    }
+  )
+  
+  handleError(dateError)
+}
+
+/**
+ * システムプロンプト準拠：エラー境界で使用する安全なエラー情報取得
+ */
+export const getSafeErrorInfo = (error: unknown): { message: string; details?: string } => {
+  try {
+    if (error instanceof AppError) {
+      return {
+        message: error.userMessage,
+        details: import.meta.env.DEV ? error.message : undefined
+      }
+    }
+    
+    if (error instanceof Error) {
+      return {
+        message: '予期しないエラーが発生しました',
+        details: import.meta.env.DEV ? error.message : undefined
+      }
+    }
+    
+    return {
+      message: '不明なエラーが発生しました',
+      details: import.meta.env.DEV ? String(error) : undefined
+    }
+  } catch (safetyError) {
+    logger.error('Error in getSafeErrorInfo', { safetyError })
+    return {
+      message: 'エラー情報の取得に失敗しました'
+    }
+  }
 }

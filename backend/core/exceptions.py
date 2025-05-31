@@ -39,6 +39,23 @@ class BusinessLogicError(TodoAppError):
     """ビジネスロジック例外"""
     pass
 
+# システムプロンプト準拠：新規追加 - 日付変換例外
+class DateConversionError(TodoAppError):
+    """日付変換関連例外"""
+    
+    def __init__(self, message: str, field_name: str = None, original_value: Any = None, context: Optional[Dict[str, Any]] = None):
+        self.field_name = field_name
+        self.original_value = original_value
+        
+        enhanced_context = context or {}
+        enhanced_context.update({
+            'field_name': field_name,
+            'original_value': str(original_value) if original_value is not None else None,
+            'conversion_type': 'date_field'
+        })
+        
+        super().__init__(message, enhanced_context)
+
 def handle_exception(exc: Exception, context: Optional[Dict[str, Any]] = None) -> TodoAppError:
     """一般例外をアプリケーション例外に変換"""
     error_context = context or {}
@@ -51,8 +68,45 @@ def handle_exception(exc: Exception, context: Optional[Dict[str, Any]] = None) -
     if isinstance(exc, TodoAppError):
         return exc
     
+    # システムプロンプト準拠：日付変換エラーの特別処理
+    if ('date' in str(exc).lower() or 
+        'time' in str(exc).lower() or
+        'isoformat' in str(exc) or
+        isinstance(exc, ValueError) and 'invalid literal' in str(exc)):
+        
+        return DateConversionError(
+            message=f"Date conversion failed: {exc}",
+            context=error_context
+        )
+    
     # 一般例外をアプリケーション例外に変換
     return TodoAppError(
         message=f"An unexpected error occurred: {exc}",
+        context=error_context
+    )
+
+# システムプロンプト準拠：新規追加 - 日付変換エラー専用ハンドラー
+def handle_date_conversion_error(
+    field_name: str, 
+    original_value: Any, 
+    exc: Exception, 
+    context: Optional[Dict[str, Any]] = None
+) -> DateConversionError:
+    """日付変換エラーの専用ハンドラー"""
+    
+    error_context = context or {}
+    error_context.update({
+        'field_name': field_name,
+        'original_value': str(original_value),
+        'original_exception': str(exc),
+        'conversion_attempt': True
+    })
+    
+    logger.warn(f"Date conversion failed for field {field_name}: {original_value}", error_context)
+    
+    return DateConversionError(
+        message=f"Failed to convert date field '{field_name}': {exc}",
+        field_name=field_name,
+        original_value=original_value,
         context=error_context
     )

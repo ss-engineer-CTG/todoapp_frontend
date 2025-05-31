@@ -1,7 +1,7 @@
 import React, { RefObject, useEffect } from 'react'
 import { Task, Project } from '../types'
-import { format } from 'date-fns'
-import { ja } from 'date-fns/locale'
+import { safeFormatDate } from '../utils/dateUtils'
+import { logger } from '../utils/logger'
 import { CalendarIcon, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,7 +44,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
-  // フォーカス管理（page.tsx準拠）
+  // フォーカス管理
   useEffect(() => {
     if (activeArea === "details" && selectedTask) {
       // 詳細パネルがアクティブになった時、最初の要素にフォーカス
@@ -54,13 +54,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }, [activeArea, selectedTask, taskNameInputRef])
 
-  // Tabキー処理の支援（page.tsx準拠）
+  // Tabキー処理の支援
   useEffect(() => {
     const handleTabInDetailPanel = (e: KeyboardEvent) => {
       if (activeArea !== "details" || !selectedTask) return
       
-      // カスタムTabキー処理は useKeyboardShortcuts で行うため、
-      // ここでは基本的なフォーカス管理のみ
       if (e.key === "Tab") {
         const focusableElements = [
           taskNameInputRef.current,
@@ -85,6 +83,73 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }, [activeArea, selectedTask, taskNameInputRef, startDateButtonRef, dueDateButtonRef, taskNotesRef])
 
+  // システムプロンプト準拠：安全な日付更新処理
+  const handleDateUpdate = (field: 'startDate' | 'dueDate', date: Date | undefined) => {
+    if (!selectedTask || !date) return
+    
+    try {
+      // 有効な日付であることを確認
+      if (isNaN(date.getTime())) {
+        logger.warn('Invalid date provided for update', { field, date })
+        return
+      }
+      
+      logger.debug('Updating task date field', { 
+        taskId: selectedTask.id, 
+        field, 
+        newDate: date.toISOString() 
+      })
+      
+      onTaskUpdate(selectedTask.id, { [field]: date })
+    } catch (error) {
+      logger.error('Error updating date field', { 
+        taskId: selectedTask.id, 
+        field, 
+        date, 
+        error 
+      })
+    }
+  }
+
+  // システムプロンプト準拠：安全なテキスト更新処理
+  const handleTextUpdate = (field: 'name' | 'assignee' | 'notes', value: string) => {
+    if (!selectedTask) return
+    
+    try {
+      logger.debug('Updating task text field', { 
+        taskId: selectedTask.id, 
+        field, 
+        valueLength: value.length 
+      })
+      
+      onTaskUpdate(selectedTask.id, { [field]: value })
+    } catch (error) {
+      logger.error('Error updating text field', { 
+        taskId: selectedTask.id, 
+        field, 
+        value, 
+        error 
+      })
+    }
+  }
+
+  // システムプロンプト準拠：安全なプロジェクト情報取得
+  const getProjectInfo = (projectId: string) => {
+    try {
+      const project = projects.find((p) => p.id === projectId)
+      return {
+        name: project?.name || '不明なプロジェクト',
+        color: project?.color || '#ccc'
+      }
+    } catch (error) {
+      logger.warn('Error getting project info', { projectId, error })
+      return {
+        name: '不明なプロジェクト',
+        color: '#ccc'
+      }
+    }
+  }
+
   if (!selectedTask) {
     return (
       <div
@@ -100,6 +165,21 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
       </div>
     )
   }
+
+  // システムプロンプト準拠：データ検証
+  if (!selectedTask.id || !selectedTask.name) {
+    logger.warn('Selected task has invalid data', { task: selectedTask })
+    return (
+      <div className="w-80 border-l h-full p-4">
+        <div className="text-center text-red-500">
+          <p>タスクデータが不正です</p>
+          <p className="text-sm mt-2">タスクを再選択してください</p>
+        </div>
+      </div>
+    )
+  }
+
+  const projectInfo = getProjectInfo(selectedTask.projectId)
 
   return (
     <div
@@ -129,8 +209,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <label className="text-sm font-medium mb-1 block">タスク名</label>
             <Input
               ref={taskNameInputRef}
-              value={selectedTask.name}
-              onChange={(e) => onTaskUpdate(selectedTask.id, { name: e.target.value })}
+              value={selectedTask.name || ''}
+              onChange={(e) => handleTextUpdate('name', e.target.value)}
               tabIndex={activeArea === "details" ? 1 : -1}
             />
           </div>
@@ -148,16 +228,15 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                     tabIndex={activeArea === "details" ? 2 : -1}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(selectedTask.startDate, "yyyy年M月d日", { locale: ja })}
+                    {safeFormatDate(selectedTask.startDate, '開始日未設定')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={selectedTask.startDate}
-                    onSelect={(date) => onTaskUpdate(selectedTask.id, { startDate: date || new Date() })}
+                    selected={selectedTask.startDate instanceof Date ? selectedTask.startDate : undefined}
+                    onSelect={(date) => handleDateUpdate('startDate', date)}
                     initialFocus
-                    locale={ja}
                   />
                 </PopoverContent>
               </Popover>
@@ -174,16 +253,15 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                     tabIndex={activeArea === "details" ? 3 : -1}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(selectedTask.dueDate, "yyyy年M月d日", { locale: ja })}
+                    {safeFormatDate(selectedTask.dueDate, '期限日未設定')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={selectedTask.dueDate}
-                    onSelect={(date) => onTaskUpdate(selectedTask.id, { dueDate: date || new Date() })}
+                    selected={selectedTask.dueDate instanceof Date ? selectedTask.dueDate : undefined}
+                    onSelect={(date) => handleDateUpdate('dueDate', date)}
                     initialFocus
-                    locale={ja}
                   />
                 </PopoverContent>
               </Popover>
@@ -195,7 +273,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <div>
               <label className="text-sm font-medium mb-1 block">完了日</label>
               <div className="text-sm p-2 border rounded-md">
-                {format(selectedTask.completionDate, "yyyy年M月d日", { locale: ja })}
+                {safeFormatDate(selectedTask.completionDate, '完了日不明')}
               </div>
             </div>
           )}
@@ -206,11 +284,9 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <div className="text-sm p-2 border rounded-md flex items-center">
               <span
                 className="inline-block w-3 h-3 mr-2 rounded-full"
-                style={{
-                  backgroundColor: projects.find((p) => p.id === selectedTask.projectId)?.color || "#ccc",
-                }}
+                style={{ backgroundColor: projectInfo.color }}
               />
-              {projects.find((p) => p.id === selectedTask.projectId)?.name || "不明"}
+              {projectInfo.name}
             </div>
           </div>
 
@@ -218,19 +294,19 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           <div>
             <label className="text-sm font-medium mb-1 block">担当者</label>
             <Input
-              value={selectedTask.assignee}
-              onChange={(e) => onTaskUpdate(selectedTask.id, { assignee: e.target.value })}
+              value={selectedTask.assignee || ''}
+              onChange={(e) => handleTextUpdate('assignee', e.target.value)}
               tabIndex={activeArea === "details" ? 4 : -1}
             />
           </div>
 
-          {/* メモ - Tab順序4番目（最後） */}
+          {/* メモ - Tab順序5番目（最後） */}
           <div>
             <label className="text-sm font-medium mb-1 block">メモ</label>
             <Textarea
               ref={taskNotesRef}
-              value={selectedTask.notes}
-              onChange={(e) => onTaskUpdate(selectedTask.id, { notes: e.target.value })}
+              value={selectedTask.notes || ''}
+              onChange={(e) => handleTextUpdate('notes', e.target.value)}
               className="min-h-[100px] resize-none"
               placeholder="メモを追加..."
               tabIndex={activeArea === "details" ? 5 : -1}
