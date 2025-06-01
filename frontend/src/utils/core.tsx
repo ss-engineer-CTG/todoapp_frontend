@@ -1,5 +1,6 @@
 // システムプロンプト準拠：基盤ユーティリティ統合（logger + errorHandler + dateUtils）
 
+import React from 'react'
 import { format, parseISO, isValid } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { ERROR_MESSAGES } from '../config'

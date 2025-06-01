@@ -1,6 +1,6 @@
 import React from 'react'
 import { Check } from 'lucide-react'
-import { PROJECT_COLORS } from '../config/constants'
+import { PROJECT_COLORS } from '../config'
 import { cn } from '@/lib/utils'
 import { ProjectColor } from '../types'
 

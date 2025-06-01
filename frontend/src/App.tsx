@@ -4,7 +4,7 @@ import React, { Component, ReactNode } from 'react'
 import TodoApp from './TodoApp'
 import { ThemeProvider } from './components/ThemeProvider'
 import { APP_CONFIG } from './config'
-import { handleError, ErrorType, logger } from './utils/core'
+import { handleError, logger } from './utils/core'
 
 interface ErrorBoundaryState {
   hasError: boolean

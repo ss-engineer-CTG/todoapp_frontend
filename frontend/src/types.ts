@@ -95,3 +95,10 @@ export interface TaskEditingState {
   focusTransitionMode: 'navigation' | 'calendar-selection'
   canSave: boolean
 }
+
+// 選択状態管理型（追加）
+export interface SelectionState {
+  selectedId: string | null
+  selectedIds: string[]
+  isMultiSelectMode: boolean
+}

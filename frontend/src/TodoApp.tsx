@@ -1,6 +1,6 @@
 // システムプロンプト準拠：メインアプリロジック統合・簡素化
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { AreaType } from './types'
 import { ProjectPanel } from './components/ProjectPanel'
 import { TaskPanel } from './components/TaskPanel'
@@ -98,6 +98,82 @@ const TodoApp: React.FC = () => {
     apiActions: taskApiActions
   })
 
+  // 草稿タスク作成
+  const handleAddDraftTask = useCallback(async (parentId: string | null = null, level = 0) => {
+    try {
+      if (!selectedProjectId) return
+
+      const draft = createDraft(parentId, level)
+      if (draft) {
+        setSelectedTaskId(draft.id)
+        setActiveArea("details")
+        setIsDetailPanelVisible(true)
+      }
+    } catch (error) {
+      logger.error('Draft task creation failed', { error })
+    }
+  }, [selectedProjectId, createDraft, setSelectedTaskId, setActiveArea, setIsDetailPanelVisible])
+
+  // タスク削除
+  const handleDeleteTask = useCallback(async (taskId: string) => {
+    const success = await deleteTaskOperation(
+      taskId, 
+      selection.isMultiSelectMode, 
+      selection.selectedIds
+    )
+    
+    if (success) {
+      if (selection.selectedId === taskId) {
+        setSelectedTaskId(null)
+      }
+      if (selection.isMultiSelectMode) {
+        clearSelection()
+        setIsMultiSelectMode(false)
+      }
+      await loadTasks(selectedProjectId)
+    }
+  }, [deleteTaskOperation, selection, setSelectedTaskId, clearSelection, setIsMultiSelectMode, loadTasks, selectedProjectId])
+
+  // タスクコピー
+  const handleCopyTask = useCallback((taskId: string) => {
+    const taskIds = selection.isMultiSelectMode && selection.selectedIds.includes(taskId)
+      ? selection.selectedIds
+      : [taskId]
+    copyTasks(taskIds)
+  }, [selection, copyTasks])
+
+  // タスク貼り付け
+  const handlePasteTask = useCallback(async () => {
+    const currentTask = selection.selectedId ? allTasksWithDrafts.find(t => t.id === selection.selectedId) : null
+    const targetParentId = currentTask ? currentTask.parentId : null
+    const targetLevel = currentTask ? currentTask.level : 0
+
+    const success = await pasteTasks(targetParentId, targetLevel)
+    if (success) {
+      await loadTasks(selectedProjectId)
+    }
+  }, [selection.selectedId, allTasksWithDrafts, pasteTasks, loadTasks, selectedProjectId])
+
+  // タスク完了状態切り替え
+  const handleToggleTaskCompletion = useCallback(async (taskId: string) => {
+    const success = await toggleTaskCompletion(
+      taskId, 
+      selection.isMultiSelectMode, 
+      selection.selectedIds
+    )
+    if (success) {
+      await loadTasks(selectedProjectId)
+    }
+  }, [toggleTaskCompletion, selection, loadTasks, selectedProjectId])
+
+  // タスク折りたたみ切り替え
+  const handleToggleTaskCollapse = useCallback(async (taskId: string) => {
+    const success = await toggleTaskCollapse(taskId)
+    if (success) {
+      await loadTasks(selectedProjectId)
+    }
+  }, [toggleTaskCollapse, loadTasks, selectedProjectId])
+
   // キーボード処理
   const keyboardProps = useKeyboard({
     tasks: allTasksWithDrafts,
@@ -126,24 +202,8 @@ const TodoApp: React.FC = () => {
     isInputActive: isAddingProject || isEditingProject
   })
 
-  // 草稿タスク作成
-  const handleAddDraftTask = async (parentId: string | null = null, level = 0) => {
-    try {
-      if (!selectedProjectId) return
-
-      const draft = createDraft(parentId, level)
-      if (draft) {
-        setSelectedTaskId(draft.id)
-        setActiveArea("details")
-        setIsDetailPanelVisible(true)
-      }
-    } catch (error) {
-      logger.error('Draft task creation failed', { error })
-    }
-  }
-
   // タスク保存（草稿・確定統一）
-  const handleSaveTask = async (taskId: string, updates: any) => {
+  const handleSaveTask = useCallback(async (taskId: string, updates: any) => {
     try {
       const task = allTasksWithDrafts.find(t => t.id === taskId)
       if (!task) return null
@@ -162,64 +222,7 @@ const TodoApp: React.FC = () => {
       logger.error('Task save failed', { taskId, error })
       return null
     }
-  }
-
-  // タスク削除
-  const handleDeleteTask = async (taskId: string) => {
-    const success = await deleteTaskOperation(
-      taskId, 
-      selection.isMultiSelectMode, 
-      selection.selectedIds
-    )
-    
-    if (success) {
-      if (selection.selectedId === taskId) {
-        setSelectedTaskId(null)
-      }
-      if (selection.isMultiSelectMode) {
-        clearSelection()
-        setIsMultiSelectMode(false)
-      }
-      await loadTasks(selectedProjectId)
-    }
-  }
-
-  // その他のハンドラー（簡素化）
-  const handleCopyTask = (taskId: string) => {
-    const taskIds = selection.isMultiSelectMode && selection.selectedIds.includes(taskId)
-      ? selection.selectedIds
-      : [taskId]
-    copyTasks(taskIds)
-  }
-
-  const handlePasteTask = async () => {
-    const currentTask = selection.selectedId ? allTasksWithDrafts.find(t => t.id === selection.selectedId) : null
-    const targetParentId = currentTask ? currentTask.parentId : null
-    const targetLevel = currentTask ? currentTask.level : 0
-
-    const success = await pasteTasks(targetParentId, targetLevel)
-    if (success) {
-      await loadTasks(selectedProjectId)
-    }
-  }
-
-  const handleToggleTaskCompletion = async (taskId: string) => {
-    const success = await toggleTaskCompletion(
-      taskId, 
-      selection.isMultiSelectMode, 
-      selection.selectedIds
-    )
-    if (success) {
-      await loadTasks(selectedProjectId)
-    }
-  }
-
-  const handleToggleTaskCollapse = async (taskId: string) => {
-    const success = await toggleTaskCollapse(taskId)
-    if (success) {
-      await loadTasks(selectedProjectId)
-    }
-  }
+  }, [allTasksWithDrafts, saveDraft, updateTask, loadTasks, selectedProjectId, setSelectedTaskId])
 
   // 初期化
   useEffect(() => {
@@ -239,30 +242,30 @@ const TodoApp: React.FC = () => {
     }
 
     initializeApp()
-  }, [])
+  }, [loadProjects, loadTasks])
 
   // プロジェクト切り替え時
   useEffect(() => {
     if (selectedProjectId && isInitialized) {
       loadTasks(selectedProjectId)
     }
-  }, [selectedProjectId, isInitialized])
+  }, [selectedProjectId, isInitialized, loadTasks])
 
   // イベントハンドラー
-  const handleProjectSelect = (projectId: string) => {
+  const handleProjectSelect = useCallback((projectId: string) => {
     setSelectedProjectId(projectId)
     setSelectedTaskId(null)
     clearSelection()
     setActiveArea("projects")
     setIsDetailPanelVisible(false)
     setAllTasksWithDrafts(tasks.data || [])
-  }
+  }, [setSelectedTaskId, clearSelection, setActiveArea, setIsDetailPanelVisible, tasks.data])
 
-  const handleTaskSelectWrapper = (taskId: string, event?: React.MouseEvent) => {
+  const handleTaskSelectWrapper = useCallback((taskId: string, event?: React.MouseEvent) => {
     handleSelect(taskId, filteredTasks, event)
     setActiveArea("tasks")
     setIsDetailPanelVisible(true)
-  }
+  }, [handleSelect, filteredTasks, setActiveArea, setIsDetailPanelVisible])
 
   if (!isInitialized) {
     return (

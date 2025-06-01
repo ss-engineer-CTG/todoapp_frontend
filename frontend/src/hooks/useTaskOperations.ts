@@ -1,7 +1,7 @@
 // システムプロンプト準拠：タスク操作統合（useTaskDraft + taskOperations統合）
 
 import { useState, useCallback } from 'react'
-import { Task, TaskApiActions, BatchOperation } from '../types'
+import { Task, TaskApiActions } from '../types'
 import { logger, handleError, isValidDate } from '../utils/core'
 import { isDraftTask, createDraftTask, copyTasksWithHierarchy, filterValidTasksForBatch } from '../utils/task'
 import { DEFAULTS, BATCH_OPERATIONS } from '../config'

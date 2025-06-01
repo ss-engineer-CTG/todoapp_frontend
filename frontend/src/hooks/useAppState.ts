@@ -242,10 +242,10 @@ export const useAppState = () => {
 
     if (event && (event.ctrlKey || event.metaKey)) {
       // Ctrl/Cmd + クリック: 個別選択/選択解除
-      setSelection(prev => {
+      setSelection((prev: SelectionState) => {
         const newIsMultiSelectMode = true
         const newSelectedIds = prev.selectedIds.includes(itemId)
-          ? prev.selectedIds.filter(id => id !== itemId)
+          ? prev.selectedIds.filter((id: string) => id !== itemId)
           : [...prev.selectedIds, itemId]
         
         return {
@@ -281,12 +281,12 @@ export const useAppState = () => {
 
   const selectAll = useCallback((items: Task[]) => {
     const allIds = items.map(item => item.id)
-    setSelection({
-      selectedId: selection.selectedId || (items.length > 0 ? items[0].id : null),
+    setSelection((prev: SelectionState) => ({
+      selectedId: prev.selectedId || (items.length > 0 ? items[0].id : null),
       selectedIds: allIds,
       isMultiSelectMode: true
-    })
-  }, [selection.selectedId])
+    }))
+  }, [])
 
   const clearSelection = useCallback(() => {
     setSelection({
@@ -297,7 +297,7 @@ export const useAppState = () => {
   }, [])
 
   const setSelectedTaskId = useCallback((id: string | null) => {
-    setSelection(prev => ({
+    setSelection((prev: SelectionState) => ({
       ...prev,
       selectedId: id,
       selectedIds: id ? [id] : []
@@ -305,7 +305,7 @@ export const useAppState = () => {
   }, [])
 
   const setIsMultiSelectMode = useCallback((mode: boolean) => {
-    setSelection(prev => ({ ...prev, isMultiSelectMode: mode }))
+    setSelection((prev: SelectionState) => ({ ...prev, isMultiSelectMode: mode }))
   }, [])
 
   return {
