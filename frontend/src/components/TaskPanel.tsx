@@ -371,8 +371,8 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleAddTaskClick(null, 0)
-              disabled={!selectedProjectId}
+            onClick={() => handleAddTaskClick(null, 0)}
+            disabled={!selectedProjectId}
           >
             <Plus className="h-4 w-4 mr-1" />
             タスク追加
