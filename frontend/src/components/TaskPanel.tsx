@@ -1,8 +1,7 @@
 import React, { useRef } from 'react'
 import { Task, TaskRelationMap, TaskApiActions, BatchOperation } from '../types'
-import { safeFormatDate } from '../utils/dateUtils'
-import { logger } from '../utils/logger'
-import { canCompleteTask, canCopyTask, filterTasksForBatchOperation, getTaskDisplayState, getDraftStatistics } from '../utils/taskUtils'
+import { formatDate, logger, handleError } from '../utils/core'
+import { canCompleteTask, canCopyTask, filterValidTasksForBatch, isDraftTask } from '../utils/task'
 import {
   Plus,
   MoreHorizontal,
@@ -23,8 +22,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ShortcutGuideDialog } from './ShortcutGuideDialog'
 import { useTheme } from './ThemeProvider'
 import { cn } from '@/lib/utils'
-import { handleError } from '../utils/errorHandler'
-import { BATCH_OPERATIONS } from '../config/constants'
+import { BATCH_OPERATIONS } from '../config'
 
 interface TaskPanelProps {
   tasks: Task[]
@@ -48,7 +46,6 @@ interface TaskPanelProps {
   onToggleTaskCollapse: (taskId: string) => void
   onClearSelection: () => void
   setTaskRef: (taskId: string, element: HTMLDivElement | null) => void
-  // 統合フラグアプローチ：草稿タスク作成処理
   onAddDraftTask: (parentId: string | null, level: number) => void
   apiActions: TaskApiActions
 }
@@ -80,7 +77,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   const { theme, setTheme } = useTheme()
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // 統合フラグアプローチ：詳細パネルでのタスク作成に統一
   const handleAddTaskClick = (parentId: string | null = null, level = 0) => {
     logger.info('Creating draft task via UI button', { parentId, level })
     onAddDraftTask(parentId, level)
@@ -97,8 +93,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     if (!isMultiSelectMode || selectedTaskIds.length === 0) return
 
     try {
-      // 統合フラグアプローチ：草稿タスクを除外
-      const validTaskIds = filterTasksForBatchOperation(allTasks, selectedTaskIds)
+      const validTaskIds = filterValidTasksForBatch(allTasks, selectedTaskIds)
       
       if (validTaskIds.length === 0) {
         logger.warn('No valid tasks for batch operation', { operation, selectedCount: selectedTaskIds.length })
@@ -124,9 +119,8 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }
   }
 
-  // システムプロンプト準拠：フォーカス管理改善
   const handlePanelClick = () => {
-    logger.debug('Task panel clicked, setting active area')
+    logger.info('Task panel clicked')
     setActiveArea("tasks")
     if (panelRef.current) {
       panelRef.current.focus()
@@ -134,11 +128,10 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   }
 
   const handlePanelFocus = () => {
-    logger.debug('Task panel focused')
+    logger.info('Task panel focused')
     setActiveArea("tasks")
   }
 
-  // システムプロンプト準拠：子タスク存在判定の改善
   const hasChildTasks = (taskId: string): boolean => {
     try {
       const childrenIds = taskRelationMap.childrenMap[taskId]
@@ -156,10 +149,9 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         return null
       }
 
-      // 統合フラグアプローチ：統一された表示状態取得
-      const displayState = getTaskDisplayState(task)
+      const isTaskDraft = isDraftTask(task)
       const taskDisplayName = task.name.trim() || '（タスク名未設定）'
-      const dueDateDisplay = safeFormatDate(task.dueDate, '期限未設定')
+      const dueDateDisplay = formatDate(task.dueDate)
       const hasChildren = hasChildTasks(task.id)
 
       return (
@@ -171,14 +163,13 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             selectedTaskId === task.id ? "bg-accent" : "hover:bg-accent/50",
             selectedTaskIds.includes(task.id) ? "bg-accent/80 ring-1 ring-primary" : "",
             task.completed ? "text-muted-foreground" : "",
-            displayState.className
+            isTaskDraft ? "border border-blue-300 bg-blue-50" : ""
           )}
           style={{ marginLeft: `${task.level * 1.5}rem` }}
           onClick={(e) => onTaskSelect(task.id, e)}
         >
           <div className="w-4 flex justify-center">
-            {/* 子タスクを持つ場合のみ折りたたみバッジ表示（草稿タスクは無効） */}
-            {hasChildren && !displayState.isDraft ? (
+            {hasChildren && !isTaskDraft ? (
               <button
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 onClick={(e) => {
@@ -198,7 +189,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             )}
           </div>
 
-          {/* 統合フラグアプローチ：草稿タスクはチェックボックス無効化 */}
           <Checkbox
             checked={task.completed}
             onCheckedChange={() => canCompleteTask(task) && onToggleTaskCompletion(task.id)}
@@ -214,12 +204,11 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             <div className={cn(
               "font-medium flex items-center", 
               task.completed ? "line-through" : "",
-              displayState.requiresNameInput ? "text-orange-600 italic" : "",
-              displayState.isDraft ? "text-blue-700 font-medium" : ""
+              !task.name.trim() ? "text-orange-600 italic" : "",
+              isTaskDraft ? "text-blue-700 font-medium" : ""
             )}>
               {taskDisplayName}
-              {/* 統合フラグアプローチ：草稿タスクのインジケーター */}
-              {displayState.showDraftIndicator && (
+              {isTaskDraft && (
                 <div title="編集中のタスク">
                   <Edit3 className="h-3 w-3 ml-2 text-blue-500" />
                 </div>
@@ -235,28 +224,27 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                   📂 {taskRelationMap.childrenMap[task.id]?.length || 0}
                 </span>
               )}
-              {displayState.requiresNameInput && !displayState.isDraft && <span className="text-orange-500 ml-2">⚠ 名前未設定</span>}
-              {displayState.isDraft && <span className="text-blue-500 ml-2">🔄 作成中</span>}
+              {!task.name.trim() && !isTaskDraft && <span className="text-orange-500 ml-2">⚠ 名前未設定</span>}
+              {isTaskDraft && <span className="text-blue-500 ml-2">🔄 作成中</span>}
             </div>
           </div>
 
           <div className={cn(
             "flex",
-            displayState.isDraft ? "opacity-50" : "opacity-0 group-hover:opacity-100"
+            isTaskDraft ? "opacity-50" : "opacity-0 group-hover:opacity-100"
           )}>
-            {/* 草稿タスクの場合はサブタスク追加ボタンを無効化 */}
             <Button
               variant="ghost"
               size="icon"
               className="h-6 w-6"
               onClick={(e) => {
                 e.stopPropagation()
-                if (!displayState.isDraft) {
+                if (!isTaskDraft) {
                   handleAddTaskClick(task.id, task.level + 1)
                 }
               }}
-              title={displayState.isDraft ? "作成中のタスクにはサブタスクを追加できません" : "サブタスク追加"}
-              disabled={displayState.isDraft}
+              title={isTaskDraft ? "作成中のタスクにはサブタスクを追加できません" : "サブタスク追加"}
+              disabled={isTaskDraft}
             >
               <Plus className="h-3 w-3" />
             </Button>
@@ -268,13 +256,12 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                   size="icon"
                   className="h-6 w-6"
                   onClick={(e) => e.stopPropagation()}
-                  disabled={displayState.isDraft}
+                  disabled={isTaskDraft}
                 >
                   <MoreHorizontal className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {/* 統合フラグアプローチ：草稿タスクはコピー無効化 */}
                 {canCopyTask(task) && (
                   <DropdownMenuItem
                     onClick={(e) => {
@@ -296,7 +283,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                   className="text-destructive"
                 >
                   <Trash className="h-4 w-4 mr-2" />
-                  {displayState.isDraft ? "キャンセル" :
+                  {isTaskDraft ? "キャンセル" :
                     isMultiSelectMode && selectedTaskIds.includes(task.id)
                       ? `${selectedTaskIds.length}個のタスクを削除`
                       : "削除"}
@@ -316,8 +303,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }
   }
 
-  // 統合フラグアプローチ：草稿タスクの統計情報
-  const draftStats = getDraftStatistics(tasks)
+  const draftCount = tasks.filter(task => isDraftTask(task)).length
 
   return (
     <div
@@ -337,10 +323,9 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         <div className="flex items-center">
           <h1 className="text-xl font-semibold">タスク一覧</h1>
 
-          {/* 統合フラグアプローチ：草稿タスクの表示統計 */}
-          {draftStats.totalDrafts > 0 && (
+          {draftCount > 0 && (
             <div className="ml-4 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm">
-              作成中: {draftStats.totalDrafts}個
+              作成中: {draftCount}個
             </div>
           )}
 
@@ -429,12 +414,11 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         )}
       </div>
 
-      {/* 統合フラグアプローチ：草稿タスクを除外した一括操作 */}
       {isMultiSelectMode && selectedTaskIds.length > 0 && (
         <div className="border-t p-2 bg-muted/50 flex items-center justify-between">
           <div className="text-sm font-medium">
             {selectedTaskIds.length}個のタスクを選択中
-            {draftStats.totalDrafts > 0 && (
+            {draftCount > 0 && (
               <span className="ml-2 text-xs text-muted-foreground">
                 （作成中タスクは一括操作対象外）
               </span>
@@ -481,13 +465,12 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         </div>
       )}
 
-      {/* 統合フラグアプローチ：草稿タスクの説明 */}
-      {draftStats.totalDrafts > 0 && (
+      {draftCount > 0 && (
         <div className="border-t bg-blue-50 p-3 text-sm">
           <div className="flex items-center text-blue-800">
             <Edit3 className="h-4 w-4 mr-2" />
             <span className="font-medium">
-              {draftStats.totalDrafts}個のタスクが作成中です
+              {draftCount}個のタスクが作成中です
             </span>
           </div>
           <p className="text-blue-700 text-xs mt-1">

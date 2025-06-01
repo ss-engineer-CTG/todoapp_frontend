@@ -8,8 +8,8 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { HelpCircle } from 'lucide-react'
-import { KEYBOARD_SHORTCUTS } from '../config/constants'
-import { KeyboardShortcut } from '../types'
+import { KEYBOARD_SHORTCUTS } from '../config'
+import { KeyboardShortcut } from '../config'
 
 export const ShortcutGuideDialog: React.FC = () => {
   return (

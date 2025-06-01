@@ -23,7 +23,6 @@
   --input: 214.3 31.8% 91.4%;
   --ring: 222.2 84% 4.9%;
   --radius: 0.5rem;
-  /* システムプロンプト準拠：フォーカス状態強化用CSS変数 */
   --focus-ring: 222.2 84% 4.9%;
   --focus-bg: 210 40% 96%;
 }
@@ -48,7 +47,6 @@
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
   --ring: 212.7 26.8% 83.9%;
-  /* システムプロンプト準拠：ダークモードでのフォーカス状態強化 */
   --focus-ring: 212.7 26.8% 83.9%;
   --focus-bg: 217.2 32.6% 17.5%;
 }
@@ -108,7 +106,7 @@ body {
   background: hsl(var(--foreground));
 }
 
-/* システムプロンプト準拠：フォーカス管理強化 */
+/* フォーカス管理強化 */
 .focus-visible:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
@@ -140,11 +138,6 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-/* システムプロンプト準拠：キーボードナビゲーション強化 */
-.keyboard-focus {
-  box-shadow: 0 0 0 2px hsl(var(--ring));
 }
 
 /* フォーカス可能パネルの視覚的フィードバック */
@@ -201,101 +194,6 @@ html.dark {
   }
 }
 
-/* shadcn/ui のアニメーション */
-@keyframes accordion-down {
-  from {
-    height: 0;
-  }
-  to {
-    height: var(--radix-accordion-content-height);
-  }
-}
-
-@keyframes accordion-up {
-  from {
-    height: var(--radix-accordion-content-height);
-  }
-  to {
-    height: 0;
-  }
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes zoom-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes zoom-out {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-}
-
-@keyframes slide-in-from-top {
-  from {
-    transform: translateY(-100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes slide-in-from-bottom {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes slide-in-from-left {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes slide-in-from-right {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
 /* プリント用スタイル */
 @media print {
   .no-print {
@@ -321,21 +219,4 @@ html.dark {
     --input: 0 0% 100%;
     --focus-ring: 0 0% 100%;
   }
-}
-
-/* システムプロンプト準拠：フォーカス状態のアニメーション */
-@keyframes focus-pulse {
-  0% {
-    box-shadow: 0 0 0 0 hsl(var(--focus-ring) / 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 4px hsl(var(--focus-ring) / 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 hsl(var(--focus-ring) / 0);
-  }
-}
-
-.focus-pulse {
-  animation: focus-pulse 1.5s infinite;
 }

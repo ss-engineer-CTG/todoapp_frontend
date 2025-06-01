@@ -5,10 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ColorPicker } from './ColorPicker'
-import { PROJECT_COLORS } from '../config/constants'
+import { PROJECT_COLORS } from '../config'
 import { cn } from '@/lib/utils'
-import { handleError } from '../utils/errorHandler'
-import { logger } from '../utils/logger'
+import { handleError, logger } from '../utils/core'
 
 interface ProjectPanelProps {
   projects: Project[]
@@ -45,7 +44,7 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
 
   const newProjectInputRef = useRef<HTMLInputElement>(null)
   const editProjectInputRef = useRef<HTMLInputElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null) // システムプロンプト準拠：フォーカス管理改善
+  const panelRef = useRef<HTMLDivElement>(null)
 
   function getRandomColor() {
     return PROJECT_COLORS[Math.floor(Math.random() * PROJECT_COLORS.length)].value
@@ -126,7 +125,6 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
         await apiActions.deleteProject(projectId)
         onProjectsUpdate(projects.filter((project) => project.id !== projectId))
         
-        // 削除されたプロジェクトが選択されていた場合、他のプロジェクトを選択
         if (selectedProjectId === projectId) {
           const remainingProjects = projects.filter(p => p.id !== projectId)
           if (remainingProjects.length > 0) {
@@ -139,18 +137,16 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
     }
   }
 
-  // システムプロンプト準拠：フォーカス管理改善
   const handlePanelClick = () => {
-    logger.debug('Project panel clicked, setting active area')
+    logger.info('Project panel clicked')
     setActiveArea("projects")
-    // パネル自体にフォーカスを設定
     if (panelRef.current) {
       panelRef.current.focus()
     }
   }
 
   const handlePanelFocus = () => {
-    logger.debug('Project panel focused')
+    logger.info('Project panel focused')
     setActiveArea("projects")
   }
 
@@ -163,7 +159,7 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
       )}
       onClick={handlePanelClick}
       onFocus={handlePanelFocus}
-      tabIndex={0} // システムプロンプト準拠：フォーカス可能にする
+      tabIndex={0}
       role="region"
       aria-label="プロジェクト一覧"
     >
@@ -179,7 +175,6 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
         </Button>
       </div>
 
-      {/* 新規プロジェクト追加フォーム */}
       {isAddingProject && (
         <div className="mb-2 space-y-2">
           <Input
@@ -200,7 +195,6 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
         </div>
       )}
 
-      {/* プロジェクト編集フォーム */}
       {isEditingProject && editingProjectId && (
         <div className="mb-2 space-y-2">
           <Input
@@ -224,7 +218,6 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
         </div>
       )}
 
-      {/* プロジェクト一覧 */}
       <div className="space-y-1 overflow-y-auto flex-grow">
         {projects.map((project) => (
           <div
@@ -234,7 +227,7 @@ export const ProjectPanel: React.FC<ProjectPanelProps> = ({
               selectedProjectId === project.id ? "bg-accent" : "hover:bg-accent/50"
             )}
             onClick={() => {
-              logger.debug('Project selected', { projectId: project.id })
+              logger.info('Project selected', { projectId: project.id })
               onProjectSelect(project.id)
             }}
             style={{
