@@ -1,0 +1,288 @@
+// システムプロンプト準拠：キーボード処理簡素化（useKeyboardShortcuts + useTaskRelations統合）
+
+import { useEffect, useRef, useCallback } from 'react'
+import { Task, Project, AreaType } from '../types'
+import { buildTaskRelationMap } from '../utils/task'
+import { logger } from '../utils/core'
+
+interface UseKeyboardProps {
+  tasks: Task[]
+  projects: Project[]
+  selectedProjectId: string
+  setSelectedProjectId: (id: string) => void
+  selectedTaskId: string | null
+  setSelectedTaskId: (id: string | null) => void
+  filteredTasks: Task[]
+  activeArea: AreaType
+  setActiveArea: (area: AreaType) => void
+  isDetailPanelVisible: boolean
+  isMultiSelectMode: boolean
+  onCreateDraft: (parentId: string | null, level: number) => void
+  onDeleteTask: (taskId: string) => void
+  onCopyTask: (taskId: string) => void
+  onPasteTask: () => void
+  onToggleCompletion: (taskId: string) => void
+  onToggleCollapse: (taskId: string) => void
+  onSelectAll: () => void
+  onRangeSelect: (direction: 'up' | 'down') => void
+  copiedTasksCount: number
+  isInputActive: boolean
+}
+
+export const useKeyboard = (props: UseKeyboardProps) => {
+  const taskNameInputRef = useRef<HTMLInputElement>(null)
+  const startDateButtonRef = useRef<HTMLButtonElement>(null)
+  const dueDateButtonRef = useRef<HTMLButtonElement>(null)
+  const taskNotesRef = useRef<HTMLTextAreaElement>(null)
+  const saveButtonRef = useRef<HTMLButtonElement>(null)
+
+  const taskRelationMap = buildTaskRelationMap(props.tasks)
+
+  const isDetailPanelInputFocused = useCallback((): boolean => {
+    const activeElement = document.activeElement
+    return !!(
+      activeElement === taskNameInputRef.current ||
+      activeElement === taskNotesRef.current ||
+      activeElement === startDateButtonRef.current ||
+      activeElement === dueDateButtonRef.current ||
+      activeElement === saveButtonRef.current
+    )
+  }, [])
+
+  const handleDetailTabNavigation = useCallback((e: KeyboardEvent) => {
+    if (!props.selectedTaskId || !isDetailPanelInputFocused()) return false
+
+    const activeElement = document.activeElement
+    const isShiftTab = e.shiftKey
+    let handled = false
+
+    if (activeElement === taskNameInputRef.current && !isShiftTab) {
+      e.preventDefault()
+      startDateButtonRef.current?.focus()
+      handled = true
+    } else if (activeElement === startDateButtonRef.current) {
+      e.preventDefault()
+      if (isShiftTab) {
+        taskNameInputRef.current?.focus()
+      } else {
+        dueDateButtonRef.current?.focus()
+      }
+      handled = true
+    } else if (activeElement === dueDateButtonRef.current) {
+      e.preventDefault()
+      if (isShiftTab) {
+        startDateButtonRef.current?.focus()
+      } else {
+        taskNotesRef.current?.focus()
+      }
+      handled = true
+    } else if (activeElement === taskNotesRef.current) {
+      e.preventDefault()
+      if (isShiftTab) {
+        dueDateButtonRef.current?.focus()
+      } else {
+        saveButtonRef.current?.focus()
+      }
+      handled = true
+    } else if (activeElement === saveButtonRef.current && isShiftTab) {
+      e.preventDefault()
+      taskNotesRef.current?.focus()
+      handled = true
+    }
+
+    return handled
+  }, [props.selectedTaskId, isDetailPanelInputFocused])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      try {
+        if (props.isInputActive && e.key !== "Escape") {
+          return
+        }
+
+        // Escape キー処理
+        if (e.key === "Escape") {
+          if (props.activeArea === "details" && props.isDetailPanelVisible) {
+            e.preventDefault()
+            props.setActiveArea("tasks")
+            return
+          } else if (props.isMultiSelectMode) {
+            e.preventDefault()
+            // clearSelection は上位で処理
+            return
+          }
+        }
+
+        // 詳細パネル内Tab制限
+        if (e.key === "Tab" && isDetailPanelInputFocused()) {
+          if (handleDetailTabNavigation(e)) return
+        }
+
+        // メインキーボードショートカット
+        switch (e.key) {
+          case "Enter":
+            if (props.activeArea === "tasks" && !isDetailPanelInputFocused()) {
+              e.preventDefault()
+              if (props.selectedTaskId) {
+                const task = props.tasks.find(t => t.id === props.selectedTaskId)
+                if (task) {
+                  props.onCreateDraft(task.parentId, task.level)
+                }
+              } else {
+                props.onCreateDraft(null, 0)
+              }
+            }
+            break
+
+          case "Tab":
+            if (props.activeArea === "tasks" && !isDetailPanelInputFocused() && props.selectedTaskId) {
+              e.preventDefault()
+              const task = props.tasks.find(t => t.id === props.selectedTaskId)
+              const level = task ? task.level + 1 : 1
+              props.onCreateDraft(props.selectedTaskId, level)
+            }
+            break
+
+          case "Delete":
+          case "Backspace":
+            if (props.activeArea === "tasks" && props.selectedTaskId && !isDetailPanelInputFocused()) {
+              e.preventDefault()
+              props.onDeleteTask(props.selectedTaskId)
+            }
+            break
+
+          case "c":
+            if (e.ctrlKey && props.activeArea === "tasks" && props.selectedTaskId && !isDetailPanelInputFocused()) {
+              e.preventDefault()
+              props.onCopyTask(props.selectedTaskId)
+            }
+            break
+
+          case "v":
+            if (e.ctrlKey && props.activeArea === "tasks" && props.copiedTasksCount > 0 && !isDetailPanelInputFocused()) {
+              e.preventDefault()
+              props.onPasteTask()
+            }
+            break
+
+          case " ":
+            if (props.activeArea === "tasks" && props.selectedTaskId && !isDetailPanelInputFocused()) {
+              e.preventDefault()
+              props.onToggleCompletion(props.selectedTaskId)
+            }
+            break
+
+          case "ArrowUp":
+            e.preventDefault()
+            if (props.activeArea === "tasks" && props.filteredTasks.length > 0) {
+              if (e.shiftKey && props.selectedTaskId) {
+                props.onRangeSelect('up')
+              } else {
+                // 上のタスクに移動
+                if (props.selectedTaskId) {
+                  const currentIndex = props.filteredTasks.findIndex(t => t.id === props.selectedTaskId)
+                  if (currentIndex > 0) {
+                    props.setSelectedTaskId(props.filteredTasks[currentIndex - 1].id)
+                  }
+                } else if (props.filteredTasks.length > 0) {
+                  props.setSelectedTaskId(props.filteredTasks[0].id)
+                }
+              }
+            } else if (props.activeArea === "projects" && props.projects.length > 0) {
+              const currentIndex = props.projects.findIndex(p => p.id === props.selectedProjectId)
+              if (currentIndex > 0) {
+                props.setSelectedProjectId(props.projects[currentIndex - 1].id)
+              }
+            }
+            break
+
+          case "ArrowDown":
+            e.preventDefault()
+            if (props.activeArea === "tasks" && props.filteredTasks.length > 0) {
+              if (e.shiftKey && props.selectedTaskId) {
+                props.onRangeSelect('down')
+              } else {
+                // 下のタスクに移動
+                if (props.selectedTaskId) {
+                  const currentIndex = props.filteredTasks.findIndex(t => t.id === props.selectedTaskId)
+                  if (currentIndex < props.filteredTasks.length - 1) {
+                    props.setSelectedTaskId(props.filteredTasks[currentIndex + 1].id)
+                  }
+                } else if (props.filteredTasks.length > 0) {
+                  props.setSelectedTaskId(props.filteredTasks[0].id)
+                }
+              }
+            } else if (props.activeArea === "projects" && props.projects.length > 0) {
+              const currentIndex = props.projects.findIndex(p => p.id === props.selectedProjectId)
+              if (currentIndex < props.projects.length - 1) {
+                props.setSelectedProjectId(props.projects[currentIndex + 1].id)
+              }
+            }
+            break
+
+          case "ArrowRight":
+            if (e.ctrlKey && props.activeArea === "tasks" && props.selectedTaskId) {
+              const hasChildren = taskRelationMap.childrenMap[props.selectedTaskId]?.length > 0
+              if (hasChildren) {
+                e.preventDefault()
+                props.onToggleCollapse(props.selectedTaskId)
+              }
+            } else {
+              e.preventDefault()
+              if (props.activeArea === "projects") {
+                props.setActiveArea("tasks")
+                if (props.filteredTasks.length > 0 && !props.selectedTaskId) {
+                  props.setSelectedTaskId(props.filteredTasks[0].id)
+                }
+              } else if (props.activeArea === "tasks" && props.isDetailPanelVisible && props.selectedTaskId) {
+                props.setActiveArea("details")
+                setTimeout(() => taskNameInputRef.current?.focus(), 0)
+              }
+            }
+            break
+
+          case "ArrowLeft":
+            e.preventDefault()
+            if (props.activeArea === "tasks" && props.selectedTaskId) {
+              const task = props.tasks.find(t => t.id === props.selectedTaskId)
+              if (task && task.parentId) {
+                props.setSelectedTaskId(task.parentId)
+              } else {
+                props.setActiveArea("projects")
+              }
+            } else if (props.activeArea === "details") {
+              props.setActiveArea("tasks")
+            } else if (props.activeArea === "tasks") {
+              props.setActiveArea("projects")
+            }
+            break
+
+          case "a":
+            if (e.ctrlKey && props.activeArea === "tasks" && props.filteredTasks.length > 0 && !isDetailPanelInputFocused()) {
+              e.preventDefault()
+              props.onSelectAll()
+            }
+            break
+        }
+      } catch (error) {
+        logger.error('Keyboard shortcut error', { key: e.key, error })
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [
+    props,
+    taskRelationMap,
+    handleDetailTabNavigation,
+    isDetailPanelInputFocused
+  ])
+
+  return {
+    taskNameInputRef,
+    startDateButtonRef,
+    dueDateButtonRef,
+    taskNotesRef,
+    saveButtonRef
+  }
+}
