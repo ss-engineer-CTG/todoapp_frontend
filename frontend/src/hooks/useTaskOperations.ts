@@ -1,4 +1,5 @@
 // システムプロンプト準拠：タスク操作統合（useTaskDraft + taskOperations統合）
+// 修正内容：フォーカス制御強化、草稿保存後の戻り値最適化
 
 import { useState, useCallback } from 'react'
 import { Task, TaskApiActions } from '../types'
@@ -42,7 +43,7 @@ export const useTaskOperations = ({
     }
   }, [selectedProjectId, setAllTasks])
 
-  // 草稿タスク保存
+  // 修正：草稿タスク保存 - フォーカス制御のための戻り値最適化
   const saveDraft = useCallback(async (draftId: string, updates: Partial<Task>) => {
     try {
       const draft = allTasks.find(t => t.id === draftId)
@@ -70,7 +71,14 @@ export const useTaskOperations = ({
       // 草稿をローカル状態から削除
       setAllTasks(prev => prev.filter(t => t.id !== draftId))
       
-      logger.info('Draft task saved successfully', { draftId, newTaskId: savedTask.id })
+      logger.info('Draft task saved successfully', { 
+        draftId, 
+        newTaskId: savedTask.id,
+        taskName: savedTask.name,
+        // 修正：フォーカス制御のためのログ情報追加
+        focusTarget: savedTask.id
+      })
+      
       return savedTask
     } catch (error) {
       logger.error('Draft task save failed', { draftId, error })
@@ -237,7 +245,7 @@ export const useTaskOperations = ({
     copiedTasks,
     createDraft,
     saveDraft,
-    cancelDraft, // 新規追加
+    cancelDraft,
     deleteTask,
     toggleTaskCompletion,
     toggleTaskCollapse,

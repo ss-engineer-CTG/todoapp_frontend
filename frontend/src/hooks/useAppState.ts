@@ -1,5 +1,5 @@
 // システムプロンプト準拠：アプリ状態管理統合（useApi + useMultiSelect + useScrollToTask）
-// 修正内容：データ検証処理の微調整（期限順ソート対応）
+// 修正内容：フォーカス管理機能追加、データ検証処理の微調整（期限順ソート対応）
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Task, Project, SelectionState, BatchOperation, BatchOperationResult } from '../types'
@@ -33,6 +33,9 @@ export const useAppState = () => {
     isMultiSelectMode: false
   })
 
+  // 修正：フォーカス管理状態を追加
+  const [pendingFocusTaskId, setPendingFocusTaskId] = useState<string | null>(null)
+
   // スクロール管理
   const taskRefs = useRef<{ [key: string]: HTMLDivElement }>({})
 
@@ -45,7 +48,63 @@ export const useAppState = () => {
     }
   }, [])
 
-  // 選択されたタスクをスクロール表示
+  // 修正：フォーカス管理機能を追加
+  const focusTaskById = useCallback((taskId: string) => {
+    try {
+      const taskElement = taskRefs.current[taskId]
+      if (taskElement) {
+        logger.info('Focusing task element', { taskId })
+        
+        // スクロールして表示
+        taskElement.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        })
+        
+        // フォーカスを設定
+        taskElement.focus()
+        
+        // ペンディング状態をクリア
+        setPendingFocusTaskId(null)
+        
+        return true
+      } else {
+        logger.warn('Task element not found for focus', { taskId })
+        return false
+      }
+    } catch (error) {
+      logger.error('Focus task failed', { taskId, error })
+      return false
+    }
+  }, [])
+
+  // 修正：ペンディングフォーカスの自動実行
+  useEffect(() => {
+    if (pendingFocusTaskId && taskRefs.current[pendingFocusTaskId]) {
+      logger.info('Executing pending focus', { taskId: pendingFocusTaskId })
+      
+      // DOM要素が確実に存在することを確認してからフォーカス
+      const focusTimeout = setTimeout(() => {
+        const success = focusTaskById(pendingFocusTaskId)
+        if (success) {
+          logger.info('Pending focus executed successfully', { taskId: pendingFocusTaskId })
+        } else {
+          logger.warn('Pending focus failed, retrying...', { taskId: pendingFocusTaskId })
+          
+          // 失敗した場合は少し後にリトライ
+          const retryTimeout = setTimeout(() => {
+            focusTaskById(pendingFocusTaskId)
+          }, 200)
+          
+          return () => clearTimeout(retryTimeout)
+        }
+      }, 50)
+      
+      return () => clearTimeout(focusTimeout)
+    }
+  }, [pendingFocusTaskId, focusTaskById])
+
+  // 選択されたタスクをスクロール表示（既存機能は維持）
   useEffect(() => {
     if (selection.selectedId && taskRefs.current[selection.selectedId]) {
       taskRefs.current[selection.selectedId].scrollIntoView({
@@ -368,6 +427,10 @@ export const useAppState = () => {
     setIsMultiSelectMode,
     
     // スクロール
-    setTaskRef
+    setTaskRef,
+    
+    // 修正：フォーカス管理機能を追加
+    focusTaskById,
+    setPendingFocusTaskId
   }
 }

@@ -1,3 +1,5 @@
+// 修正内容：保存完了時のフォーカス制御最適化
+
 import React, { RefObject, useEffect, useState, useCallback } from 'react'
 import { Task, Project } from '../types'
 import { formatDate, isValidDate, logger, handleError } from '../utils/core'
@@ -236,6 +238,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }, 100)
   }, [selectedTask, taskNotesRef, isTaskDraft])
 
+  // 修正：保存処理 - フォーカス制御の最適化
   const handleSave = async () => {
     if (!selectedTask || !editingState.canSave || isSaving) {
       logger.info('Save skipped', { 
@@ -262,7 +265,9 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
       logger.info('Starting task save operation', { 
         taskId: selectedTask.id, 
         isDraft: isTaskDraft,
-        taskName: editingState.name 
+        taskName: editingState.name,
+        // 修正：フォーカス制御準備ログ追加
+        preparingForFocus: isTaskDraft
       })
 
       const taskData: Partial<Task> = {
@@ -277,10 +282,12 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
       
       if (savedTask) {
         logger.info('Task save completed successfully', { 
-          taskId: selectedTask.id,
-          newTaskId: savedTask.id,
+          originalTaskId: selectedTask.id,
+          savedTaskId: savedTask.id,
           isDraft: isTaskDraft,
-          taskName: savedTask.name
+          taskName: savedTask.name,
+          // 修正：フォーカス制御実行ログ追加
+          focusWillBeManagedByParent: isTaskDraft
         })
         
         setEditingState(prev => ({ 
@@ -288,6 +295,12 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           hasChanges: false,
           canSave: false
         }))
+
+        // 修正：草稿タスク保存時のフォーカス制御は上位コンポーネント（TodoApp）に委譲
+        // 詳細パネル側では状態更新のみ行い、フォーカス制御は行わない
+        if (isTaskDraft) {
+          logger.info('Draft task saved - focus control delegated to parent component')
+        }
       }
 
     } catch (error) {

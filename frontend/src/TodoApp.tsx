@@ -1,4 +1,5 @@
 // システムプロンプト準拠：メインアプリロジック統合・簡素化
+// 修正内容：タスク保存後のフォーカス管理機能追加
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { AreaType } from './types'
@@ -31,7 +32,10 @@ const TodoApp: React.FC = () => {
     clearSelection,
     setSelectedTaskId,
     setIsMultiSelectMode,
-    setTaskRef
+    setTaskRef,
+    // 修正：フォーカス管理機能を追加
+    focusTaskById,
+    setPendingFocusTaskId
   } = useAppState()
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
@@ -86,7 +90,7 @@ const TodoApp: React.FC = () => {
     copiedTasks,
     createDraft,
     saveDraft,
-    cancelDraft, // 新規追加
+    cancelDraft,
     deleteTask: deleteTaskOperation,
     toggleTaskCompletion,
     toggleTaskCollapse,
@@ -214,23 +218,45 @@ const TodoApp: React.FC = () => {
       // 範囲選択実装は簡素化
       logger.info('Range select', { direction })
     },
-    onCancelDraft: handleCancelDraft, // 新規追加
+    onCancelDraft: handleCancelDraft,
     copiedTasksCount: copiedTasks.length,
     isInputActive: isAddingProject || isEditingProject
   })
 
-  // タスク保存（草稿・確定統一）
+  // 修正：タスク保存（草稿・確定統一）- フォーカス管理機能追加
   const handleSaveTask = useCallback(async (taskId: string, updates: any) => {
     try {
       const task = allTasksWithDrafts.find(t => t.id === taskId)
       if (!task) return null
 
+      let savedTask = null
+
       if (isDraftTask(task)) {
-        const savedTask = await saveDraft(taskId, updates)
+        // 草稿タスクの場合：新規作成してフォーカス制御
+        savedTask = await saveDraft(taskId, updates)
         await loadTasks(selectedProjectId)
-        setSelectedTaskId(savedTask.id)
+        
+        // 修正：保存完了後のフォーカス制御
+        if (savedTask) {
+          logger.info('Setting focus to newly created task', { 
+            oldDraftId: taskId, 
+            newTaskId: savedTask.id 
+          })
+          
+          // フォーカス対象タスクIDを設定（非同期でフォーカス実行）
+          setPendingFocusTaskId(savedTask.id)
+          setSelectedTaskId(savedTask.id)
+          setActiveArea("tasks")
+          
+          // DOM更新後にフォーカスを実行
+          setTimeout(() => {
+            focusTaskById(savedTask.id)
+          }, 100)
+        }
+        
         return savedTask
       } else {
+        // 通常タスクの場合：更新のみ
         await updateTask(taskId, updates)
         await loadTasks(selectedProjectId)
         return task
@@ -239,7 +265,17 @@ const TodoApp: React.FC = () => {
       logger.error('Task save failed', { taskId, error })
       return null
     }
-  }, [allTasksWithDrafts, saveDraft, updateTask, loadTasks, selectedProjectId, setSelectedTaskId])
+  }, [
+    allTasksWithDrafts, 
+    saveDraft, 
+    updateTask, 
+    loadTasks, 
+    selectedProjectId, 
+    setPendingFocusTaskId,
+    setSelectedTaskId, 
+    setActiveArea,
+    focusTaskById
+  ])
 
   // 初期化
   useEffect(() => {

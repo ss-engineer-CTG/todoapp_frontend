@@ -1,4 +1,5 @@
 // システムプロンプト準拠：キーボード処理簡素化（useKeyboardShortcuts + useTaskRelations統合）
+// 修正内容：左矢印キーの親タスク遷移機能を削除
 
 import { useEffect, useRef, useCallback } from 'react'
 import { Task, Project, AreaType } from '../types'
@@ -259,20 +260,15 @@ export const useKeyboard = (props: UseKeyboardProps) => {
             }
             break
 
+          // 修正：左矢印キーの親タスク遷移を削除、エリア間遷移のみに簡素化
           case "ArrowLeft":
             e.preventDefault()
-            if (props.activeArea === "tasks" && props.selectedTaskId) {
-              const task = props.tasks.find(t => t.id === props.selectedTaskId)
-              if (task && task.parentId) {
-                props.setSelectedTaskId(task.parentId)
-              } else {
-                props.setActiveArea("projects")
-              }
-            } else if (props.activeArea === "details") {
+            if (props.activeArea === "details") {
               props.setActiveArea("tasks")
             } else if (props.activeArea === "tasks") {
               props.setActiveArea("projects")
             }
+            // 親タスクへの遷移処理を削除
             break
 
           case "a":
