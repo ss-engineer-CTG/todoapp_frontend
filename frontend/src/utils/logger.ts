@@ -1,4 +1,4 @@
-// システムプロンプト準拠: 軽量化されたログ機能
+// システムプロンプト準拠: 軽量化されたログ機能（統合フラグアプローチで簡素化）
 
 export enum LogLevel {
   ERROR = 0,
@@ -58,7 +58,7 @@ class Logger {
     this.log(LogLevel.TRACE, message, context)
   }
 
-  // システムプロンプト準拠：フォーカス関連ログ専用メソッド（既存）
+  // システムプロンプト準拠：フォーカス関連ログ専用メソッド
   logFocusEvent(event: string, details?: any): void {
     this.debug(`Focus Event: ${event}`, {
       type: 'focus',
@@ -91,33 +91,13 @@ class Logger {
     })
   }
 
-  // システムプロンプト準拠：一時的タスク管理専用ログメソッド（新規追加）
-  logTemporaryTaskOperation(operation: string, taskId: string, details?: any): void {
-    this.debug(`Temporary Task Operation: ${operation}`, {
-      type: 'temporary_task',
+  // 統合フラグアプローチ：軽量化されたタスク操作ログ
+  logTaskOperation(operation: string, taskId: string, isDraft: boolean, details?: any): void {
+    this.debug(`Task Operation: ${operation}`, {
+      type: 'task_operation',
       operation,
       taskId,
-      details,
-      timestamp: new Date().toISOString()
-    })
-  }
-
-  logTemporaryTaskLifecycle(phase: string, taskId: string, taskName?: string, context?: any): void {
-    this.info(`Temporary Task Lifecycle: ${phase}`, {
-      type: 'temporary_task_lifecycle',
-      phase,
-      taskId,
-      taskName,
-      context,
-      timestamp: new Date().toISOString()
-    })
-  }
-
-  logTaskCreationFlow(step: string, source: string, details?: any): void {
-    this.debug(`Task Creation Flow: ${step}`, {
-      type: 'task_creation_flow',
-      step,
-      source,
+      isDraft,
       details,
       timestamp: new Date().toISOString()
     })

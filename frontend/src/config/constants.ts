@@ -1,4 +1,4 @@
-// システムプロンプト準拠: 軽量化された定数定義
+// システムプロンプト準拠: 軽量化された定数定義（統合フラグアプローチで簡素化）
 import { ProjectColor, KeyboardShortcut } from '../types'
 
 // プロジェクトカラー
@@ -13,19 +13,19 @@ export const PROJECT_COLORS: ProjectColor[] = [
   { name: "ティール", value: "#14b8a6" },
 ] as const
 
-// キーボードショートカット（システムプロンプト準拠：ESC追加）
+// キーボードショートカット（統合フラグアプローチで簡素化）
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
-  { key: "Enter", description: "同じレベルで新規タスク追加" },
-  { key: "Tab", description: "選択したタスクの子タスクを追加" },
+  { key: "Enter", description: "同じレベルで新規草稿タスク追加" },
+  { key: "Tab", description: "選択したタスクの子草稿タスクを追加" },
   { key: "Delete / Backspace", description: "選択したタスクを削除" },
-  { key: "Ctrl + C", description: "選択したタスクをコピー" },
+  { key: "Ctrl + C", description: "選択したタスクをコピー（確定タスクのみ）" },
   { key: "Ctrl + V", description: "コピーしたタスクを貼り付け" },
-  { key: "Space", description: "タスク完了状態の切り替え" },
+  { key: "Space", description: "タスク完了状態の切り替え（確定タスクのみ）" },
   { key: "↑", description: "上のタスクに移動" },
   { key: "↓", description: "下のタスクに移動" },
   { key: "→", description: "右のエリアに移動" },
   { key: "←", description: "左のエリアに移動" },
-  { key: "Ctrl + →", description: "タスクの折りたたみ切り替え" },
+  { key: "Ctrl + →", description: "タスクの折りたたみ切り替え（確定タスクのみ）" },
   { key: "Shift + ↑/↓", description: "複数タスクを選択" },
   { key: "Ctrl + クリック", description: "タスクを個別に選択/選択解除" },
   { key: "Ctrl + A", description: "すべてのタスクを選択" },
@@ -49,7 +49,7 @@ export const TASK_API_ENDPOINTS = {
   BATCH: '/api/tasks/batch',
 } as const
 
-// エラーメッセージ
+// エラーメッセージ（統合フラグアプローチで簡素化）
 export const ERROR_MESSAGES = {
   NETWORK_ERROR: 'ネットワークエラーが発生しました',
   VALIDATION_ERROR: '入力値に誤りがあります',
@@ -60,10 +60,6 @@ export const ERROR_MESSAGES = {
   SHORTCUT_ERROR: 'ショートカット操作でエラーが発生しました',
   TASK_OPERATION_ERROR: 'タスク操作でエラーが発生しました',
   COPY_PASTE_ERROR: 'コピー・ペースト操作でエラーが発生しました',
-  // システムプロンプト準拠：一時的タスク関連エラーメッセージ追加
-  TEMPORARY_TASK_ERROR: '一時的タスクの操作でエラーが発生しました',
-  TEMPORARY_TASK_SAVE_ERROR: '一時的タスクの保存に失敗しました',
-  TEMPORARY_TASK_NAME_REQUIRED: 'タスク名を入力してから保存してください',
 } as const
 
 // UI設定定数
@@ -97,22 +93,14 @@ export const BATCH_OPERATIONS = {
   COPY: 'copy'
 } as const
 
-// タスク操作関連定数
+// タスク操作関連定数（統合フラグアプローチで簡素化）
 export const TASK_OPERATION_CONSTANTS = {
   DEFAULT_TASK_NAME: '新しいタスク',
   COPY_SUFFIX: ' (コピー)',
   MAX_TASK_LEVEL: 10,
   AUTO_SAVE_DELAY: 500,
-  // システムプロンプト準拠：一時的タスク関連定数追加
-  TEMPORARY_TASK_PREFIX: 'temp_',
-  TEMPORARY_TASK_PLACEHOLDER: 'タスク名を入力してください',
-  TEMPORARY_TASK_DEFAULT_NAME: '',
-} as const
-
-// システムプロンプト準拠：一時的タスク操作タイプ
-export const TEMPORARY_TASK_OPERATIONS = {
-  CREATE: 'create_temporary',
-  SAVE: 'save_temporary',
-  CANCEL: 'cancel_temporary',
-  REMOVE: 'remove_temporary'
+  // 統合フラグアプローチ：草稿関連定数を簡素化
+  DRAFT_TASK_PREFIX: 'draft_',
+  DRAFT_TASK_PLACEHOLDER: 'タスク名を入力してください',
+  DRAFT_TASK_DEFAULT_NAME: '',
 } as const

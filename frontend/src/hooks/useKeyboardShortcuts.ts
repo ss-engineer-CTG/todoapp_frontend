@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { Task, Project, TaskRelationMap, AreaType } from '../types'
+import { isDraftTask } from '../utils/taskUtils'
 import { logger } from '../utils/logger'
 
 interface UseKeyboardShortcutsProps {
@@ -19,8 +20,8 @@ interface UseKeyboardShortcutsProps {
   setIsMultiSelectMode: (mode: boolean) => void
   taskRelationMap: TaskRelationMap
   copiedTasks: Task[]
-  // システムプロンプト準拠：一時的タスク作成への変更
-  onAddTemporaryTask: (parentId: string | null, level: number) => void
+  // 統合フラグアプローチ：草稿タスク作成への変更
+  onAddDraftTask: (parentId: string | null, level: number) => void
   onDeleteTask: (taskId: string) => void
   onCopyTask: (taskId: string) => void
   onPasteTask: () => void
@@ -50,7 +51,7 @@ export const useKeyboardShortcuts = ({
   setIsMultiSelectMode,
   taskRelationMap,
   copiedTasks,
-  onAddTemporaryTask, // システムプロンプト準拠：一時的タスク作成に変更
+  onAddDraftTask, // 統合フラグアプローチ：草稿タスク作成に変更
   onDeleteTask,
   onCopyTask,
   onPasteTask,
@@ -74,7 +75,6 @@ export const useKeyboardShortcuts = ({
     const activeElement = document.activeElement
     if (!activeElement) return false
 
-    // 詳細パネル内の入力フィールドに実際にフォーカスがある場合のみtrue
     return !!(
       activeElement === taskNameInputRef.current ||
       activeElement === taskNotesRef.current ||
@@ -117,7 +117,7 @@ export const useKeyboardShortcuts = ({
     return (isInput && !isNewTaskInput) || isProjectEditing
   }, [isAddingProject, isEditingProject, isNewTaskInputActive])
 
-  // システムプロンプト準拠：詳細パネル内のTab navigation（実際にフォーカスがある場合のみ）
+  // システムプロンプト準拠：詳細パネル内のTab navigation
   const handleDetailTabNavigation = useCallback((e: KeyboardEvent) => {
     if (!selectedTaskId || !isDetailPanelInputFocused()) return false
 
@@ -180,13 +180,7 @@ export const useKeyboardShortcuts = ({
     return handled
   }, [selectedTaskId, isDetailPanelInputFocused])
 
-  // システムプロンプト準拠：一時的タスクの判定（新機能）
-  const isTemporaryTask = useCallback((taskId: string): boolean => {
-    const task = tasks.find(t => t.id === taskId)
-    return task?.isTemporary === true
-  }, [tasks])
-
-  // システムプロンプト準拠：統一されたキーボードショートカット処理（Escapeキー問題解決）
+  // システムプロンプト準拠：統一されたキーボードショートカット処理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       try {
@@ -202,7 +196,7 @@ export const useKeyboardShortcuts = ({
           return
         }
 
-        // システムプロンプト準拠：Escapeキーを最優先で処理（問題解決の核心）
+        // システムプロンプト準拠：Escapeキーを最優先で処理
         if (e.key === "Escape") {
           logger.debug('Escape key pressed', { 
             activeArea, 
@@ -216,13 +210,7 @@ export const useKeyboardShortcuts = ({
             e.preventDefault()
             setActiveArea("tasks")
             logger.logAreaTransition('details', 'tasks', 'escape_key')
-            logger.logFocusEvent('escape_from_detail_panel', { 
-              selectedTaskId,
-              reason: 'user_escape',
-              wasInInputField: isDetailInput,
-              inputFieldType: document.activeElement?.tagName
-            })
-            return // Escapeキー処理完了で終了
+            return
           } else if (isMultiSelectMode) {
             e.preventDefault()
             setIsMultiSelectMode(false)
@@ -231,12 +219,9 @@ export const useKeyboardShortcuts = ({
             } else {
               setSelectedTaskIds([])
             }
-            logger.debug('Exited multi-select mode via escape', { 
-              previousSelectedCount: selectedTaskIds.length 
-            })
-            return // Escapeキー処理完了で終了
+            logger.debug('Exited multi-select mode via escape')
+            return
           }
-          // Escapeキーが処理されない場合はそのまま継続
         }
 
         // 一般入力フィールド中はスキップ（カレンダー以外）
@@ -254,7 +239,7 @@ export const useKeyboardShortcuts = ({
           }
         }
 
-        // システムプロンプト準拠：詳細パネル内で実際にフォーカスがある場合のみTab制限
+        // 詳細パネル内でのTab制限
         if (e.key === "Tab" && isDetailPanelInputFocused()) {
           const handled = handleDetailTabNavigation(e)
           if (handled) {
@@ -262,42 +247,40 @@ export const useKeyboardShortcuts = ({
           }
         }
 
-        // システムプロンプト準拠：KISS原則 - シンプルなキーベース判定
+        // システムプロンプト準拠：統合フラグアプローチによるキー処理
         switch (e.key) {
           case "Enter":
-            // タスクパネル関連またはタスクが選択されている場合
             if (activeArea === "tasks" || (selectedTaskId && !isDetailPanelInputFocused())) {
               e.preventDefault()
               if (selectedTaskId) {
                 const task = tasks.find((t) => t.id === selectedTaskId)
                 if (task) {
-                  logger.logTaskCreationFlow('enter_key_pressed', 'shortcut', { 
+                  logger.debug('Creating draft task via Enter key', { 
                     parentId: task.parentId, 
                     level: task.level,
-                    isTemporary: task.isTemporary
+                    isDraft: isDraftTask(task)
                   })
-                  onAddTemporaryTask(task.parentId, task.level)
+                  onAddDraftTask(task.parentId, task.level)
                 }
               } else {
-                logger.logTaskCreationFlow('enter_key_pressed_no_selection', 'shortcut')
-                onAddTemporaryTask(null, 0)
+                logger.debug('Creating root draft task via Enter key')
+                onAddDraftTask(null, 0)
               }
             }
             break
 
           case "Tab":
-            // タスクパネル関連またはタスクが選択されていて、詳細パネル入力欄にフォーカスがない場合
             if ((activeArea === "tasks" || selectedTaskId) && !isDetailPanelInputFocused()) {
               e.preventDefault()
               if (selectedTaskId) {
                 const task = tasks.find((t) => t.id === selectedTaskId)
                 const level = task ? task.level + 1 : 1
-                logger.logTaskCreationFlow('tab_key_pressed', 'shortcut', { 
+                logger.debug('Creating child draft task via Tab key', { 
                   parentId: selectedTaskId, 
                   level,
-                  parentIsTemporary: task?.isTemporary
+                  parentIsDraft: task && isDraftTask(task)
                 })
-                onAddTemporaryTask(selectedTaskId, level)
+                onAddDraftTask(selectedTaskId, level)
               }
             }
             break
@@ -306,10 +289,10 @@ export const useKeyboardShortcuts = ({
           case "Backspace":
             if ((activeArea === "tasks" || selectedTaskId) && selectedTaskId && !isDetailPanelInputFocused()) {
               e.preventDefault()
-              const isTemp = isTemporaryTask(selectedTaskId)
+              const task = tasks.find(t => t.id === selectedTaskId)
               logger.info('Deleting task via keyboard', { 
                 taskId: selectedTaskId,
-                isTemporary: isTemp
+                isDraft: task && isDraftTask(task)
               })
               onDeleteTask(selectedTaskId)
             }
@@ -317,9 +300,9 @@ export const useKeyboardShortcuts = ({
 
           case "c":
             if (e.ctrlKey && (activeArea === "tasks" || selectedTaskId) && selectedTaskId && !isDetailPanelInputFocused()) {
-              // 一時的タスクはコピー不可
-              if (isTemporaryTask(selectedTaskId)) {
-                logger.debug('Copy skipped for temporary task', { taskId: selectedTaskId })
+              const task = tasks.find(t => t.id === selectedTaskId)
+              if (task && isDraftTask(task)) {
+                logger.debug('Copy skipped for draft task', { taskId: selectedTaskId })
                 break
               }
               e.preventDefault()
@@ -338,9 +321,9 @@ export const useKeyboardShortcuts = ({
 
           case " ":
             if ((activeArea === "tasks" || selectedTaskId) && selectedTaskId && !isDetailPanelInputFocused()) {
-              // 一時的タスクは完了状態切り替え不可
-              if (isTemporaryTask(selectedTaskId)) {
-                logger.debug('Completion toggle skipped for temporary task', { taskId: selectedTaskId })
+              const task = tasks.find(t => t.id === selectedTaskId)
+              if (task && isDraftTask(task)) {
+                logger.debug('Completion toggle skipped for draft task', { taskId: selectedTaskId })
                 break
               }
               e.preventDefault()
@@ -417,9 +400,9 @@ export const useKeyboardShortcuts = ({
 
           case "ArrowRight":
             if (e.ctrlKey && activeArea === "tasks" && selectedTaskId) {
-              // 一時的タスクは折りたたみ不可
-              if (isTemporaryTask(selectedTaskId)) {
-                logger.debug('Collapse toggle skipped for temporary task', { taskId: selectedTaskId })
+              const task = tasks.find(t => t.id === selectedTaskId)
+              if (task && isDraftTask(task)) {
+                logger.debug('Collapse toggle skipped for draft task', { taskId: selectedTaskId })
                 break
               }
               const hasChildren = taskRelationMap.childrenMap[selectedTaskId]?.length > 0
@@ -507,7 +490,7 @@ export const useKeyboardShortcuts = ({
     isAddingProject,
     isAddingTask,
     isEditingProject,
-    onAddTemporaryTask, // システムプロンプト準拠：一時的タスク作成に変更
+    onAddDraftTask, // 統合フラグアプローチ：草稿タスク作成に変更
     onDeleteTask,
     onCopyTask,
     onPasteTask,
@@ -524,8 +507,7 @@ export const useKeyboardShortcuts = ({
     isNewTaskInputActive,
     isCalendarActive,
     isGeneralInputActive,
-    isDetailPanelInputFocused,
-    isTemporaryTask
+    isDetailPanelInputFocused
   ])
 
   return {

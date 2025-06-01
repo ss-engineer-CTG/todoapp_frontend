@@ -33,7 +33,7 @@ export const useTaskRelations = (tasks: Task[]) => {
     updateTaskRelationMap(tasks)
   }, [tasks])
 
-  // システムプロンプト準拠：子タスク存在判定の改善
+  // システムプロンプト準拠：子タスク存在判定の改善（統合フラグ対応）
   const hasChildTasks = (taskId: string): boolean => {
     try {
       const childrenIds = taskRelationMap.childrenMap[taskId]

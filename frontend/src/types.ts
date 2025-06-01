@@ -1,4 +1,5 @@
 // システムプロンプト準拠: タスク・プロジェクト関連の型定義
+// 統合フラグアプローチ：_isDraft フラグ追加
 
 // 基本型
 export interface Project {
@@ -25,8 +26,8 @@ export interface Task {
   collapsed: boolean
   createdAt?: Date
   updatedAt?: Date
-  // システムプロンプト準拠：一時的タスク管理機能追加
-  isTemporary?: boolean
+  // 統合フラグアプローチ：草稿状態を示すフラグ
+  _isDraft?: boolean
 }
 
 // UI関連型
@@ -53,10 +54,6 @@ export interface TaskApiActions {
   deleteTask: (id: string) => Promise<void>
   loadTasks: () => Promise<Task[]>
   batchUpdateTasks: (operation: BatchOperation, taskIds: string[]) => Promise<BatchOperationResult>
-  // システムプロンプト準拠：一時的タスク管理機能追加
-  createTemporaryTask: (parentId: string | null, level: number) => Task
-  removeTemporaryTask: (taskId: string) => void
-  saveTemporaryTask: (taskId: string, taskData: Partial<Task>) => Promise<Task>
 }
 
 export interface ProjectApiActions {
@@ -76,17 +73,7 @@ export interface KeyboardShortcut {
   description: string
 }
 
-// システムプロンプト準拠：タスク作成フロー管理型
-export interface TaskCreationFlow {
-  isActive: boolean
-  parentId: string | null
-  level: number
-  source: 'shortcut' | 'ui'
-  createdTaskId: string | null
-  shouldFocusOnCreation: boolean
-}
-
-// システムプロンプト準拠：フォーカス管理型
+// システムプロンプト準拠：フォーカス管理型（簡素化）
 export interface FocusManagement {
   activeArea: AreaType
   lastFocusedTaskId: string | null
@@ -95,7 +82,7 @@ export interface FocusManagement {
   preventNextFocusChange: boolean
 }
 
-// システムプロンプト準拠：タスク編集状態管理型（一時的タスク対応強化）
+// システムプロンプト準拠：タスク編集状態管理型（統合フラグ対応）
 export interface TaskEditingState {
   name: string
   startDate: Date | null
@@ -106,15 +93,5 @@ export interface TaskEditingState {
   isStartDateCalendarOpen: boolean
   isDueDateCalendarOpen: boolean
   focusTransitionMode: 'navigation' | 'calendar-selection'
-  // システムプロンプト準拠：一時的タスク管理機能追加
-  isTemporaryTask: boolean
   canSave: boolean
-}
-
-// システムプロンプト準拠：一時的タスク操作結果型
-export interface TemporaryTaskResult {
-  success: boolean
-  task?: Task
-  error?: string
-  action: 'created' | 'saved' | 'cancelled' | 'removed'
 }

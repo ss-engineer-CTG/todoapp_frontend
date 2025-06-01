@@ -40,18 +40,15 @@ class ApiService {
 
   /**
    * システムプロンプト準拠：DRY原則による統一日付変換処理
-   * API応答の日付文字列をDate型に自動変換
    */
   private convertResponseDates<T>(data: T): T {
     try {
       if (!data) return data
 
-      // 配列の場合は各要素を変換
       if (Array.isArray(data)) {
         return data.map(item => this.convertResponseDates(item)) as T
       }
 
-      // オブジェクトの場合は日付フィールドを変換
       if (typeof data === 'object' && data !== null) {
         const converted = { ...data } as any
 
@@ -100,7 +97,7 @@ class ApiService {
     } catch (error) {
       logger.error('Date conversion failed', { error })
       handleError(error, '日付データの変換に失敗しました')
-      return data // フォールバック：元のデータを返す
+      return data
     }
   }
 
@@ -137,15 +134,15 @@ class ApiService {
         delete converted.parentId
       }
 
-      // システムプロンプト準拠：一時的タスクフラグの除去
-      if (converted.isTemporary !== undefined) {
-        delete converted.isTemporary
+      // 統合フラグアプローチ：_isDraftフラグの除去
+      if (converted._isDraft !== undefined) {
+        delete converted._isDraft
       }
 
       return converted
     } catch (error) {
       logger.error('Request date conversion failed', { error })
-      return data // フォールバック
+      return data
     }
   }
 
@@ -174,7 +171,7 @@ class ApiService {
     })
   }
 
-  // タスク関連API
+  // タスク関連API（統合フラグアプローチで簡素化）
   async getTasks(projectId?: string): Promise<Task[]> {
     const endpoint = projectId 
       ? `${TASK_API_ENDPOINTS.LIST}?projectId=${projectId}`
@@ -183,17 +180,15 @@ class ApiService {
   }
 
   async createTask(task: Omit<Task, 'id'>): Promise<Task> {
-    // システムプロンプト準拠：一時的タスクフラグの除去とバリデーション強化
     const convertedTask = this.convertRequestDates(task)
     
-    // タスク名の必須チェック（バックエンドエラー回避）
+    // タスク名の必須チェック
     if (!convertedTask.name || !convertedTask.name.trim()) {
       throw new Error('タスク名は必須です')
     }
     
     logger.debug('Creating task via API', { 
       taskName: convertedTask.name,
-      isTemporary: task.isTemporary,
       hasValidName: !!convertedTask.name?.trim()
     })
     
@@ -206,7 +201,7 @@ class ApiService {
   async updateTask(id: string, task: Partial<Task>): Promise<Task> {
     const convertedTask = this.convertRequestDates(task)
     
-    // システムプロンプト準拠：一時的タスクの更新時のバリデーション
+    // バリデーション
     if (convertedTask.name !== undefined && (!convertedTask.name || !convertedTask.name.trim())) {
       throw new Error('タスク名は必須です')
     }

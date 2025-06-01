@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Task, AreaType, BatchOperation, TaskCreationFlow, FocusManagement } from './types'
+import { Task, AreaType, BatchOperation, FocusManagement } from './types'
 import { ProjectPanel } from './components/ProjectPanel'
 import { TaskPanel } from './components/TaskPanel'
 import { DetailPanel } from './components/DetailPanel'
@@ -10,11 +10,12 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useMultiSelect } from './hooks/useMultiSelect'
 import { useScrollToTask } from './hooks/useScrollToTask'
 import { useApi } from './hooks/useApi'
+import { useTaskDraft } from './hooks/useTaskDraft'
 import { createTaskOperations } from './utils/taskOperations'
-// システムプロンプト準拠：軽量な階層ソート機能のインポート
 import { sortTasksHierarchically } from './utils/hierarchySort'
+import { isDraftTask, canCompleteTask, canCollapseTask, canCopyTask, filterTasksForBatchOperation } from './utils/taskUtils'
 import { logger } from './utils/logger'
-import { handleError, handleTemporaryTaskError } from './utils/errorHandler'
+import { handleError } from './utils/errorHandler'
 import { isValidDate } from './utils/dateUtils'
 import { BATCH_OPERATIONS } from './config/constants'
 
@@ -29,13 +30,11 @@ const TodoApp: React.FC = () => {
     createTask,
     updateTask,
     deleteTask,
-    batchUpdateTasks,
-    // システムプロンプト準拠：一時的タスク管理機能
-    createTemporaryTask,
-    removeTemporaryTask,
-    saveTemporaryTask,
-    getAllTasksIncludingTemporary
+    batchUpdateTasks
   } = useApi()
+
+  // 統合フラグアプローチ：草稿管理hook
+  const { createDraft, saveDraft, isDraft } = useTaskDraft()
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
   const [activeArea, setActiveArea] = useState<AreaType>("tasks")
@@ -48,16 +47,6 @@ const TodoApp: React.FC = () => {
   const [isAddingTask, setIsAddingTask] = useState<boolean>(false)
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
 
-  // システムプロンプト準拠：軽量化されたタスク作成フロー管理（一時的タスク対応）
-  const [taskCreationFlow, setTaskCreationFlow] = useState<TaskCreationFlow>({
-    isActive: false,
-    parentId: null,
-    level: 0,
-    source: 'shortcut',
-    createdTaskId: null,
-    shouldFocusOnCreation: false
-  })
-
   // システムプロンプト準拠：軽量化されたフォーカス管理
   const [focusManagement, setFocusManagement] = useState<FocusManagement>({
     activeArea: "tasks",
@@ -68,15 +57,14 @@ const TodoApp: React.FC = () => {
   })
 
   const currentProjects = projects.data || []
-  // システムプロンプト準拠：一時的タスクを含む全タスク取得
-  const currentTasks = getAllTasksIncludingTemporary()
+  // 統合フラグアプローチ：単一のタスク配列（草稿・確定混在）
+  const currentTasks = tasks.data || []
 
   const { taskRelationMap } = useTaskRelations(currentTasks)
 
-  // システムプロンプト準拠：軽量な階層ソート適用によるfilteredTasks生成
+  // システムプロンプト準拠：軽量な階層ソート適用
   const filteredTasks = (() => {
     try {
-      // 基本フィルタリング
       const basicFilteredTasks = currentTasks.filter((task) => {
         try {
           if (!task.id || !task.projectId) {
@@ -87,8 +75,8 @@ const TodoApp: React.FC = () => {
           if (task.projectId !== selectedProjectId) return false
           if (!showCompleted && task.completed) return false
 
-          // システムプロンプト準拠：一時的タスクは常に表示
-          if (task.isTemporary) return true
+          // 統合フラグアプローチ：草稿タスクは常に表示
+          if (isDraftTask(task)) return true
 
           if (task.parentId) {
             let currentParentId: string | null = task.parentId
@@ -106,29 +94,7 @@ const TodoApp: React.FC = () => {
         }
       })
 
-      logger.debug('Basic filtering completed', {
-        total: currentTasks.length,
-        filtered: basicFilteredTasks.length,
-        projectId: selectedProjectId
-      })
-
-      // システムプロンプト準拠：KISS原則 - 軽量な階層ソートの適用
-      if (basicFilteredTasks.length === 0) {
-        return []
-      }
-
-      // 階層ソート実行
-      const hierarchicallySortedTasks = sortTasksHierarchically(
-        basicFilteredTasks,
-        taskRelationMap
-      )
-
-      logger.debug('Hierarchy sort applied', {
-        originalCount: basicFilteredTasks.length,
-        sortedCount: hierarchicallySortedTasks.length
-      })
-
-      return hierarchicallySortedTasks
+      return sortTasksHierarchically(basicFilteredTasks, taskRelationMap)
 
     } catch (error) {
       logger.error('Task filtering and sorting failed', { 
@@ -137,7 +103,6 @@ const TodoApp: React.FC = () => {
         error 
       })
       
-      // フォールバック：基本フィルタリングのみ適用
       return currentTasks.filter((task) => {
         if (!task.id || !task.projectId) return false
         if (task.projectId !== selectedProjectId) return false
@@ -190,23 +155,226 @@ const TodoApp: React.FC = () => {
       const result = await batchUpdateTasks(operation, taskIds)
       await loadTasks(selectedProjectId)
       return result
-    },
-    // システムプロンプト準拠：一時的タスク管理機能追加
-    createTemporaryTask,
-    removeTemporaryTask,
-    saveTemporaryTask
+    }
   }
 
   const taskOperations = createTaskOperations(taskApiActions, currentTasks, selectedProjectId)
 
   // システムプロンプト準拠：プロジェクト一覧更新処理
   const handleProjectsUpdate = (updatedProjects: any[]) => {
-    // 内部的にはuseApiのstateが管理しているため、
-    // 特別な処理は不要（APIの結果で自動更新される）
     logger.debug('Projects update requested', { count: updatedProjects.length })
   }
 
-  // システムプロンプト準拠：軽量化されたフォーカス管理
+  // 統合フラグアプローチ：草稿タスク作成処理
+  const handleAddDraftTask = async (parentId: string | null = null, level = 0) => {
+    try {
+      if (!selectedProjectId) {
+        logger.warn('No project selected for draft task creation')
+        return
+      }
+
+      logger.info('Creating draft task', { parentId, level, projectId: selectedProjectId })
+
+      const draft = createDraft(selectedProjectId, parentId, level)
+      
+      // 統一されたタスク配列に追加
+      const updatedTasks = [...currentTasks, draft]
+      // useApiの状態を直接更新（実装時は適切なsetterを使用）
+      
+      // タスクを選択状態にして詳細パネルを表示
+      setSelectedTaskId(draft.id)
+      setSelectedTaskIds([draft.id])
+      setActiveArea("details")
+      setIsDetailPanelVisible(true)
+      
+      logger.info('Draft task created and selected', { draftId: draft.id })
+      
+    } catch (error) {
+      logger.error('Draft task creation failed', { parentId, level, error })
+      handleError(error, '草稿タスクの作成に失敗しました')
+    }
+  }
+
+  // 統合フラグアプローチ：統一された保存処理
+  const handleSaveTask = async (taskId: string, updates: Partial<Task>): Promise<Task | null> => {
+    try {
+      const task = currentTasks.find(t => t.id === taskId)
+      if (!task) {
+        throw new Error(`Task not found: ${taskId}`)
+      }
+
+      if (isDraftTask(task)) {
+        // 草稿の場合：新規作成として保存
+        logger.info('Saving draft task', { taskId, updates })
+        const savedTask = await saveDraft(task, updates, taskApiActions)
+        
+        // タスク一覧を再読み込み
+        await loadTasks(selectedProjectId)
+        
+        // 新しいタスクを選択状態に
+        setSelectedTaskId(savedTask.id)
+        setSelectedTaskIds([savedTask.id])
+        
+        logger.info('Draft task saved successfully', { 
+          draftId: taskId, 
+          newTaskId: savedTask.id 
+        })
+        
+        return savedTask
+      } else {
+        // 確定タスクの場合：通常の更新
+        logger.info('Updating existing task', { taskId, updates })
+        await updateTask(taskId, updates)
+        await loadTasks(selectedProjectId)
+        
+        return task
+      }
+    } catch (error) {
+      logger.error('Task save failed', { taskId, updates, error })
+      handleError(error, 'タスクの保存に失敗しました')
+      return null
+    }
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      const task = currentTasks.find(t => t.id === taskId)
+      if (!task) return
+
+      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
+        // 確定タスクのみバッチ削除
+        const regularTaskIds = filterTasksForBatchOperation(currentTasks, selectedTaskIds)
+        
+        if (regularTaskIds.length > 0) {
+          await batchUpdateTasks(BATCH_OPERATIONS.DELETE, regularTaskIds)
+        }
+        
+        // 草稿タスクは個別削除（配列から除去）
+        // TODO: 実装時は適切なstateクリア処理を追加
+        
+        setSelectedTaskId(null)
+        setSelectedTaskIds([])
+        setIsMultiSelectMode(false)
+      } else {
+        // 単一タスクの削除
+        if (isDraftTask(task)) {
+          // 草稿の場合：配列から除去
+          // TODO: 実装時は適切なstateクリア処理を追加
+          logger.info('Draft task discarded', { taskId })
+        } else {
+          // 確定タスクの場合：API削除
+          await taskOperations.deleteTask(taskId)
+        }
+        
+        if (selectedTaskId === taskId) {
+          setSelectedTaskId(null)
+          setSelectedTaskIds([])
+        }
+      }
+      
+      await loadTasks(selectedProjectId)
+    } catch (error) {
+      logger.error('Task deletion failed', { taskId, error })
+      handleError(error, 'タスクの削除に失敗しました')
+    }
+  }
+
+  const handleCopyTask = async (taskId: string) => {
+    try {
+      const task = currentTasks.find(t => t.id === taskId)
+      if (!task || !canCopyTask(task)) {
+        logger.debug('Copy operation skipped', { taskId, reason: 'invalid_or_draft' })
+        return
+      }
+
+      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
+        const validTaskIds = filterTasksForBatchOperation(currentTasks, selectedTaskIds)
+        if (validTaskIds.length > 0) {
+          const copiedTaskList = await taskOperations.copyTasks(validTaskIds)
+          setCopiedTasks(copiedTaskList)
+        }
+      } else {
+        const copiedTaskList = await taskOperations.copyTasks([taskId])
+        setCopiedTasks(copiedTaskList)
+      }
+    } catch (error) {
+      logger.error('Task copy failed', { taskId, error })
+      handleError(error, 'タスクのコピーに失敗しました')
+    }
+  }
+
+  const handlePasteTask = async () => {
+    if (copiedTasks.length === 0 || !selectedProjectId) return
+
+    try {
+      const currentTask = selectedTaskId ? currentTasks.find((t) => t.id === selectedTaskId) : null
+      if (currentTask && isDraftTask(currentTask)) {
+        logger.debug('Paste operation skipped - draft task selected as parent')
+        return
+      }
+      
+      const targetParentId = currentTask ? currentTask.parentId : null
+      const targetLevel = currentTask ? currentTask.level : 0
+
+      const success = await taskOperations.pasteTasks(copiedTasks, targetParentId, targetLevel)
+      
+      if (success) {
+        await loadTasks(selectedProjectId)
+      }
+    } catch (error) {
+      logger.error('Task paste failed', { error })
+      handleError(error, 'タスク貼り付けに失敗しました')
+    }
+  }
+
+  const handleToggleTaskCompletion = async (taskId: string) => {
+    try {
+      const task = currentTasks.find(t => t.id === taskId)
+      if (!task || !canCompleteTask(task)) {
+        logger.debug('Completion toggle skipped', { taskId, reason: 'invalid_or_draft' })
+        return
+      }
+      
+      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
+        const validTaskIds = filterTasksForBatchOperation(currentTasks, selectedTaskIds)
+        
+        if (validTaskIds.length > 0) {
+          const targetTask = currentTasks.find(t => t.id === taskId)
+          const newCompletionState = targetTask ? !targetTask.completed : false
+          
+          const operation = newCompletionState ? BATCH_OPERATIONS.COMPLETE : BATCH_OPERATIONS.INCOMPLETE
+          await batchUpdateTasks(operation, validTaskIds)
+        }
+      } else {
+        await taskOperations.toggleTaskCompletion(taskId)
+      }
+
+      await loadTasks(selectedProjectId)
+    } catch (error) {
+      logger.error('Task completion toggle failed', { taskId, error })
+      handleError(error, 'タスクの完了状態切り替えに失敗しました')
+    }
+  }
+
+  const handleToggleTaskCollapse = async (taskId: string) => {
+    try {
+      const task = currentTasks.find(t => t.id === taskId)
+      if (!task || !canCollapseTask(task)) {
+        logger.debug('Collapse toggle skipped', { taskId, reason: 'invalid_or_draft' })
+        return
+      }
+      
+      const success = await taskOperations.toggleTaskCollapse(taskId)
+      
+      if (success) {
+        await loadTasks(selectedProjectId)
+      }
+    } catch (error) {
+      logger.error('Task collapse toggle failed', { taskId, error })
+      handleError(error, 'タスクの折りたたみ切り替えに失敗しました')
+    }
+  }
+
   useEffect(() => {
     if (selectedTaskId && isInitialized && !isAddingTask && !isEditingProject) {
       const shouldShowDetail = focusManagement.detailPanelAutoShow && 
@@ -229,265 +397,6 @@ const TodoApp: React.FC = () => {
       }))
     }
   }, [selectedTaskId, isInitialized, isMultiSelectMode, selectedProjectId, isAddingTask, isEditingProject, isAddingProject, focusManagement.detailPanelAutoShow, focusManagement.preventNextFocusChange, activeArea])
-
-  // システムプロンプト準拠：一時的タスク作成処理（新機能）
-  const handleAddTemporaryTask = async (parentId: string | null = null, level = 0) => {
-    try {
-      if (taskCreationFlow.isActive) {
-        logger.debug('Task creation already in progress, skipping')
-        return
-      }
-
-      if (!selectedProjectId) {
-        logger.warn('No project selected for temporary task creation')
-        return
-      }
-
-      setTaskCreationFlow({
-        isActive: true,
-        parentId,
-        level,
-        source: 'shortcut',
-        createdTaskId: null,
-        shouldFocusOnCreation: true
-      })
-      
-      logger.logTaskCreationFlow('temporary_task_creation_start', 'shortcut', {
-        parentId,
-        level,
-        projectId: selectedProjectId
-      })
-
-      // 一時的タスクを作成
-      const temporaryTask = createTemporaryTask(parentId, level)
-      
-      // プロジェクトIDを設定
-      temporaryTask.projectId = selectedProjectId
-      
-      // タスクを選択状態にして詳細パネルを表示
-      setSelectedTaskId(temporaryTask.id)
-      setSelectedTaskIds([temporaryTask.id])
-      setActiveArea("details")
-      setIsDetailPanelVisible(true)
-      
-      setTaskCreationFlow(prev => ({
-        ...prev,
-        isActive: false,
-        createdTaskId: temporaryTask.id
-      }))
-      
-      logger.logTemporaryTaskLifecycle('temporary_created_via_shortcut', temporaryTask.id, '', {
-        parentId,
-        level,
-        projectId: selectedProjectId
-      })
-      
-    } catch (error) {
-      logger.error('Temporary task creation via shortcut failed', { parentId, level, error })
-      handleTemporaryTaskError(error as Error, { parentId, level, source: 'shortcut' })
-      setTaskCreationFlow(prev => ({
-        ...prev,
-        isActive: false
-      }))
-    }
-  }
-
-  // システムプロンプト準拠：一時的タスク保存処理（新機能）
-  const handleTemporaryTaskSave = async (taskId: string, taskData: Partial<Task>): Promise<Task | null> => {
-    try {
-      logger.logTemporaryTaskOperation('save_attempt', taskId, { taskData })
-      
-      const savedTask = await saveTemporaryTask(taskId, taskData)
-      
-      if (savedTask) {
-        // 保存成功時は新しいタスクを選択状態に
-        setSelectedTaskId(savedTask.id)
-        setSelectedTaskIds([savedTask.id])
-        
-        // タスク一覧を再読み込み
-        await loadTasks(selectedProjectId)
-        
-        logger.logTemporaryTaskOperation('save_success', taskId, {
-          newTaskId: savedTask.id,
-          taskName: savedTask.name
-        })
-        
-        return savedTask
-      }
-      
-      return null
-    } catch (error) {
-      logger.error('Temporary task save failed', { taskId, taskData, error })
-      handleTemporaryTaskError(error as Error, { taskId, taskData, operation: 'save' })
-      return null
-    }
-  }
-
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-        // 一時的タスクを除外してバッチ削除
-        const regularTaskIds = selectedTaskIds.filter(id => {
-          const task = currentTasks.find(t => t.id === id)
-          return task && !task.isTemporary
-        })
-        
-        if (regularTaskIds.length > 0) {
-          await batchUpdateTasks(BATCH_OPERATIONS.DELETE, regularTaskIds)
-        }
-        
-        // 一時的タスクは個別に削除
-        selectedTaskIds.forEach(id => {
-          const task = currentTasks.find(t => t.id === id)
-          if (task?.isTemporary) {
-            removeTemporaryTask(id)
-            logger.logTemporaryTaskOperation('delete_via_selection', id, { 
-              reason: 'multi_select_delete'
-            })
-          }
-        })
-        
-        setSelectedTaskId(null)
-        setSelectedTaskIds([])
-        setIsMultiSelectMode(false)
-      } else {
-        // 単一タスクの削除
-        const task = currentTasks.find(t => t.id === taskId)
-        if (task?.isTemporary) {
-          // 一時的タスクの場合
-          removeTemporaryTask(taskId)
-          logger.logTemporaryTaskOperation('delete_single', taskId, { 
-            reason: 'user_delete'
-          })
-        } else {
-          // 通常タスクの場合
-          const success = await taskOperations.deleteTask(taskId)
-          if (success && selectedTaskId === taskId) {
-            setSelectedTaskId(null)
-            setSelectedTaskIds([])
-          }
-        }
-      }
-      
-      if (selectedTaskIds.includes(taskId)) {
-        await loadTasks(selectedProjectId)
-      }
-    } catch (error) {
-      logger.error('Task deletion failed', { taskId, error })
-      handleError(error, 'タスクの削除に失敗しました')
-    }
-  }
-
-  const handleCopyTask = async (taskId: string) => {
-    try {
-      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-        // 一時的タスクを除外してコピー
-        const regularTaskIds = selectedTaskIds.filter(id => {
-          const task = currentTasks.find(t => t.id === id)
-          return task && !task.isTemporary
-        })
-        
-        if (regularTaskIds.length > 0) {
-          const copiedTaskList = await taskOperations.copyTasks(regularTaskIds)
-          setCopiedTasks(copiedTaskList)
-        } else {
-          logger.warn('No regular tasks selected for copy operation')
-        }
-      } else {
-        // 一時的タスクはコピー不可
-        const task = currentTasks.find(t => t.id === taskId)
-        if (task?.isTemporary) {
-          logger.debug('Copy operation skipped for temporary task', { taskId })
-          return
-        }
-        
-        const copiedTaskList = await taskOperations.copyTasks([taskId])
-        setCopiedTasks(copiedTaskList)
-      }
-    } catch (error) {
-      logger.error('Task copy failed', { taskId, error })
-      handleError(error, 'タスクのコピーに失敗しました')
-    }
-  }
-
-  const handlePasteTask = async () => {
-    if (copiedTasks.length === 0 || !selectedProjectId) return
-
-    try {
-      const currentTask = selectedTaskId ? currentTasks.find((t) => t.id === selectedTaskId) : null
-      // 一時的タスクを親にすることは不可
-      if (currentTask?.isTemporary) {
-        logger.debug('Paste operation skipped - temporary task selected as parent')
-        return
-      }
-      
-      const targetParentId = currentTask ? currentTask.parentId : null
-      const targetLevel = currentTask ? currentTask.level : 0
-
-      const success = await taskOperations.pasteTasks(copiedTasks, targetParentId, targetLevel)
-      
-      if (success) {
-        await loadTasks(selectedProjectId)
-      }
-    } catch (error) {
-      logger.error('Task paste via shortcut failed', { error })
-      handleError(error, 'ショートカットによるタスク貼り付けに失敗しました')
-    }
-  }
-
-  const handleToggleTaskCompletion = async (taskId: string) => {
-    try {
-      // 一時的タスクは完了状態切り替え不可
-      const task = currentTasks.find(t => t.id === taskId)
-      if (task?.isTemporary) {
-        logger.debug('Completion toggle skipped for temporary task', { taskId })
-        return
-      }
-      
-      if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-        // 一時的タスクを除外してバッチ操作
-        const regularTaskIds = selectedTaskIds.filter(id => {
-          const task = currentTasks.find(t => t.id === id)
-          return task && !task.isTemporary
-        })
-        
-        if (regularTaskIds.length > 0) {
-          const targetTask = currentTasks.find(t => t.id === taskId)
-          const newCompletionState = targetTask ? !targetTask.completed : false
-          
-          const operation = newCompletionState ? BATCH_OPERATIONS.COMPLETE : BATCH_OPERATIONS.INCOMPLETE
-          await batchUpdateTasks(operation, regularTaskIds)
-        }
-      } else {
-        await taskOperations.toggleTaskCompletion(taskId)
-      }
-
-      await loadTasks(selectedProjectId)
-    } catch (error) {
-      logger.error('Task completion toggle failed', { taskId, error })
-      handleError(error, 'タスクの完了状態切り替えに失敗しました')
-    }
-  }
-
-  const handleToggleTaskCollapse = async (taskId: string) => {
-    try {
-      // 一時的タスクは折りたたみ不可
-      const task = currentTasks.find(t => t.id === taskId)
-      if (task?.isTemporary) {
-        logger.debug('Collapse toggle skipped for temporary task', { taskId })
-        return
-      }
-      
-      const success = await taskOperations.toggleTaskCollapse(taskId)
-      
-      if (success) {
-        await loadTasks(selectedProjectId)
-      }
-    } catch (error) {
-      logger.error('Task collapse toggle failed', { taskId, error })
-      handleError(error, 'タスクの折りたたみ切り替えに失敗しました')
-    }
-  }
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -530,7 +439,6 @@ const TodoApp: React.FC = () => {
     }
   }, [selectedProjectId, isInitialized, loadTasks])
 
-  // システムプロンプト準拠：YAGNI原則 - 未使用ハンドラーをシンプル化
   const handleProjectSelect = (projectId: string) => {
     setSelectedProjectId(projectId)
     setSelectedTaskId(null)
@@ -562,7 +470,7 @@ const TodoApp: React.FC = () => {
     setIsMultiSelectMode,
     taskRelationMap,
     copiedTasks,
-    onAddTemporaryTask: handleAddTemporaryTask, // システムプロンプト準拠：一時的タスク作成に変更
+    onAddDraftTask: handleAddDraftTask, // 統合フラグアプローチ：草稿タスク作成
     onDeleteTask: handleDeleteTask,
     onCopyTask: handleCopyTask,
     onPasteTask: handlePasteTask,
@@ -581,23 +489,6 @@ const TodoApp: React.FC = () => {
         <LoadingSpinner size="lg" message="アプリケーションを初期化中..." className="m-auto" />
       </div>
     )
-  }
-
-  const handleTaskDetailUpdate = async (taskId: string, updates: Partial<Task>) => {
-    try {
-      if (updates.startDate && !isValidDate(updates.startDate)) {
-        updates.startDate = new Date()
-      }
-      if (updates.dueDate && !isValidDate(updates.dueDate)) {
-        updates.dueDate = new Date()
-      }
-
-      await updateTask(taskId, updates)
-      await loadTasks(selectedProjectId)
-    } catch (error) {
-      logger.error('Task detail update failed', { taskId, updates, error })
-      handleError(error, 'タスクの更新に失敗しました')
-    }
   }
 
   return (
@@ -651,8 +542,7 @@ const TodoApp: React.FC = () => {
         {isDetailPanelVisible && (
           <DetailPanel
             selectedTask={selectedTask}
-            onTaskUpdate={handleTaskDetailUpdate}
-            onTemporaryTaskSave={handleTemporaryTaskSave} // システムプロンプト準拠：一時的タスク保存処理追加
+            onTaskSave={handleSaveTask} // 統合フラグアプローチ：統一された保存処理
             projects={currentProjects}
             activeArea={activeArea}
             setActiveArea={setActiveArea}

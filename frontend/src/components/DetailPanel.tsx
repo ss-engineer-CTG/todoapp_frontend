@@ -1,8 +1,9 @@
 import React, { RefObject, useEffect, useState, useCallback } from 'react'
 import { Task, Project, TaskEditingState } from '../types'
 import { safeFormatDate, isValidDate } from '../utils/dateUtils'
+import { isDraftTask } from '../utils/taskUtils'
 import { logger } from '../utils/logger'
-import { handleError, handleTemporaryTaskSaveError } from '../utils/errorHandler'
+import { handleError } from '../utils/errorHandler'
 import { CalendarIcon, X, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,13 +11,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
-import { ERROR_MESSAGES } from '../config/constants'
 
 interface DetailPanelProps {
   selectedTask: Task | undefined
-  onTaskUpdate: (taskId: string, updates: Partial<Task>) => void
-  // システムプロンプト準拠：一時的タスク保存処理追加
-  onTemporaryTaskSave: (taskId: string, taskData: Partial<Task>) => Promise<Task | null>
+  onTaskSave: (taskId: string, updates: Partial<Task>) => Promise<Task | null> // 統合フラグアプローチ：統一された保存処理
   projects: Project[]
   activeArea: string
   setActiveArea: (area: "projects" | "tasks" | "details") => void
@@ -31,8 +29,7 @@ interface DetailPanelProps {
 
 export const DetailPanel: React.FC<DetailPanelProps> = ({
   selectedTask,
-  onTaskUpdate,
-  onTemporaryTaskSave, // システムプロンプト準拠：一時的タスク保存処理追加
+  onTaskSave, // 統合フラグアプローチ：統一された保存処理
   projects,
   activeArea,
   setActiveArea,
@@ -44,7 +41,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   taskNotesRef,
   saveButtonRef
 }) => {
-  // システムプロンプト準拠：編集状態管理（一時的タスク対応強化）
+  // システムプロンプト準拠：編集状態管理（統合フラグ対応で簡素化）
   const [editingState, setEditingState] = useState<TaskEditingState>({
     name: '',
     startDate: null,
@@ -55,7 +52,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     isStartDateCalendarOpen: false,
     isDueDateCalendarOpen: false,
     focusTransitionMode: 'navigation',
-    isTemporaryTask: false,
     canSave: false
   })
 
@@ -68,15 +64,15 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
-  // システムプロンプト準拠：一時的タスクの判定
-  const isTemporaryTask = selectedTask?.isTemporary === true
+  // 統合フラグアプローチ：草稿判定の簡素化
+  const isTaskDraft = selectedTask ? isDraftTask(selectedTask) : false
 
-  // タスク変更時の編集状態初期化（一時的タスク対応）
+  // タスク変更時の編集状態初期化（統合フラグ対応）
   useEffect(() => {
     if (selectedTask) {
       logger.debug('Initializing editing state for task', { 
         taskId: selectedTask.id,
-        isTemporary: isTemporaryTask,
+        isDraft: isTaskDraft,
         taskName: selectedTask.name
       })
       
@@ -90,20 +86,19 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         isStartDateCalendarOpen: false,
         isDueDateCalendarOpen: false,
         focusTransitionMode: 'navigation',
-        isTemporaryTask,
-        canSave: isTemporaryTask // 一時的タスクの場合は初期から保存可能
+        canSave: isTaskDraft // 草稿の場合は初期から保存可能
       })
     }
-  }, [selectedTask?.id, isTemporaryTask])
+  }, [selectedTask?.id, isTaskDraft])
 
-  // システムプロンプト準拠：一時的タスクの場合は自動フォーカス
+  // 統合フラグアプローチ：草稿タスクの場合は自動フォーカス
   useEffect(() => {
     if (activeArea === "details" && selectedTask && taskNameInputRef.current) {
-      if (isTemporaryTask) {
-        logger.debug('Temporary task selected - focusing task name input immediately')
+      if (isTaskDraft) {
+        logger.debug('Draft task selected - focusing task name input immediately')
         setTimeout(() => {
           taskNameInputRef.current?.focus()
-          taskNameInputRef.current?.select() // 一時的タスクの場合は全選択
+          taskNameInputRef.current?.select()
         }, 0)
       } else {
         logger.debug('Regular task selected - focusing task name input')
@@ -112,9 +107,9 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         }, 0)
       }
     }
-  }, [activeArea, selectedTask, taskNameInputRef, isTemporaryTask])
+  }, [activeArea, selectedTask, taskNameInputRef, isTaskDraft])
 
-  // システムプロンプト準拠：開始日ボタンフォーカス時のカレンダー自動表示
+  // 開始日ボタンフォーカス時のカレンダー自動表示
   useEffect(() => {
     const startDateButton = startDateButtonRef.current
     if (!startDateButton) return
@@ -134,7 +129,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }, [selectedTask])
 
-  // システムプロンプト準拠：期限日ボタンフォーカス時のカレンダー自動表示
+  // 期限日ボタンフォーカス時のカレンダー自動表示
   useEffect(() => {
     const dueDateButton = dueDateButtonRef.current
     if (!dueDateButton) return
@@ -154,26 +149,26 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }, [selectedTask])
 
-  // 編集状態更新関数（一時的タスク対応）
-  const updateEditingState = (field: keyof Omit<TaskEditingState, 'hasChanges' | 'isStartDateCalendarOpen' | 'isDueDateCalendarOpen' | 'focusTransitionMode' | 'isTemporaryTask' | 'canSave'>, value: any) => {
+  // 編集状態更新関数（統合フラグ対応）
+  const updateEditingState = (field: keyof Omit<TaskEditingState, 'hasChanges' | 'isStartDateCalendarOpen' | 'isDueDateCalendarOpen' | 'focusTransitionMode' | 'canSave'>, value: any) => {
     if (!selectedTask) return
 
     try {
-      logger.trace('Updating editing state', { taskId: selectedTask.id, field, value, isTemporary: isTemporaryTask })
+      logger.trace('Updating editing state', { taskId: selectedTask.id, field, value, isDraft: isTaskDraft })
       
       setEditingState(prev => {
         const newState = { ...prev, [field]: value }
         
-        // システムプロンプト準拠：一時的タスクの場合の変更検知
+        // 統合フラグアプローチ：変更検知の簡素化
         let hasActualChanges = false
         let canSave = false
 
-        if (isTemporaryTask) {
-          // 一時的タスクの場合：名前があれば保存可能
+        if (isTaskDraft) {
+          // 草稿タスクの場合：名前があれば保存可能
           canSave = !!newState.name.trim()
-          hasActualChanges = canSave // 名前があれば変更ありとみなす
+          hasActualChanges = canSave
         } else {
-          // 通常タスクの場合：従来通りの変更検知
+          // 確定タスクの場合：従来通りの変更検知
           hasActualChanges = Boolean(
             newState.name !== selectedTask.name ||
             newState.assignee !== selectedTask.assignee ||
@@ -197,61 +192,53 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
-  // システムプロンプト準拠：開始日選択完了時の自動遷移（同一日付許可）
+  // 開始日選択完了時の自動遷移
   const handleStartDateSelect = useCallback((date: Date | undefined) => {
     if (!date || !selectedTask) return
 
     logger.debug('Start date selected, transitioning to due date', { 
       taskId: selectedTask.id, 
       selectedDate: date.toISOString(),
-      isTemporary: isTemporaryTask,
-      isSameDate: editingState.startDate && editingState.startDate.getTime() === date.getTime()
+      isDraft: isTaskDraft
     })
 
-    // システムプロンプト準拠：同一日付でも受け入れて値を更新
     updateEditingState('startDate', date)
     
-    // カレンダーを閉じて次のフィールドにフォーカス
     setEditingState(prev => ({ 
       ...prev, 
       isStartDateCalendarOpen: false,
       focusTransitionMode: 'navigation'
     }))
 
-    // 期限日ボタンにフォーカス（自動でカレンダーが開く）
     setTimeout(() => {
       dueDateButtonRef.current?.focus()
     }, 100)
-  }, [selectedTask, dueDateButtonRef, isTemporaryTask, editingState.startDate])
+  }, [selectedTask, dueDateButtonRef, isTaskDraft])
 
-  // システムプロンプト準拠：期限日選択完了時の自動遷移（同一日付許可）
+  // 期限日選択完了時の自動遷移
   const handleDueDateSelect = useCallback((date: Date | undefined) => {
     if (!date || !selectedTask) return
 
     logger.debug('Due date selected, transitioning to notes', { 
       taskId: selectedTask.id, 
       selectedDate: date.toISOString(),
-      isTemporary: isTemporaryTask,
-      isSameDate: editingState.dueDate && editingState.dueDate.getTime() === date.getTime()
+      isDraft: isTaskDraft
     })
 
-    // システムプロンプト準拠：同一日付でも受け入れて値を更新
     updateEditingState('dueDate', date)
     
-    // カレンダーを閉じて次のフィールドにフォーカス
     setEditingState(prev => ({ 
       ...prev, 
       isDueDateCalendarOpen: false,
       focusTransitionMode: 'navigation'
     }))
 
-    // メモフィールドにフォーカス
     setTimeout(() => {
       taskNotesRef.current?.focus()
     }, 100)
-  }, [selectedTask, taskNotesRef, isTemporaryTask, editingState.dueDate])
+  }, [selectedTask, taskNotesRef, isTaskDraft])
 
-  // システムプロンプト準拠：統一保存処理（一時的タスク対応）
+  // 統合フラグアプローチ：統一保存処理
   const handleSave = async () => {
     if (!selectedTask || !editingState.canSave || isSaving) {
       logger.debug('Save skipped', { 
@@ -262,10 +249,10 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
       return
     }
 
-    // システムプロンプト準拠：空名前時のバリデーション強化
+    // 空名前時のバリデーション
     if (!editingState.name.trim()) {
-      logger.warn('Attempted to save task with empty name', { taskId: selectedTask.id, isTemporary: isTemporaryTask })
-      handleError(new Error(ERROR_MESSAGES.TEMPORARY_TASK_NAME_REQUIRED), 'タスク名を入力してください')
+      logger.warn('Attempted to save task with empty name', { taskId: selectedTask.id, isDraft: isTaskDraft })
+      handleError(new Error('タスク名を入力してください'), 'タスク名を入力してください')
       setTimeout(() => {
         taskNameInputRef.current?.focus()
         taskNameInputRef.current?.select()
@@ -276,108 +263,65 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     setIsSaving(true)
 
     try {
-      if (isTemporaryTask) {
-        // システムプロンプト準拠：一時的タスクの保存処理
-        logger.logTemporaryTaskOperation('save_attempt', selectedTask.id, { 
-          taskName: editingState.name,
-          hasValidName: !!editingState.name.trim()
+      logger.info('Starting task save operation', { 
+        taskId: selectedTask.id, 
+        isDraft: isTaskDraft,
+        taskName: editingState.name 
+      })
+
+      // 統合フラグアプローチ：統一されたタスクデータ構築
+      const taskData: Partial<Task> = {
+        name: editingState.name.trim(),
+        assignee: editingState.assignee.trim(),
+        notes: editingState.notes,
+        startDate: editingState.startDate && isValidDate(editingState.startDate) ? editingState.startDate : new Date(),
+        dueDate: editingState.dueDate && isValidDate(editingState.dueDate) ? editingState.dueDate : new Date()
+      }
+
+      const savedTask = await onTaskSave(selectedTask.id, taskData)
+      
+      if (savedTask) {
+        logger.info('Task save completed successfully', { 
+          taskId: selectedTask.id,
+          newTaskId: savedTask.id,
+          isDraft: isTaskDraft,
+          taskName: savedTask.name
         })
-
-        const taskData: Partial<Task> = {
-          name: editingState.name.trim(),
-          assignee: editingState.assignee.trim(),
-          notes: editingState.notes,
-          startDate: editingState.startDate && isValidDate(editingState.startDate) ? editingState.startDate : new Date(),
-          dueDate: editingState.dueDate && isValidDate(editingState.dueDate) ? editingState.dueDate : new Date()
-        }
-
-        const savedTask = await onTemporaryTaskSave(selectedTask.id, taskData)
         
-        if (savedTask) {
-          logger.logTemporaryTaskOperation('save_success', selectedTask.id, {
-            newTaskId: savedTask.id,
-            taskName: savedTask.name
-          })
-          
-          // 編集状態をリセット
-          setEditingState(prev => ({ 
-            ...prev, 
-            hasChanges: false,
-            canSave: false,
-            isTemporaryTask: false
-          }))
-        }
-      } else {
-        // システムプロンプト準拠：通常タスクの更新処理
-        logger.info('Starting regular task save operation', { 
-          taskId: selectedTask.id, 
-          taskName: editingState.name 
-        })
-
-        const updates: Partial<Task> = {}
-        
-        if (editingState.name !== selectedTask.name) {
-          updates.name = editingState.name.trim()
-        }
-        
-        if (editingState.assignee !== selectedTask.assignee) {
-          updates.assignee = editingState.assignee.trim()
-        }
-        
-        if (editingState.notes !== selectedTask.notes) {
-          updates.notes = editingState.notes
-        }
-        
-        if (editingState.startDate && isValidDate(editingState.startDate) &&
-            editingState.startDate.getTime() !== selectedTask.startDate?.getTime()) {
-          updates.startDate = editingState.startDate
-        }
-        
-        if (editingState.dueDate && isValidDate(editingState.dueDate) &&
-            editingState.dueDate.getTime() !== selectedTask.dueDate?.getTime()) {
-          updates.dueDate = editingState.dueDate
-        }
-
-        await onTaskUpdate(selectedTask.id, updates)
-        
-        setEditingState(prev => ({ ...prev, hasChanges: false, canSave: false }))
-        
-        logger.info('Regular task save completed successfully', { 
-          taskId: selectedTask.id, 
-          updatedFields: Object.keys(updates) 
-        })
+        // 編集状態をリセット
+        setEditingState(prev => ({ 
+          ...prev, 
+          hasChanges: false,
+          canSave: false
+        }))
       }
 
     } catch (error) {
       logger.error('Task save failed', { 
         taskId: selectedTask.id, 
-        isTemporary: isTemporaryTask,
+        isDraft: isTaskDraft,
         editingState, 
         error 
       })
       
-      if (isTemporaryTask) {
-        handleTemporaryTaskSaveError(error as Error, selectedTask.id, { editingState })
-      } else {
-        handleError(error, 'タスクの保存に失敗しました')
-      }
+      handleError(error, 'タスクの保存に失敗しました')
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleSaveButtonClick = async () => {
-    logger.debug('Save button clicked', { isTemporary: isTemporaryTask })
+    logger.debug('Save button clicked', { isDraft: isTaskDraft })
     await handleSave()
   }
 
-  // システムプロンプト準拠：フォーカス管理改善
+  // フォーカス管理改善
   const handlePanelClick = () => {
     logger.debug('Detail panel clicked, setting active area')
     setActiveArea("details")
   }
 
-  // システムプロンプト準拠：安全なプロジェクト情報取得
+  // 安全なプロジェクト情報取得
   const getProjectInfo = (projectId: string) => {
     try {
       const project = projects.find((p) => p.id === projectId)
@@ -424,16 +368,16 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
   const projectInfo = getProjectInfo(selectedTask.projectId)
   
-  // システムプロンプト準拠：一時的タスクと空名前タスクの視覚的強調
+  // 統合フラグアプローチ：視覚的強調の簡素化
   const isEmptyName = !selectedTask.name.trim()
-  const showTemporaryIndicator = isTemporaryTask
+  const showDraftIndicator = isTaskDraft
 
   return (
     <div
       className={cn(
         "w-80 border-l h-full",
         activeArea === "details" ? "bg-accent/40 ring-1 ring-primary/20" : "",
-        isEmptyName || showTemporaryIndicator ? "border-l-orange-300" : ""
+        isEmptyName || showDraftIndicator ? "border-l-orange-300" : ""
       )}
       onClick={handlePanelClick}
     >
@@ -446,12 +390,12 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                 •未保存
               </span>
             )}
-            {showTemporaryIndicator && (
+            {showDraftIndicator && (
               <span className="ml-2 text-xs text-blue-500 font-normal">
                 •新規作成中
               </span>
             )}
-            {isEmptyName && !showTemporaryIndicator && (
+            {isEmptyName && !showDraftIndicator && (
               <span className="ml-2 text-xs text-red-500 font-normal">
                 •名前未設定
               </span>
@@ -469,11 +413,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         </div>
 
         <div className="space-y-4 flex-grow overflow-y-auto">
-          {/* システムプロンプト準拠：タスク名（一時的タスク対応強化） */}
+          {/* タスク名（統合フラグ対応） */}
           <div>
             <label className="text-sm font-medium mb-1 block">
               タスク名 <span className="text-red-500">*</span>
-              {showTemporaryIndicator && (
+              {showDraftIndicator && (
                 <span className="ml-2 text-xs text-blue-500">（必須：保存時に確定されます）</span>
               )}
             </label>
@@ -485,17 +429,17 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               className={cn(
                 editingState.name !== selectedTask.name ? "border-orange-300" : "",
                 !editingState.name.trim() ? "border-red-300 bg-red-50" : "",
-                showTemporaryIndicator ? "border-blue-300 bg-blue-50" : ""
+                showDraftIndicator ? "border-blue-300 bg-blue-50" : ""
               )}
-              placeholder={showTemporaryIndicator ? "タスク名を入力してください" : "タスク名を入力してください"}
-              autoFocus={showTemporaryIndicator}
+              placeholder={showDraftIndicator ? "タスク名を入力してください" : "タスク名を入力してください"}
+              autoFocus={showDraftIndicator}
             />
             {!editingState.name.trim() && (
               <p className="text-red-500 text-xs mt-1">
                 ⚠ タスク名は必須です
               </p>
             )}
-            {showTemporaryIndicator && editingState.name.trim() && (
+            {showDraftIndicator && editingState.name.trim() && (
               <p className="text-blue-500 text-xs mt-1">
                 ✓ 保存ボタンで確定できます
               </p>
@@ -519,7 +463,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                       editingState.startDate && selectedTask.startDate &&
                       editingState.startDate.getTime() !== selectedTask.startDate.getTime()
                         ? "border-orange-300" : "",
-                      showTemporaryIndicator ? "border-blue-200" : ""
+                      showDraftIndicator ? "border-blue-200" : ""
                     )}
                     tabIndex={activeArea === "details" ? 2 : -1}
                   >
@@ -553,7 +497,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                       editingState.dueDate && selectedTask.dueDate &&
                       editingState.dueDate.getTime() !== selectedTask.dueDate.getTime()
                         ? "border-orange-300" : "",
-                      showTemporaryIndicator ? "border-blue-200" : ""
+                      showDraftIndicator ? "border-blue-200" : ""
                     )}
                     tabIndex={activeArea === "details" ? 3 : -1}
                   >
@@ -573,8 +517,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             </div>
           </div>
 
-          {/* 完了日（一時的タスクは非表示） */}
-          {!showTemporaryIndicator && selectedTask.completionDate && (
+          {/* 完了日（草稿タスクは非表示） */}
+          {!showDraftIndicator && selectedTask.completionDate && (
             <div>
               <label className="text-sm font-medium mb-1 block">完了日</label>
               <div className="text-sm p-2 border rounded-md">
@@ -592,7 +536,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                 style={{ backgroundColor: projectInfo.color }}
               />
               {projectInfo.name}
-              {showTemporaryIndicator && (
+              {showDraftIndicator && (
                 <span className="ml-2 text-xs text-blue-500">（保存時に確定）</span>
               )}
             </div>
@@ -607,7 +551,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               tabIndex={activeArea === "details" ? 4 : -1}
               className={cn(
                 editingState.assignee !== selectedTask.assignee ? "border-orange-300" : "",
-                showTemporaryIndicator ? "border-blue-200" : ""
+                showDraftIndicator ? "border-blue-200" : ""
               )}
             />
           </div>
@@ -622,14 +566,14 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               className={cn(
                 "min-h-[100px] resize-none",
                 editingState.notes !== selectedTask.notes ? "border-orange-300" : "",
-                showTemporaryIndicator ? "border-blue-200" : ""
+                showDraftIndicator ? "border-blue-200" : ""
               )}
               placeholder="メモを追加..."
               tabIndex={activeArea === "details" ? 5 : -1}
             />
           </div>
 
-          {/* 保存ボタン（一時的タスク対応） */}
+          {/* 保存ボタン（統合フラグ対応） */}
           <div className="flex justify-end pt-2">
             <Button
               ref={saveButtonRef}
@@ -639,7 +583,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               className={cn(
                 "min-w-[80px]",
                 editingState.canSave
-                  ? showTemporaryIndicator 
+                  ? showDraftIndicator 
                     ? "bg-blue-600 hover:bg-blue-700 text-white"
                     : "bg-orange-600 hover:bg-orange-700 text-white"
                   : ""
@@ -648,19 +592,19 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               {isSaving ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  {showTemporaryIndicator ? "作成中..." : "保存中..."}
+                  {showDraftIndicator ? "作成中..." : "保存中..."}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-1" />
-                  {showTemporaryIndicator ? "タスク作成" : "保存"}
+                  {showDraftIndicator ? "タスク作成" : "保存"}
                 </>
               )}
             </Button>
           </div>
 
-          {/* 一時的タスクの説明 */}
-          {showTemporaryIndicator && (
+          {/* 草稿タスクの説明 */}
+          {showDraftIndicator && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm">
               <p className="text-blue-800 font-medium mb-1">📝 新規タスク作成中</p>
               <ul className="text-blue-700 text-xs space-y-1">

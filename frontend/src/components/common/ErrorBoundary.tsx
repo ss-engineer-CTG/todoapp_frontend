@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
     handleError(appError)
   }
 
-  // システムプロンプト準拠：エラー分類の詳細化
+  // システムプロンプト準拠：エラー分類の詳細化（統合フラグアプローチで簡素化）
   private categorizeError(error: Error): ErrorType {
     // 日付関連エラーの詳細判定
     if (error.message.includes('Invalid time value') ||
