@@ -186,7 +186,7 @@ export const useKeyboardShortcuts = ({
     return task?.isTemporary === true
   }, [tasks])
 
-  // システムプロンプト準拠：統一されたキーボードショートカット処理（一時的タスク対応）
+  // システムプロンプト準拠：統一されたキーボードショートカット処理（Escapeキー問題解決）
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       try {
@@ -194,11 +194,49 @@ export const useKeyboardShortcuts = ({
         const isNewTaskInput = isNewTaskInputActive(target)
         const isCalendar = isCalendarActive(target)
         const isGeneralInput = isGeneralInputActive(target)
+        const isDetailInput = isDetailPanelInputFocused()
 
         // 新規タスク名入力中はショートカット無効
         if (isNewTaskInput) {
           logger.trace('Keyboard shortcut skipped: new task input active')
           return
+        }
+
+        // システムプロンプト準拠：Escapeキーを最優先で処理（問題解決の核心）
+        if (e.key === "Escape") {
+          logger.debug('Escape key pressed', { 
+            activeArea, 
+            isDetailPanelVisible, 
+            isDetailInput,
+            isMultiSelectMode,
+            activeElementType: document.activeElement?.tagName
+          })
+
+          if (activeArea === "details" && isDetailPanelVisible) {
+            e.preventDefault()
+            setActiveArea("tasks")
+            logger.logAreaTransition('details', 'tasks', 'escape_key')
+            logger.logFocusEvent('escape_from_detail_panel', { 
+              selectedTaskId,
+              reason: 'user_escape',
+              wasInInputField: isDetailInput,
+              inputFieldType: document.activeElement?.tagName
+            })
+            return // Escapeキー処理完了で終了
+          } else if (isMultiSelectMode) {
+            e.preventDefault()
+            setIsMultiSelectMode(false)
+            if (selectedTaskId) {
+              setSelectedTaskIds([selectedTaskId])
+            } else {
+              setSelectedTaskIds([])
+            }
+            logger.debug('Exited multi-select mode via escape', { 
+              previousSelectedCount: selectedTaskIds.length 
+            })
+            return // Escapeキー処理完了で終了
+          }
+          // Escapeキーが処理されない場合はそのまま継続
         }
 
         // 一般入力フィールド中はスキップ（カレンダー以外）
@@ -428,28 +466,6 @@ export const useKeyboardShortcuts = ({
             } else if (activeArea === "tasks") {
               setActiveArea("projects")
               logger.logAreaTransition('tasks', 'projects', 'arrow_left')
-            }
-            break
-
-          // システムプロンプト準拠：詳細パネルからタスクパネルへのESC遷移追加
-          case "Escape":
-            if (activeArea === "details" && isDetailPanelVisible) {
-              e.preventDefault()
-              setActiveArea("tasks")
-              logger.logAreaTransition('details', 'tasks', 'escape_key')
-              logger.logFocusEvent('escape_from_detail_panel', { 
-                selectedTaskId,
-                reason: 'user_escape'
-              })
-            } else if (isMultiSelectMode) {
-              e.preventDefault()
-              setIsMultiSelectMode(false)
-              if (selectedTaskId) {
-                setSelectedTaskIds([selectedTaskId])
-              } else {
-                setSelectedTaskIds([])
-              }
-              logger.debug('Exited multi-select mode via escape')
             }
             break
 
