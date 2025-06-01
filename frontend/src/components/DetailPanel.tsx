@@ -82,10 +82,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         taskName: selectedTask.name
       })
       
+      // 修正：日付の初期値処理を変更
       setEditingState({
         name: selectedTask.name || '',
-        startDate: isValidDate(selectedTask.startDate) ? selectedTask.startDate : new Date(),
-        dueDate: isValidDate(selectedTask.dueDate) ? selectedTask.dueDate : new Date(),
+        startDate: (selectedTask.startDate && isValidDate(selectedTask.startDate)) ? selectedTask.startDate : null,
+        dueDate: (selectedTask.dueDate && isValidDate(selectedTask.dueDate)) ? selectedTask.dueDate : null,
         assignee: selectedTask.assignee || '自分',
         notes: selectedTask.notes || '',
         hasChanges: false,
@@ -172,7 +173,9 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             (newState.startDate && selectedTask.startDate && 
             newState.startDate.getTime() !== selectedTask.startDate.getTime()) ||
             (newState.dueDate && selectedTask.dueDate && 
-            newState.dueDate.getTime() !== selectedTask.dueDate.getTime())
+            newState.dueDate.getTime() !== selectedTask.dueDate.getTime()) ||
+            (!newState.startDate && selectedTask.startDate) ||
+            (!newState.dueDate && selectedTask.dueDate)
           )
           canSave = hasActualChanges && !!newState.name.trim()
         }
@@ -188,16 +191,23 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
-  const handleStartDateSelect = useCallback((date: Date | undefined) => {
-    if (!date || !selectedTask) return
+  // 修正：タスク名入力でのEnterキー処理を追加
+  const handleTaskNameKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      logger.info('Enter key pressed in task name input - moving to start date')
+      startDateButtonRef.current?.focus()
+    }
+  }, [startDateButtonRef])
 
+  const handleStartDateSelect = useCallback((date: Date | undefined) => {
     logger.info('Start date selected, transitioning to due date', { 
-      taskId: selectedTask.id, 
-      selectedDate: date.toISOString(),
+      taskId: selectedTask?.id, 
+      selectedDate: date?.toISOString(),
       isDraft: isTaskDraft
     })
 
-    updateEditingState('startDate', date)
+    updateEditingState('startDate', date || null)
     
     setEditingState(prev => ({ 
       ...prev, 
@@ -210,15 +220,13 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   }, [selectedTask, dueDateButtonRef, isTaskDraft])
 
   const handleDueDateSelect = useCallback((date: Date | undefined) => {
-    if (!date || !selectedTask) return
-
     logger.info('Due date selected, transitioning to notes', { 
-      taskId: selectedTask.id, 
-      selectedDate: date.toISOString(),
+      taskId: selectedTask?.id, 
+      selectedDate: date?.toISOString(),
       isDraft: isTaskDraft
     })
 
-    updateEditingState('dueDate', date)
+    updateEditingState('dueDate', date || null)
     
     setEditingState(prev => ({ 
       ...prev, 
@@ -263,8 +271,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         name: editingState.name.trim(),
         assignee: editingState.assignee.trim(),
         notes: editingState.notes,
-        startDate: editingState.startDate && isValidDate(editingState.startDate) ? editingState.startDate : new Date(),
-        dueDate: editingState.dueDate && isValidDate(editingState.dueDate) ? editingState.dueDate : new Date()
+        startDate: editingState.startDate,
+        dueDate: editingState.dueDate
       }
 
       const savedTask = await onTaskSave(selectedTask.id, taskData)
@@ -322,6 +330,12 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         color: '#ccc'
       }
     }
+  }
+
+  // 修正：日付表示関数を追加
+  const formatDateDisplay = (date: Date | null): string => {
+    if (!date) return '未設定'
+    return formatDate(date)
   }
 
   if (!selectedTask) {
@@ -401,13 +415,14 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <label className="text-sm font-medium mb-1 block">
               タスク名 <span className="text-red-500">*</span>
               {showDraftIndicator && (
-                <span className="ml-2 text-xs text-blue-500">（必須：保存時に確定されます）</span>
+                <span className="ml-2 text-xs text-blue-500">（Enterで開始日に移動）</span>
               )}
             </label>
             <Input
               ref={taskNameInputRef}
               value={editingState.name}
               onChange={(e) => updateEditingState('name', e.target.value)}
+              onKeyDown={handleTaskNameKeyDown}
               tabIndex={activeArea === "details" ? 1 : -1}
               className={cn(
                 editingState.name !== selectedTask.name ? "border-orange-300" : "",
@@ -442,6 +457,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-normal",
+                      !editingState.startDate ? "text-muted-foreground" : "",
                       editingState.startDate && selectedTask.startDate &&
                       editingState.startDate.getTime() !== selectedTask.startDate.getTime()
                         ? "border-orange-300" : "",
@@ -450,7 +466,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                     tabIndex={activeArea === "details" ? 2 : -1}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formatDate(editingState.startDate)}
+                    {formatDateDisplay(editingState.startDate)}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -476,6 +492,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-normal",
+                      !editingState.dueDate ? "text-muted-foreground" : "",
                       editingState.dueDate && selectedTask.dueDate &&
                       editingState.dueDate.getTime() !== selectedTask.dueDate.getTime()
                         ? "border-orange-300" : "",
@@ -484,7 +501,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                     tabIndex={activeArea === "details" ? 3 : -1}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formatDate(editingState.dueDate)}
+                    {formatDateDisplay(editingState.dueDate)}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -584,9 +601,9 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm">
               <p className="text-blue-800 font-medium mb-1">📝 新規タスク作成中</p>
               <ul className="text-blue-700 text-xs space-y-1">
-                <li>• タスク名を入力して「タスク作成」ボタンで確定</li>
-                <li>• キャンセルする場合は他のタスクを選択</li>
-                <li>• 確定後は通常のタスクとして編集可能</li>
+                <li>• タスク名を入力してEnterで開始日に移動</li>
+                <li>• Escキーでキャンセル（草稿を削除）</li>
+                <li>• 「タスク作成」ボタンで確定</li>
               </ul>
             </div>
           )}

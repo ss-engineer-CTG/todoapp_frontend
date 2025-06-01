@@ -86,6 +86,7 @@ const TodoApp: React.FC = () => {
     copiedTasks,
     createDraft,
     saveDraft,
+    cancelDraft, // 新規追加
     deleteTask: deleteTaskOperation,
     toggleTaskCompletion,
     toggleTaskCollapse,
@@ -113,6 +114,21 @@ const TodoApp: React.FC = () => {
       logger.error('Draft task creation failed', { error })
     }
   }, [selectedProjectId, createDraft, setSelectedTaskId, setActiveArea, setIsDetailPanelVisible])
+
+  // 修正：草稿タスクキャンセル機能を追加
+  const handleCancelDraft = useCallback((taskId: string) => {
+    try {
+      const success = cancelDraft(taskId)
+      if (success) {
+        logger.info('Draft task cancelled successfully', { taskId })
+        // 選択状態をクリアして詳細パネルを閉じる
+        setSelectedTaskId(null)
+        setActiveArea("tasks")
+      }
+    } catch (error) {
+      logger.error('Draft task cancellation failed', { taskId, error })
+    }
+  }, [cancelDraft, setSelectedTaskId, setActiveArea])
 
   // タスク削除
   const handleDeleteTask = useCallback(async (taskId: string) => {
@@ -198,6 +214,7 @@ const TodoApp: React.FC = () => {
       // 範囲選択実装は簡素化
       logger.info('Range select', { direction })
     },
+    onCancelDraft: handleCancelDraft, // 新規追加
     copiedTasksCount: copiedTasks.length,
     isInputActive: isAddingProject || isEditingProject
   })

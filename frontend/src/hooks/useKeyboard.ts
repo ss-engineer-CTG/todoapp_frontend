@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { Task, Project, AreaType } from '../types'
-import { buildTaskRelationMap } from '../utils/task'
+import { buildTaskRelationMap, isDraftTask } from '../utils/task'
 import { logger } from '../utils/core'
 
 interface UseKeyboardProps {
@@ -25,6 +25,7 @@ interface UseKeyboardProps {
   onToggleCollapse: (taskId: string) => void
   onSelectAll: () => void
   onRangeSelect: (direction: 'up' | 'down') => void
+  onCancelDraft: (taskId: string) => void // 新規追加
   copiedTasksCount: number
   isInputActive: boolean
 }
@@ -100,13 +101,30 @@ export const useKeyboard = (props: UseKeyboardProps) => {
           return
         }
 
-        // Escape キー処理
+        // 修正：Escape キー処理に草稿タスクキャンセル機能を追加
         if (e.key === "Escape") {
+          // 優先度1：詳細パネルで草稿タスクを編集中の場合はキャンセル
+          if (props.activeArea === "details" && props.isDetailPanelVisible && props.selectedTaskId) {
+            const selectedTask = props.tasks.find(t => t.id === props.selectedTaskId)
+            if (selectedTask && isDraftTask(selectedTask)) {
+              e.preventDefault()
+              logger.info('Cancelling draft task via Escape key', { taskId: props.selectedTaskId })
+              props.onCancelDraft(props.selectedTaskId)
+              props.setSelectedTaskId(null)
+              props.setActiveArea("tasks")
+              return
+            }
+          }
+          
+          // 優先度2：詳細パネルを閉じる
           if (props.activeArea === "details" && props.isDetailPanelVisible) {
             e.preventDefault()
             props.setActiveArea("tasks")
             return
-          } else if (props.isMultiSelectMode) {
+          } 
+          
+          // 優先度3：複数選択モードを解除
+          else if (props.isMultiSelectMode) {
             e.preventDefault()
             // clearSelection は上位で処理
             return

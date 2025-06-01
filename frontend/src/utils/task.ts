@@ -79,17 +79,16 @@ export const sortTasksHierarchically = (tasks: Task[], relationMap: TaskRelation
   }
 }
 
-// ===== 草稿タスク作成 =====
+// ===== 草稿タスク作成（修正：日付初期値をnullに変更） =====
 export const createDraftTask = (projectId: string, parentId: string | null = null, level: number = 0): Task => {
-  const now = new Date()
   return {
     id: `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     name: '',
     projectId,
     parentId,
     completed: false,
-    startDate: now,
-    dueDate: now,
+    startDate: null as any, // 修正：初期値をnullに変更
+    dueDate: null as any,   // 修正：初期値をnullに変更
     completionDate: null,
     notes: '',
     assignee: '自分',

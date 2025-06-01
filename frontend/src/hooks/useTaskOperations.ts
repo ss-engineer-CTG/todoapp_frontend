@@ -57,10 +57,11 @@ export const useTaskOperations = ({
 
       const { _isDraft, ...taskData } = { ...draft, ...updates }
       
-      if (!isValidDate(taskData.startDate)) {
+      // 修正：日付がnullの場合は現在日時を設定
+      if (!taskData.startDate || !isValidDate(taskData.startDate)) {
         taskData.startDate = new Date()
       }
-      if (!isValidDate(taskData.dueDate)) {
+      if (!taskData.dueDate || !isValidDate(taskData.dueDate)) {
         taskData.dueDate = new Date()
       }
 
@@ -77,6 +78,25 @@ export const useTaskOperations = ({
       throw error
     }
   }, [allTasks, setAllTasks, apiActions])
+
+  // 修正：草稿タスクキャンセル機能を追加
+  const cancelDraft = useCallback((draftId: string) => {
+    try {
+      const draft = allTasks.find(t => t.id === draftId)
+      if (!draft || !isDraftTask(draft)) {
+        logger.warn('Attempted to cancel non-draft task', { draftId })
+        return false
+      }
+
+      setAllTasks(prev => prev.filter(t => t.id !== draftId))
+      logger.info('Draft task cancelled', { draftId })
+      return true
+    } catch (error) {
+      logger.error('Draft task cancellation failed', { draftId, error })
+      handleError(error, '草稿タスクのキャンセルに失敗しました')
+      return false
+    }
+  }, [allTasks, setAllTasks])
 
   // タスク削除
   const deleteTask = useCallback(async (taskId: string, isMultiSelect = false, selectedTaskIds: string[] = []) => {
@@ -217,6 +237,7 @@ export const useTaskOperations = ({
     copiedTasks,
     createDraft,
     saveDraft,
+    cancelDraft, // 新規追加
     deleteTask,
     toggleTaskCompletion,
     toggleTaskCollapse,

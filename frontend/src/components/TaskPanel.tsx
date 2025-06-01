@@ -162,8 +162,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             "flex items-start p-2 rounded-md cursor-pointer group transition-colors",
             selectedTaskId === task.id ? "bg-accent" : "hover:bg-accent/50",
             selectedTaskIds.includes(task.id) ? "bg-accent/80 ring-1 ring-primary" : "",
-            task.completed ? "text-muted-foreground" : "",
-            isTaskDraft ? "border border-blue-300 bg-blue-50" : ""
+            task.completed ? "text-muted-foreground" : ""
           )}
           style={{ marginLeft: `${task.level * 1.5}rem` }}
           onClick={(e) => onTaskSelect(task.id, e)}
@@ -204,14 +203,13 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             <div className={cn(
               "font-medium flex items-center", 
               task.completed ? "line-through" : "",
-              !task.name.trim() ? "text-orange-600 italic" : "",
-              isTaskDraft ? "text-blue-700 font-medium" : ""
+              !task.name.trim() ? "text-orange-600 italic" : ""
             )}>
               {taskDisplayName}
               {isTaskDraft && (
-                <div title="編集中のタスク">
-                  <Edit3 className="h-3 w-3 ml-2 text-blue-500" />
-                </div>
+                <span className="ml-2 text-xs text-muted-foreground" title="作成中のタスク">
+                  ✨
+                </span>
               )}
             </div>
             <div className="flex items-center text-xs text-muted-foreground mt-1">
@@ -225,7 +223,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                 </span>
               )}
               {!task.name.trim() && !isTaskDraft && <span className="text-orange-500 ml-2">⚠ 名前未設定</span>}
-              {isTaskDraft && <span className="text-blue-500 ml-2">🔄 作成中</span>}
+              {isTaskDraft && <span className="text-muted-foreground ml-2">作成中</span>}
             </div>
           </div>
 
@@ -324,8 +322,8 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
           <h1 className="text-xl font-semibold">タスク一覧</h1>
 
           {draftCount > 0 && (
-            <div className="ml-4 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm">
-              作成中: {draftCount}個
+            <div className="ml-4 px-2 py-1 bg-muted text-muted-foreground rounded-md text-sm">
+              ✨ 作成中: {draftCount}個
             </div>
           )}
 
@@ -466,14 +464,14 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
       )}
 
       {draftCount > 0 && (
-        <div className="border-t bg-blue-50 p-3 text-sm">
-          <div className="flex items-center text-blue-800">
+        <div className="border-t bg-muted/30 p-3 text-sm">
+          <div className="flex items-center text-muted-foreground">
             <Edit3 className="h-4 w-4 mr-2" />
             <span className="font-medium">
               {draftCount}個のタスクが作成中です
             </span>
           </div>
-          <p className="text-blue-700 text-xs mt-1">
+          <p className="text-muted-foreground text-xs mt-1">
             詳細パネルでタスク名を入力して確定してください
           </p>
         </div>
