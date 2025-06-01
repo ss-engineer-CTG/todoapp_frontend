@@ -1,7 +1,7 @@
 """
 タスクサービス
 システムプロンプト準拠：DRY原則、ビジネスロジック集約
-階層タスク表示順序問題対応：シンプルなSQL ORDER BY句に変更
+修正内容：期限順ソート対応、SQLクエリ最適化
 """
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -20,22 +20,21 @@ class TaskService:
     def get_tasks(self, project_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         タスク一覧取得
-        システムプロンプト準拠：KISS原則 - 階層ソートをフロントエンドに移管
+        修正内容：期限順ソート対応、SQLクエリ最適化
         """
         try:
             if project_id:
-                # システムプロンプト準拠：KISS原則 - シンプルなSQL ORDER BY句
-                # 階層構造の維持はフロントエンド側で処理
+                # 修正：期限順ソートをSQLレベルで実行（フロントエンド処理を補助）
                 tasks = self.db_manager.execute_query(
                     """SELECT * FROM tasks 
                        WHERE project_id = ? 
-                       ORDER BY created_at ASC, id ASC""",
+                       ORDER BY due_date ASC, created_at ASC, id ASC""",
                     (project_id,)
                 )
             else:
                 tasks = self.db_manager.execute_query(
                     """SELECT * FROM tasks 
-                       ORDER BY project_id, created_at ASC, id ASC"""
+                       ORDER BY project_id, due_date ASC, created_at ASC, id ASC"""
                 )
             
             # システムプロンプト準拠：データ変換ログの出力
@@ -45,10 +44,14 @@ class TaskService:
                 {'project_id': project_id}, 
                 tasks, 
                 True,
-                {'task_count': len(tasks), 'sort_method': 'created_at_asc'}
+                {
+                    'task_count': len(tasks), 
+                    'sort_method': 'due_date_asc_sql',
+                    'frontend_hierarchy_sort': 'enabled'
+                }
             )
             
-            logger.info(f"Retrieved {len(tasks)} tasks" + (f" for project {project_id}" if project_id else "") + " (frontend hierarchy sort enabled)")
+            logger.info(f"Retrieved {len(tasks)} tasks" + (f" for project {project_id}" if project_id else "") + " (due date priority SQL + frontend hierarchy sort)")
             return tasks
         except Exception as e:
             logger.error(f"Failed to retrieve tasks: {e}")
@@ -118,7 +121,7 @@ class TaskService:
             
             # 作成されたタスクを取得
             created_task = self.get_task_by_id(task_id)
-            logger.info(f"Created task: {created_task['name']} ({task_id})")
+            logger.info(f"Created task: {created_task['name']} ({task_id}) due: {created_task.get('due_date', 'N/A')}")
             return created_task
             
         except Exception as e:
@@ -158,7 +161,7 @@ class TaskService:
             
             # 更新されたタスクを取得
             updated_task = self.get_task_by_id(task_id)
-            logger.info(f"Updated task: {updated_task['name']} ({task_id})")
+            logger.info(f"Updated task: {updated_task['name']} ({task_id}) due: {updated_task.get('due_date', 'N/A')}")
             return updated_task
             
         except Exception as e:
@@ -272,10 +275,10 @@ class TaskService:
     def get_task_hierarchy(self, task_id: str) -> List[Dict[str, Any]]:
         """タスクの階層構造取得（子タスク含む）"""
         try:
-            # 再帰的に子タスクを取得
+            # 再帰的に子タスクを取得（期限順）
             def get_children(parent_id: str) -> List[Dict[str, Any]]:
                 children = self.db_manager.execute_query(
-                    "SELECT * FROM tasks WHERE parent_id = ? ORDER BY created_at ASC",
+                    "SELECT * FROM tasks WHERE parent_id = ? ORDER BY due_date ASC, created_at ASC",
                     (parent_id,)
                 )
                 result = []

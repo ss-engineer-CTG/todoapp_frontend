@@ -1,4 +1,5 @@
 // システムプロンプト準拠：アプリ状態管理統合（useApi + useMultiSelect + useScrollToTask）
+// 修正内容：データ検証処理の微調整（期限順ソート対応）
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Task, Project, SelectionState, BatchOperation, BatchOperationResult } from '../types'
@@ -54,7 +55,7 @@ export const useAppState = () => {
     }
   }, [selection.selectedId])
 
-  // データ検証
+  // データ検証（期限順ソート対応で強化）
   const validateTaskData = useCallback((tasks: Task[]): Task[] => {
     return tasks.filter((task, index) => {
       try {
@@ -68,12 +69,25 @@ export const useAppState = () => {
           return false
         }
         
+        // 修正：期限順ソート対応のため日付検証を強化
         if (!isValidDate(task.startDate)) {
+          logger.warn('Invalid start date, setting to current date', { taskId: task.id, startDate: task.startDate })
           task.startDate = new Date()
         }
         
         if (!isValidDate(task.dueDate)) {
+          logger.warn('Invalid due date, setting to current date', { taskId: task.id, dueDate: task.dueDate })
           task.dueDate = new Date()
+        }
+
+        // 新規追加：期限日が開始日より前の場合の警告
+        if (task.startDate && task.dueDate && task.startDate > task.dueDate) {
+          logger.warn('Due date is before start date', { 
+            taskId: task.id, 
+            startDate: task.startDate, 
+            dueDate: task.dueDate 
+          })
+          // 自動修正はせず警告のみ（ユーザーの意図を尊重）
         }
         
         return true
@@ -146,6 +160,15 @@ export const useAppState = () => {
     try {
       const rawTasks = await apiService.getTasks(projectId)
       const validTasks = validateTaskData(rawTasks)
+      
+      // 修正：期限順ソート適用確認ログ
+      logger.info('Tasks loaded and validated', {
+        projectId,
+        rawCount: rawTasks.length,
+        validCount: validTasks.length,
+        sortMethod: 'backend_due_date_frontend_hierarchy'
+      })
+      
       setTasks({ data: validTasks, loading: false, error: null })
       return validTasks
     } catch (error) {
@@ -175,6 +198,11 @@ export const useAppState = () => {
         data: prev.data ? [...prev.data, validatedTasks[0]] : [validatedTasks[0]]
       }))
       
+      logger.info('Task created with due date validation', {
+        taskId: validatedTasks[0].id,
+        dueDate: validatedTasks[0].dueDate
+      })
+      
       return validatedTasks[0]
     } catch (error) {
       handleError(error, 'タスクの作成に失敗しました')
@@ -196,6 +224,11 @@ export const useAppState = () => {
         ...prev,
         data: prev.data?.map(t => t.id === id ? validatedTasks[0] : t) || null
       }))
+      
+      logger.info('Task updated with due date validation', {
+        taskId: validatedTasks[0].id,
+        dueDate: validatedTasks[0].dueDate
+      })
       
       return validatedTasks[0]
     } catch (error) {

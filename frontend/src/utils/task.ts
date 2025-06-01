@@ -1,4 +1,5 @@
 // システムプロンプト準拠：タスク関連完全統合（taskUtils + hierarchySort + taskOperations）
+// 修正内容：期限順ソート機能を追加
 
 import { Task, TaskRelationMap } from '../types'
 import { logger } from './core'
@@ -47,30 +48,84 @@ export const buildTaskRelationMap = (tasks: Task[]): TaskRelationMap => {
   return { childrenMap, parentMap }
 }
 
-// ===== 階層ソート（簡素化） =====
+// ===== 新規追加：期限順ソート処理（DRY原則準拠） =====
+/**
+ * タスクを期限順にソートする共通関数
+ * システムプロンプト準拠：DRY原則でソート処理を一元化
+ */
+export const sortTasksByDueDate = (tasks: Task[]): Task[] => {
+  try {
+    return tasks.sort((a, b) => {
+      // 期限日の比較
+      const dueDateA = new Date(a.dueDate).getTime()
+      const dueDateB = new Date(b.dueDate).getTime()
+      
+      // 期限が同じ場合は作成日時で二次ソート（安定ソート）
+      if (dueDateA === dueDateB) {
+        const createdA = new Date(a.createdAt || 0).getTime()
+        const createdB = new Date(b.createdAt || 0).getTime()
+        return createdA - createdB
+      }
+      
+      return dueDateA - dueDateB
+    })
+  } catch (error) {
+    logger.error('Due date sorting failed', { taskCount: tasks.length, error })
+    return tasks // フォールバック：元の順序を維持
+  }
+}
+
+// ===== 階層ソート（期限順対応版） =====
+/**
+ * 階層構造を維持しながら期限順にソートする
+ * 修正内容：各階層レベルで期限が近い順にソート
+ */
 export const sortTasksHierarchically = (tasks: Task[], relationMap: TaskRelationMap): Task[] => {
   try {
     if (tasks.length === 0) return []
 
     const sortedTasks: Task[] = []
+    
+    // ルートタスクを期限順にソート
     const rootTasks = tasks.filter(task => !task.parentId)
+    const sortedRootTasks = sortTasksByDueDate(rootTasks)
+    
+    logger.info('Hierarchical sorting with due date priority', {
+      totalTasks: tasks.length,
+      rootTasks: rootTasks.length,
+      sortMethod: 'due_date_hierarchical'
+    })
 
     const addTaskWithChildren = (task: Task) => {
       sortedTasks.push(task)
+      
+      // 子タスクも期限順にソートしてから追加
       const childTaskIds = relationMap.childrenMap[task.id] || []
       const childTasks = childTaskIds
         .map(childId => tasks.find(t => t.id === childId))
         .filter((child): child is Task => child !== undefined)
       
-      childTasks.forEach(child => addTaskWithChildren(child))
+      // 子タスクを期限順にソート
+      const sortedChildTasks = sortTasksByDueDate(childTasks)
+      
+      // 再帰的に子タスクとその子孫を追加
+      sortedChildTasks.forEach(child => addTaskWithChildren(child))
     }
 
-    rootTasks.forEach(rootTask => addTaskWithChildren(rootTask))
+    // ソート済みルートタスクから順次処理
+    sortedRootTasks.forEach(rootTask => addTaskWithChildren(rootTask))
 
-    // 孤立タスクの処理
+    // 孤立タスクの処理（期限順）
     const addedTaskIds = new Set(sortedTasks.map(t => t.id))
     const orphanTasks = tasks.filter(task => !addedTaskIds.has(task.id))
+    const sortedOrphanTasks = sortTasksByDueDate(orphanTasks)
     orphanTasks.forEach(orphan => sortedTasks.push(orphan))
+
+    logger.info('Hierarchical sorting completed', {
+      inputCount: tasks.length,
+      outputCount: sortedTasks.length,
+      orphanCount: orphanTasks.length
+    })
 
     return sortedTasks
   } catch (error) {
