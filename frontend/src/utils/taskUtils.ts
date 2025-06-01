@@ -64,7 +64,7 @@ export const filterTasksForBatchOperation = (
   })
 }
 
-// UI状態判定
+// UI状態判定（統合フラグアプローチ：草稿タスクは一覧非表示）
 export const getTaskDisplayState = (task: Task) => {
   if (isDraftTask(task)) {
     return {
@@ -72,7 +72,8 @@ export const getTaskDisplayState = (task: Task) => {
       showDraftIndicator: true,
       allowBusinessOperations: false,
       requiresNameInput: !task.name.trim(),
-      className: 'border-blue-200 bg-blue-50'
+      className: 'border-blue-200 bg-blue-50',
+      shouldShowInList: false // 統合フラグアプローチ：一覧に表示しない
     }
   }
 
@@ -81,11 +82,12 @@ export const getTaskDisplayState = (task: Task) => {
     showDraftIndicator: false,
     allowBusinessOperations: true,
     requiresNameInput: false,
-    className: ''
+    className: '',
+    shouldShowInList: true
   }
 }
 
-// 草稿タスクの統計情報
+// 草稿タスクの統計情報（統合フラグアプローチ：一覧外タスクの統計）
 export const getDraftStatistics = (tasks: Task[]) => {
   const drafts = getDraftTasks(tasks)
   const emptyNameDrafts = drafts.filter(task => !task.name.trim())
@@ -93,6 +95,8 @@ export const getDraftStatistics = (tasks: Task[]) => {
   return {
     totalDrafts: drafts.length,
     emptyNameDrafts: emptyNameDrafts.length,
-    namedDrafts: drafts.length - emptyNameDrafts.length
+    namedDrafts: drafts.length - emptyNameDrafts.length,
+    // 統合フラグアプローチ：草稿タスクは一覧に表示されないため常に0
+    visibleInList: 0
   }
 }

@@ -30,7 +30,7 @@ interface UseKeyboardShortcutsProps {
   onSelectAll: () => void
   onHandleKeyboardRangeSelect: (direction: 'up' | 'down') => void
   isAddingProject: boolean
-  isAddingTask: boolean
+  isAddingTask: boolean // 統合フラグアプローチ：廃止されたが互換性のため残存
   isEditingProject: boolean
 }
 
@@ -51,7 +51,7 @@ export const useKeyboardShortcuts = ({
   setIsMultiSelectMode,
   taskRelationMap,
   copiedTasks,
-  onAddDraftTask, // 統合フラグアプローチ：草稿タスク作成に変更
+  onAddDraftTask,
   onDeleteTask,
   onCopyTask,
   onPasteTask,
@@ -60,7 +60,7 @@ export const useKeyboardShortcuts = ({
   onSelectAll,
   onHandleKeyboardRangeSelect,
   isAddingProject,
-  isAddingTask,
+  isAddingTask, // 統合フラグアプローチ：使用されないが互換性のため
   isEditingProject
 }: UseKeyboardShortcutsProps) => {
   
@@ -84,15 +84,6 @@ export const useKeyboardShortcuts = ({
     )
   }, [])
 
-  const isNewTaskInputActive = useCallback((target: EventTarget | null): boolean => {
-    if (!target || !(target instanceof Element)) return false
-    
-    return !!(
-      target.closest('[data-new-task-input]') ||
-      (target instanceof HTMLInputElement && target.placeholder === '新しいタスク')
-    )
-  }, [])
-
   const isCalendarActive = useCallback((target: EventTarget | null): boolean => {
     if (!target || !(target instanceof Element)) return false
     
@@ -112,10 +103,9 @@ export const useKeyboardShortcuts = ({
                    target instanceof HTMLSelectElement
     
     const isProjectEditing = isAddingProject || isEditingProject
-    const isNewTaskInput = isNewTaskInputActive(target)
     
-    return (isInput && !isNewTaskInput) || isProjectEditing
-  }, [isAddingProject, isEditingProject, isNewTaskInputActive])
+    return isInput || isProjectEditing
+  }, [isAddingProject, isEditingProject])
 
   // システムプロンプト準拠：詳細パネル内のTab navigation
   const handleDetailTabNavigation = useCallback((e: KeyboardEvent) => {
@@ -185,16 +175,9 @@ export const useKeyboardShortcuts = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       try {
         const target = e.target
-        const isNewTaskInput = isNewTaskInputActive(target)
         const isCalendar = isCalendarActive(target)
         const isGeneralInput = isGeneralInputActive(target)
         const isDetailInput = isDetailPanelInputFocused()
-
-        // 新規タスク名入力中はショートカット無効
-        if (isNewTaskInput) {
-          logger.trace('Keyboard shortcut skipped: new task input active')
-          return
-        }
 
         // システムプロンプト準拠：Escapeキーを最優先で処理
         if (e.key === "Escape") {
@@ -490,7 +473,7 @@ export const useKeyboardShortcuts = ({
     isAddingProject,
     isAddingTask,
     isEditingProject,
-    onAddDraftTask, // 統合フラグアプローチ：草稿タスク作成に変更
+    onAddDraftTask,
     onDeleteTask,
     onCopyTask,
     onPasteTask,
@@ -504,7 +487,6 @@ export const useKeyboardShortcuts = ({
     setActiveArea,
     setIsMultiSelectMode,
     handleDetailTabNavigation,
-    isNewTaskInputActive,
     isCalendarActive,
     isGeneralInputActive,
     isDetailPanelInputFocused

@@ -9,7 +9,7 @@ import { handleError } from './errorHandler'
 import { isValidDate } from './dateUtils'
 
 /**
- * 統合タスク操作クラス（大幅簡素化版）
+ * 統合タスク操作クラス（統合フラグアプローチで簡素化版）
  */
 export class TaskOperations {
   private apiActions: TaskApiActions
@@ -20,73 +20,6 @@ export class TaskOperations {
     this.apiActions = apiActions
     this.allTasks = allTasks
     this.selectedProjectId = selectedProjectId
-  }
-
-  /**
-   * 通常タスクID生成
-   */
-  private generateTaskId(): string {
-    return `t${Date.now()}`
-  }
-
-  /**
-   * 通常タスク追加処理（UI用）
-   */
-  async addTask(
-    parentId: string | null = null, 
-    level = 0, 
-    name?: string
-  ): Promise<Task | null> {
-    if (!this.selectedProjectId) {
-      logger.warn('No project selected for task creation')
-      return null
-    }
-
-    try {
-      logger.info('Creating new task via UI', { 
-        parentId, 
-        level, 
-        projectId: this.selectedProjectId,
-        hasName: !!name
-      })
-
-      // 親タスクの情報を取得（日付継承用）
-      const parentTask = parentId ? this.allTasks.find(task => task.id === parentId) : null
-
-      const startDate = parentTask?.startDate && isValidDate(parentTask.startDate) 
-        ? parentTask.startDate 
-        : new Date()
-      const dueDate = parentTask?.dueDate && isValidDate(parentTask.dueDate) 
-        ? parentTask.dueDate 
-        : new Date()
-
-      const newTaskData = {
-        name: name || '新しいタスク',
-        projectId: this.selectedProjectId,
-        parentId,
-        completed: false,
-        startDate,
-        dueDate,
-        completionDate: null,
-        notes: '',
-        assignee: '自分',
-        level,
-        collapsed: false,
-      }
-
-      const createdTask = await this.apiActions.createTask(newTaskData)
-      
-      logger.info('Task created successfully via UI', { 
-        taskId: createdTask.id, 
-        taskName: createdTask.name
-      })
-      
-      return createdTask
-    } catch (error) {
-      logger.error('Task creation via UI failed', { parentId, level, error })
-      handleError(error, 'タスクの作成に失敗しました')
-      return null
-    }
   }
 
   /**
@@ -334,6 +267,13 @@ export class TaskOperations {
       handleError(error, 'タスクの貼り付けに失敗しました')
       return false
     }
+  }
+
+  /**
+   * 通常タスクID生成
+   */
+  private generateTaskId(): string {
+    return `t${Date.now()}`
   }
 }
 

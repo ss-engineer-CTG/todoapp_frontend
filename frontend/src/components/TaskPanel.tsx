@@ -1,8 +1,7 @@
-import React, { useState, useRef } from 'react'
+import React, { useRef } from 'react'
 import { Task, TaskRelationMap, TaskApiActions, BatchOperation } from '../types'
 import { safeFormatDate } from '../utils/dateUtils'
 import { logger } from '../utils/logger'
-import { createTaskOperations } from '../utils/taskOperations'
 import { canCompleteTask, canCopyTask, filterTasksForBatchOperation, getTaskDisplayState, getDraftStatistics } from '../utils/taskUtils'
 import {
   Plus,
@@ -19,7 +18,6 @@ import {
   Edit3
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ShortcutGuideDialog } from './ShortcutGuideDialog'
@@ -50,8 +48,8 @@ interface TaskPanelProps {
   onToggleTaskCollapse: (taskId: string) => void
   onClearSelection: () => void
   setTaskRef: (taskId: string, element: HTMLDivElement | null) => void
-  isAddingTask: boolean
-  setIsAddingTask: (adding: boolean) => void
+  // 統合フラグアプローチ：草稿タスク作成処理
+  onAddDraftTask: (parentId: string | null, level: number) => void
   apiActions: TaskApiActions
 }
 
@@ -76,70 +74,16 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   onToggleTaskCollapse,
   onClearSelection,
   setTaskRef,
-  isAddingTask,
-  setIsAddingTask,
+  onAddDraftTask,
   apiActions
 }) => {
   const { theme, setTheme } = useTheme()
-  const [newTaskName, setNewTaskName] = useState("")
-  const [newTaskParentId, setNewTaskParentId] = useState<string | null>(null)
-  const [newTaskLevel, setNewTaskLevel] = useState(0)
-
-  const newTaskInputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // システムプロンプト準拠：DRY原則 - TaskOperationsを活用
-  const taskOperations = createTaskOperations(apiActions, allTasks, selectedProjectId)
-
+  // 統合フラグアプローチ：詳細パネルでのタスク作成に統一
   const handleAddTaskClick = (parentId: string | null = null, level = 0) => {
-    logger.info('Starting new task creation via UI', { parentId, level })
-    setIsAddingTask(true)
-    setNewTaskParentId(parentId)
-    setNewTaskLevel(level)
-    setTimeout(() => {
-      newTaskInputRef.current?.focus()
-    }, 0)
-  }
-
-  const handleSaveNewTask = async () => {
-    if (newTaskName.trim() && selectedProjectId) {
-      try {
-        logger.info('Creating new task via UI', { 
-          taskName: newTaskName, 
-          parentId: newTaskParentId, 
-          level: newTaskLevel 
-        })
-
-        const createdTask = await taskOperations.addTask(newTaskParentId, newTaskLevel, newTaskName)
-        
-        if (createdTask) {
-          setNewTaskName("")
-          setIsAddingTask(false)
-          onTaskSelect(createdTask.id)
-          setActiveArea("tasks")
-          
-          logger.info('Task created successfully via UI', { 
-            taskId: createdTask.id, 
-            taskName: createdTask.name 
-          })
-        }
-      } catch (error) {
-        handleError(error, 'タスクの作成に失敗しました')
-        setIsAddingTask(false)
-      }
-    } else {
-      logger.debug('New task creation cancelled - empty name')
-      setIsAddingTask(false)
-      setNewTaskName("")
-    }
-  }
-
-  const handleCancelNewTask = () => {
-    logger.debug('New task creation cancelled')
-    setIsAddingTask(false)
-    setNewTaskName("")
-    setNewTaskParentId(null)
-    setNewTaskLevel(0)
+    logger.info('Creating draft task via UI button', { parentId, level })
+    onAddDraftTask(parentId, level)
   }
 
   const toggleDetailPanel = () => {
@@ -464,7 +408,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {tasks.length === 0 && !isAddingTask ? (
+        {tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <p>タスクがありません</p>
             {selectedProjectId && (
@@ -481,32 +425,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         ) : (
           <div className="space-y-1">
             {tasks.map(renderTask).filter(Boolean)}
-
-            {isAddingTask && (
-              <div className="flex items-center p-2" style={{ marginLeft: `${newTaskLevel * 1.5}rem` }}>
-                <div className="w-4 mr-2" />
-                <Checkbox className="mr-2 opacity-50" disabled />
-                <Input
-                  ref={newTaskInputRef}
-                  value={newTaskName}
-                  onChange={(e) => setNewTaskName(e.target.value)}
-                  onBlur={handleSaveNewTask}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.stopPropagation()
-                      handleSaveNewTask()
-                    }
-                    if (e.key === "Escape") {
-                      e.stopPropagation()
-                      handleCancelNewTask()
-                    }
-                  }}
-                  placeholder="新しいタスク"
-                  className="border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
-                  data-new-task-input="true"
-                />
-              </div>
-            )}
           </div>
         )}
       </div>

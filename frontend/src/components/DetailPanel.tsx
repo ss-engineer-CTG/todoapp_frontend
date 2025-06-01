@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 
 interface DetailPanelProps {
   selectedTask: Task | undefined
-  onTaskSave: (taskId: string, updates: Partial<Task>) => Promise<Task | null> // 統合フラグアプローチ：統一された保存処理
+  onTaskSave: (taskId: string, updates: Partial<Task>) => Promise<Task | null>
   projects: Project[]
   activeArea: string
   setActiveArea: (area: "projects" | "tasks" | "details") => void
@@ -29,7 +29,7 @@ interface DetailPanelProps {
 
 export const DetailPanel: React.FC<DetailPanelProps> = ({
   selectedTask,
-  onTaskSave, // 統合フラグアプローチ：統一された保存処理
+  onTaskSave,
   projects,
   activeArea,
   setActiveArea,
@@ -91,23 +91,24 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }, [selectedTask?.id, isTaskDraft])
 
-  // 統合フラグアプローチ：草稿タスクの場合は自動フォーカス
+  // 統合フラグアプローチ：草稿タスクの場合は自動フォーカス強化
   useEffect(() => {
     if (activeArea === "details" && selectedTask && taskNameInputRef.current) {
       if (isTaskDraft) {
-        logger.debug('Draft task selected - focusing task name input immediately')
+        logger.debug('Draft task selected - immediate focus and selection')
+        // 草稿タスクの場合は即座にフォーカスして選択状態に
         setTimeout(() => {
           taskNameInputRef.current?.focus()
           taskNameInputRef.current?.select()
-        }, 0)
+        }, 50) // 少し遅延を入れてDOM更新を待つ
       } else {
         logger.debug('Regular task selected - focusing task name input')
         setTimeout(() => {
           taskNameInputRef.current?.focus()
-        }, 0)
+        }, 100)
       }
     }
-  }, [activeArea, selectedTask, taskNameInputRef, isTaskDraft])
+  }, [activeArea, selectedTask?.id, taskNameInputRef, isTaskDraft])
 
   // 開始日ボタンフォーカス時のカレンダー自動表示
   useEffect(() => {

@@ -21,7 +21,7 @@ import { BATCH_OPERATIONS } from './config/constants'
 const TodoApp: React.FC = () => {
   const {
     projects,
-    tasks, // useApiから取得したtasksを使用
+    tasks,
     loadProjects,
     createProject,
     updateProject,
@@ -44,8 +44,10 @@ const TodoApp: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState<boolean>(false)
 
   const [isAddingProject, setIsAddingProject] = useState<boolean>(false)
-  const [isAddingTask, setIsAddingTask] = useState<boolean>(false)
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
+
+  // 統合フラグアプローチ：草稿タスクを含む全タスクを管理
+  const [allTasksWithDrafts, setAllTasksWithDrafts] = useState<Task[]>([])
 
   // システムプロンプト準拠：軽量化されたフォーカス管理
   const [focusManagement, setFocusManagement] = useState<FocusManagement>({
@@ -57,15 +59,19 @@ const TodoApp: React.FC = () => {
   })
 
   const currentProjects = projects.data || []
-  // 統合フラグアプローチ：単一のタスク配列（草稿・確定混在）
   const currentTasks = tasks.data || []
 
-  const { taskRelationMap } = useTaskRelations(currentTasks)
+  // 統合フラグアプローチ：草稿タスクと確定タスクを統合
+  useEffect(() => {
+    setAllTasksWithDrafts(currentTasks)
+  }, [currentTasks])
 
-  // システムプロンプト準拠：軽量な階層ソート適用
+  const { taskRelationMap } = useTaskRelations(allTasksWithDrafts)
+
+  // システムプロンプト準拠：軽量な階層ソート適用（草稿タスクは除外）
   const filteredTasks = (() => {
     try {
-      const basicFilteredTasks = currentTasks.filter((task: Task) => {
+      const basicFilteredTasks = allTasksWithDrafts.filter((task: Task) => {
         try {
           if (!task.id || !task.projectId) {
             logger.warn('Task missing required fields during filtering', { task })
@@ -75,13 +81,13 @@ const TodoApp: React.FC = () => {
           if (task.projectId !== selectedProjectId) return false
           if (!showCompleted && task.completed) return false
 
-          // 統合フラグアプローチ：草稿タスクは常に表示
-          if (isDraftTask(task)) return true
+          // 統合フラグアプローチ：草稿タスクは一覧に表示しない
+          if (isDraftTask(task)) return false
 
           if (task.parentId) {
             let currentParentId: string | null = task.parentId
             while (currentParentId) {
-              const currentParent = currentTasks.find((t: Task) => t.id === currentParentId)
+              const currentParent = allTasksWithDrafts.find((t: Task) => t.id === currentParentId)
               if (currentParent && currentParent.collapsed) return false
               currentParentId = taskRelationMap.parentMap[currentParentId] || null
             }
@@ -99,7 +105,7 @@ const TodoApp: React.FC = () => {
     } catch (error) {
       logger.error('Task filtering and sorting failed', { 
         projectId: selectedProjectId, 
-        taskCount: currentTasks.length,
+        taskCount: allTasksWithDrafts.length,
         error 
       })
       
@@ -107,6 +113,7 @@ const TodoApp: React.FC = () => {
         if (!task.id || !task.projectId) return false
         if (task.projectId !== selectedProjectId) return false
         if (!showCompleted && task.completed) return false
+        if (isDraftTask(task)) return false
         return true
       })
     }
@@ -136,7 +143,7 @@ const TodoApp: React.FC = () => {
   const selectedTask = (() => {
     try {
       if (!selectedTaskId) return undefined
-      return currentTasks.find((task: Task) => task.id === selectedTaskId)
+      return allTasksWithDrafts.find((task: Task) => task.id === selectedTaskId)
     } catch (error) {
       logger.error('Error finding selected task', { selectedTaskId, error })
       return undefined
@@ -158,14 +165,14 @@ const TodoApp: React.FC = () => {
     }
   }
 
-  const taskOperations = createTaskOperations(taskApiActions, currentTasks, selectedProjectId)
+  const taskOperations = createTaskOperations(taskApiActions, allTasksWithDrafts, selectedProjectId)
 
   // システムプロンプト準拠：プロジェクト一覧更新処理
   const handleProjectsUpdate = (updatedProjects: any[]) => {
     logger.debug('Projects update requested', { count: updatedProjects.length })
   }
 
-  // 統合フラグアプローチ：草稿タスク作成処理
+  // 統合フラグアプローチ：草稿タスク作成処理（強化版）
   const handleAddDraftTask = async (parentId: string | null = null, level = 0) => {
     try {
       if (!selectedProjectId) {
@@ -173,17 +180,27 @@ const TodoApp: React.FC = () => {
         return
       }
 
-      logger.info('Creating draft task', { parentId, level, projectId: selectedProjectId })
+      logger.info('Creating draft task with immediate detail panel focus', { 
+        parentId, 
+        level, 
+        projectId: selectedProjectId 
+      })
 
       const draft = createDraft(selectedProjectId, parentId, level)
       
-      // タスクを選択状態にして詳細パネルを表示
+      // 草稿タスクをローカル状態に追加（一覧には表示されない）
+      setAllTasksWithDrafts(prev => [...prev, draft])
+      
+      // タスクを選択状態にして詳細パネルを即表示
       setSelectedTaskId(draft.id)
       setSelectedTaskIds([draft.id])
       setActiveArea("details")
       setIsDetailPanelVisible(true)
       
-      logger.info('Draft task created and selected', { draftId: draft.id })
+      logger.info('Draft task created, detail panel activated', { 
+        draftId: draft.id,
+        activeArea: "details"
+      })
       
     } catch (error) {
       logger.error('Draft task creation failed', { parentId, level, error })
@@ -194,15 +211,18 @@ const TodoApp: React.FC = () => {
   // 統合フラグアプローチ：統一された保存処理
   const handleSaveTask = async (taskId: string, updates: Partial<Task>): Promise<Task | null> => {
     try {
-      const task = currentTasks.find((t: Task) => t.id === taskId)
+      const task = allTasksWithDrafts.find((t: Task) => t.id === taskId)
       if (!task) {
         throw new Error(`Task not found: ${taskId}`)
       }
 
       if (isDraftTask(task)) {
         // 草稿の場合：新規作成として保存
-        logger.info('Saving draft task', { taskId, updates })
+        logger.info('Saving draft task as new task', { taskId, updates })
         const savedTask = await saveDraft(task, updates, taskApiActions)
+        
+        // 草稿をローカル状態から削除
+        setAllTasksWithDrafts(prev => prev.filter(t => t.id !== taskId))
         
         // タスク一覧を再読み込み
         await loadTasks(selectedProjectId)
@@ -211,7 +231,7 @@ const TodoApp: React.FC = () => {
         setSelectedTaskId(savedTask.id)
         setSelectedTaskIds([savedTask.id])
         
-        logger.info('Draft task saved successfully', { 
+        logger.info('Draft task saved successfully, switched to new task', { 
           draftId: taskId, 
           newTaskId: savedTask.id 
         })
@@ -234,15 +254,26 @@ const TodoApp: React.FC = () => {
 
   const handleDeleteTask = async (taskId: string) => {
     try {
-      const task = currentTasks.find((t: Task) => t.id === taskId)
+      const task = allTasksWithDrafts.find((t: Task) => t.id === taskId)
       if (!task) return
 
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
         // 確定タスクのみバッチ削除
-        const regularTaskIds = filterTasksForBatchOperation(currentTasks, selectedTaskIds)
+        const regularTaskIds = filterTasksForBatchOperation(allTasksWithDrafts, selectedTaskIds)
         
         if (regularTaskIds.length > 0) {
           await batchUpdateTasks(BATCH_OPERATIONS.DELETE, regularTaskIds)
+        }
+        
+        // 草稿タスクはローカル状態から削除
+        const draftTaskIds = selectedTaskIds.filter(id => {
+          const t = allTasksWithDrafts.find(task => task.id === id)
+          return t && isDraftTask(t)
+        })
+        
+        if (draftTaskIds.length > 0) {
+          setAllTasksWithDrafts(prev => prev.filter(t => !draftTaskIds.includes(t.id)))
+          logger.info('Draft tasks discarded', { draftTaskIds })
         }
         
         setSelectedTaskId(null)
@@ -251,6 +282,8 @@ const TodoApp: React.FC = () => {
       } else {
         // 単一タスクの削除
         if (isDraftTask(task)) {
+          // 草稿タスクの場合：ローカル状態から削除
+          setAllTasksWithDrafts(prev => prev.filter(t => t.id !== taskId))
           logger.info('Draft task discarded', { taskId })
         } else {
           // 確定タスクの場合：API削除
@@ -272,14 +305,14 @@ const TodoApp: React.FC = () => {
 
   const handleCopyTask = async (taskId: string) => {
     try {
-      const task = currentTasks.find((t: Task) => t.id === taskId)
+      const task = allTasksWithDrafts.find((t: Task) => t.id === taskId)
       if (!task || !canCopyTask(task)) {
         logger.debug('Copy operation skipped', { taskId, reason: 'invalid_or_draft' })
         return
       }
 
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-        const validTaskIds = filterTasksForBatchOperation(currentTasks, selectedTaskIds)
+        const validTaskIds = filterTasksForBatchOperation(allTasksWithDrafts, selectedTaskIds)
         if (validTaskIds.length > 0) {
           const copiedTaskList = await taskOperations.copyTasks(validTaskIds)
           setCopiedTasks(copiedTaskList)
@@ -298,7 +331,7 @@ const TodoApp: React.FC = () => {
     if (copiedTasks.length === 0 || !selectedProjectId) return
 
     try {
-      const currentTask = selectedTaskId ? currentTasks.find((t: Task) => t.id === selectedTaskId) : null
+      const currentTask = selectedTaskId ? allTasksWithDrafts.find((t: Task) => t.id === selectedTaskId) : null
       if (currentTask && isDraftTask(currentTask)) {
         logger.debug('Paste operation skipped - draft task selected as parent')
         return
@@ -320,17 +353,17 @@ const TodoApp: React.FC = () => {
 
   const handleToggleTaskCompletion = async (taskId: string) => {
     try {
-      const task = currentTasks.find((t: Task) => t.id === taskId)
+      const task = allTasksWithDrafts.find((t: Task) => t.id === taskId)
       if (!task || !canCompleteTask(task)) {
         logger.debug('Completion toggle skipped', { taskId, reason: 'invalid_or_draft' })
         return
       }
       
       if (isMultiSelectMode && selectedTaskIds.includes(taskId)) {
-        const validTaskIds = filterTasksForBatchOperation(currentTasks, selectedTaskIds)
+        const validTaskIds = filterTasksForBatchOperation(allTasksWithDrafts, selectedTaskIds)
         
         if (validTaskIds.length > 0) {
-          const targetTask = currentTasks.find((t: Task) => t.id === taskId)
+          const targetTask = allTasksWithDrafts.find((t: Task) => t.id === taskId)
           const newCompletionState = targetTask ? !targetTask.completed : false
           
           const operation = newCompletionState ? BATCH_OPERATIONS.COMPLETE : BATCH_OPERATIONS.INCOMPLETE
@@ -349,7 +382,7 @@ const TodoApp: React.FC = () => {
 
   const handleToggleTaskCollapse = async (taskId: string) => {
     try {
-      const task = currentTasks.find((t: Task) => t.id === taskId)
+      const task = allTasksWithDrafts.find((t: Task) => t.id === taskId)
       if (!task || !canCollapseTask(task)) {
         logger.debug('Collapse toggle skipped', { taskId, reason: 'invalid_or_draft' })
         return
@@ -367,7 +400,7 @@ const TodoApp: React.FC = () => {
   }
 
   useEffect(() => {
-    if (selectedTaskId && isInitialized && !isAddingTask && !isEditingProject) {
+    if (selectedTaskId && isInitialized && !isEditingProject) {
       const shouldShowDetail = focusManagement.detailPanelAutoShow && 
                               !isMultiSelectMode && 
                               selectedProjectId && 
@@ -387,7 +420,7 @@ const TodoApp: React.FC = () => {
         preventNextFocusChange: false
       }))
     }
-  }, [selectedTaskId, isInitialized, isMultiSelectMode, selectedProjectId, isAddingTask, isEditingProject, isAddingProject, focusManagement.detailPanelAutoShow, focusManagement.preventNextFocusChange, activeArea])
+  }, [selectedTaskId, isInitialized, isMultiSelectMode, selectedProjectId, isEditingProject, isAddingProject, focusManagement.detailPanelAutoShow, focusManagement.preventNextFocusChange, activeArea])
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -436,6 +469,8 @@ const TodoApp: React.FC = () => {
     setSelectedTaskIds([])
     setActiveArea("projects")
     setIsDetailPanelVisible(false)
+    // 草稿タスクもクリア
+    setAllTasksWithDrafts(tasks.data || [])
   }
 
   const handleTaskSelectWrapper = (taskId: string, event?: React.MouseEvent) => {
@@ -445,7 +480,7 @@ const TodoApp: React.FC = () => {
   }
 
   const { taskNameInputRef, startDateButtonRef, dueDateButtonRef, taskNotesRef, saveButtonRef } = useKeyboardShortcuts({
-    tasks: currentTasks,
+    tasks: allTasksWithDrafts,
     projects: currentProjects,
     selectedProjectId,
     setSelectedProjectId,
@@ -461,7 +496,7 @@ const TodoApp: React.FC = () => {
     setIsMultiSelectMode,
     taskRelationMap,
     copiedTasks,
-    onAddDraftTask: handleAddDraftTask, // 統合フラグアプローチ：草稿タスク作成
+    onAddDraftTask: handleAddDraftTask,
     onDeleteTask: handleDeleteTask,
     onCopyTask: handleCopyTask,
     onPasteTask: handlePasteTask,
@@ -470,7 +505,7 @@ const TodoApp: React.FC = () => {
     onSelectAll: selectAll,
     onHandleKeyboardRangeSelect: handleKeyboardRangeSelect,
     isAddingProject,
-    isAddingTask,
+    isAddingTask: false, // 統合フラグアプローチ：isAddingTaskは廃止
     isEditingProject
   })
 
@@ -518,22 +553,21 @@ const TodoApp: React.FC = () => {
           showCompleted={showCompleted}
           setShowCompleted={setShowCompleted}
           taskRelationMap={taskRelationMap}
-          allTasks={currentTasks}
+          allTasks={allTasksWithDrafts}
           onDeleteTask={handleDeleteTask}
           onCopyTask={handleCopyTask}
           onToggleTaskCompletion={handleToggleTaskCompletion}
           onToggleTaskCollapse={handleToggleTaskCollapse}
           onClearSelection={clearSelection}
           setTaskRef={setTaskRef}
-          isAddingTask={isAddingTask}
-          setIsAddingTask={setIsAddingTask}
+          onAddDraftTask={handleAddDraftTask}
           apiActions={taskApiActions}
         />
 
         {isDetailPanelVisible && (
           <DetailPanel
             selectedTask={selectedTask}
-            onTaskSave={handleSaveTask} // 統合フラグアプローチ：統一された保存処理
+            onTaskSave={handleSaveTask}
             projects={currentProjects}
             activeArea={activeArea}
             setActiveArea={setActiveArea}

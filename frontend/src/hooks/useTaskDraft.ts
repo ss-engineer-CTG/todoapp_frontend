@@ -13,21 +13,25 @@ export const useTaskDraft = () => {
     return `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
-  // 草稿タスク作成
+  // 草稿タスク作成（強化版：即座に詳細パネル表示用）
   const createDraft = (
     projectId: string,
     parentId: string | null = null, 
     level: number = 0
   ): Task => {
     try {
-      logger.debug('Creating draft task', { projectId, parentId, level })
+      logger.debug('Creating draft task for immediate detail panel display', { 
+        projectId, 
+        parentId, 
+        level 
+      })
 
-      // 親タスクからの日付継承ロジック（既存と同等）
+      // 統合フラグアプローチ：草稿タスクは一覧に表示されず、詳細パネルでのみ編集
       const now = new Date()
 
       const draft: Task = {
         id: generateDraftId(),
-        name: '', // 空名前で開始（ユーザー入力促進）
+        name: '', // 空名前で開始（詳細パネルで即入力）
         projectId,
         parentId,
         completed: false,
@@ -41,7 +45,12 @@ export const useTaskDraft = () => {
         _isDraft: true // 統合フラグの核心
       }
 
-      logger.debug('Draft task created', { draftId: draft.id })
+      logger.debug('Draft task created for detail panel editing', { 
+        draftId: draft.id,
+        willShowInList: false,
+        targetPanel: 'details'
+      })
+      
       return draft
 
     } catch (error) {
@@ -68,7 +77,11 @@ export const useTaskDraft = () => {
         throw new Error('タスク名は必須です')
       }
 
-      logger.info('Saving draft task', { draftId: draft.id, name: finalName })
+      logger.info('Saving draft task as new confirmed task', { 
+        draftId: draft.id, 
+        name: finalName,
+        willAppearInList: true
+      })
 
       // 草稿フラグを除去して新規タスクとして作成
       const { _isDraft, ...taskData } = { ...draft, ...updates }
@@ -83,10 +96,11 @@ export const useTaskDraft = () => {
 
       const savedTask = await apiActions.createTask(taskData)
       
-      logger.info('Draft task saved successfully', { 
+      logger.info('Draft task successfully converted to confirmed task', { 
         draftId: draft.id, 
         newTaskId: savedTask.id,
-        name: savedTask.name 
+        name: savedTask.name,
+        nowInTaskList: true
       })
       
       return savedTask
