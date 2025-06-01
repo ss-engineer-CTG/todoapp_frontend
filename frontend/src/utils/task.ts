@@ -1,5 +1,6 @@
 // システムプロンプト準拠：タスク関連完全統合（taskUtils + hierarchySort + taskOperations）
 // 修正内容：期限順ソート機能を追加
+// ★ 新規修正：未使用変数を削除
 
 import { Task, TaskRelationMap } from '../types'
 import { logger } from './core'
@@ -118,8 +119,10 @@ export const sortTasksHierarchically = (tasks: Task[], relationMap: TaskRelation
     // 孤立タスクの処理（期限順）
     const addedTaskIds = new Set(sortedTasks.map(t => t.id))
     const orphanTasks = tasks.filter(task => !addedTaskIds.has(task.id))
-    const sortedOrphanTasks = sortTasksByDueDate(orphanTasks)
-    orphanTasks.forEach(orphan => sortedTasks.push(orphan))
+    
+    // ★ 修正：未使用変数を削除し、直接追加
+    const sortedOrphans = sortTasksByDueDate(orphanTasks)
+    sortedOrphans.forEach(orphan => sortedTasks.push(orphan))
 
     logger.info('Hierarchical sorting completed', {
       inputCount: tasks.length,

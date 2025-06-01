@@ -1,8 +1,9 @@
 // システムプロンプト準拠：メインアプリロジック統合・簡素化
 // 修正内容：タスク保存後のフォーカス管理機能追加
+// ★ 新規修正：型推論問題を解決（savedTask の型を明示的に定義）
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { AreaType } from './types'
+import { AreaType, Task } from './types'
 import { ProjectPanel } from './components/ProjectPanel'
 import { TaskPanel } from './components/TaskPanel'
 import { DetailPanel } from './components/DetailPanel'
@@ -103,10 +104,21 @@ const TodoApp: React.FC = () => {
     apiActions: taskApiActions
   })
 
-  // 草稿タスク作成
+  // ★ 修正：草稿タスク作成（TaskPanelからの統一呼び出しに対応）
+  // システムプロンプト準拠：DRY原則でキーボードショートカットと同じロジックを共有
   const handleAddDraftTask = useCallback(async (parentId: string | null = null, level = 0) => {
     try {
-      if (!selectedProjectId) return
+      if (!selectedProjectId) {
+        logger.warn('No project selected for draft task creation')
+        return
+      }
+
+      logger.info('Creating draft task', { 
+        parentId, 
+        level, 
+        selectedProjectId,
+        source: 'unified_handler' // ★ 呼び出し元が統一されたことを示すログ
+      })
 
       const draft = createDraft(parentId, level)
       if (draft) {
@@ -115,7 +127,7 @@ const TodoApp: React.FC = () => {
         setIsDetailPanelVisible(true)
       }
     } catch (error) {
-      logger.error('Draft task creation failed', { error })
+      logger.error('Draft task creation failed', { parentId, level, error })
     }
   }, [selectedProjectId, createDraft, setSelectedTaskId, setActiveArea, setIsDetailPanelVisible])
 
@@ -207,7 +219,7 @@ const TodoApp: React.FC = () => {
     setActiveArea,
     isDetailPanelVisible,
     isMultiSelectMode: selection.isMultiSelectMode,
-    onCreateDraft: handleAddDraftTask,
+    onCreateDraft: handleAddDraftTask, // ★ 統一されたハンドラーを使用
     onDeleteTask: handleDeleteTask,
     onCopyTask: handleCopyTask,
     onPasteTask: handlePasteTask,
@@ -223,13 +235,14 @@ const TodoApp: React.FC = () => {
     isInputActive: isAddingProject || isEditingProject
   })
 
-  // 修正：タスク保存（草稿・確定統一）- フォーカス管理機能追加
-  const handleSaveTask = useCallback(async (taskId: string, updates: any) => {
+  // ★ 修正：タスク保存（草稿・確定統一）- 型推論問題を解決
+  const handleSaveTask = useCallback(async (taskId: string, updates: any): Promise<Task | null> => {
     try {
       const task = allTasksWithDrafts.find(t => t.id === taskId)
       if (!task) return null
 
-      let savedTask = null
+      // ★ 修正：savedTask の型を明示的に定義
+      let savedTask: Task | null = null
 
       if (isDraftTask(task)) {
         // 草稿タスクの場合：新規作成してフォーカス制御
@@ -370,7 +383,7 @@ const TodoApp: React.FC = () => {
         onToggleTaskCollapse={handleToggleTaskCollapse}
         onClearSelection={clearSelection}
         setTaskRef={setTaskRef}
-        onAddDraftTask={handleAddDraftTask}
+        onAddDraftTask={handleAddDraftTask} // ★ 統一されたハンドラーを渡す
         apiActions={taskApiActions}
       />
 

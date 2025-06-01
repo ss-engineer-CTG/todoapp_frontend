@@ -1,4 +1,5 @@
 // 修正内容：タスク要素のRef管理強化、フォーカス可能な要素として適切に設定
+// ★ 新規修正：メインの「タスク追加」ボタンでキーボードショートカット（Enter）と同じロジックを使用（最小限の修正）
 
 import React, { useRef } from 'react'
 import { Task, TaskRelationMap, TaskApiActions, BatchOperation } from '../types'
@@ -167,13 +168,11 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
           )}
           style={{ marginLeft: `${task.level * 1.5}rem` }}
           onClick={(e) => onTaskSelect(task.id, e)}
-          // 修正：フォーカス可能な要素として適切に設定
           tabIndex={0}
           role="button"
           aria-label={`タスク: ${taskDisplayName}`}
           aria-selected={selectedTaskId === task.id}
           onKeyDown={(e) => {
-            // エンターキーまたはスペースキーでタスク選択
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
               onTaskSelect(task.id)
@@ -368,10 +367,22 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
             </label>
           </div>
 
+          {/* ★ 修正箇所：キーボードショートカット（Enter）と同じロジックをインラインで使用 */}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleAddTaskClick(null, 0)}
+            onClick={() => {
+              if (selectedTaskId) {
+                const task = allTasks.find(t => t.id === selectedTaskId)
+                if (task) {
+                  handleAddTaskClick(task.parentId, task.level)
+                } else {
+                  handleAddTaskClick(null, 0)
+                }
+              } else {
+                handleAddTaskClick(null, 0)
+              }
+            }}
             disabled={!selectedProjectId}
           >
             <Plus className="h-4 w-4 mr-1" />
