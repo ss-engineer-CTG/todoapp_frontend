@@ -21,7 +21,7 @@ export const getConfirmedTasks = (tasks: Task[]): Task[] => {
 }
 
 // 操作可否判定
-export const canEditTask = (task: Task): boolean => {
+export const canEditTask = (): boolean => {
   return true // 草稿・確定どちらも編集可能
 }
 
@@ -49,7 +49,7 @@ export const canCopyTask = (task: Task): boolean => {
   return true
 }
 
-export const canDeleteTask = (task: Task): boolean => {
+export const canDeleteTask = (): boolean => {
   return true // 草稿・確定どちらも削除可能（草稿は破棄、確定は削除）
 }
 

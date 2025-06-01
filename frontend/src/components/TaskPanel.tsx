@@ -3,7 +3,7 @@ import { Task, TaskRelationMap, TaskApiActions, BatchOperation } from '../types'
 import { safeFormatDate } from '../utils/dateUtils'
 import { logger } from '../utils/logger'
 import { createTaskOperations } from '../utils/taskOperations'
-import { isDraftTask, canCompleteTask, canCollapseTask, canCopyTask, filterTasksForBatchOperation, getTaskDisplayState, getDraftStatistics } from '../utils/taskUtils'
+import { canCompleteTask, canCopyTask, filterTasksForBatchOperation, getTaskDisplayState, getDraftStatistics } from '../utils/taskUtils'
 import {
   Plus,
   MoreHorizontal,
@@ -66,7 +66,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
   isDetailPanelVisible,
   setIsDetailPanelVisible,
   isMultiSelectMode,
-  setIsMultiSelectMode,
   showCompleted,
   setShowCompleted,
   taskRelationMap,
