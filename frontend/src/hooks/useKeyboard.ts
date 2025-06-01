@@ -25,7 +25,7 @@ interface UseKeyboardProps {
   onToggleCollapse: (taskId: string) => void
   onSelectAll: () => void
   onRangeSelect: (direction: 'up' | 'down') => void
-  onCancelDraft: (taskId: string) => void // 新規追加
+  onCancelDraft: (taskId: string) => void
   copiedTasksCount: number
   isInputActive: boolean
 }
@@ -101,7 +101,6 @@ export const useKeyboard = (props: UseKeyboardProps) => {
           return
         }
 
-        // 修正：Escape キー処理に草稿タスクキャンセル機能を追加
         if (e.key === "Escape") {
           // 優先度1：詳細パネルで草稿タスクを編集中の場合はキャンセル
           if (props.activeArea === "details" && props.isDetailPanelVisible && props.selectedTaskId) {
@@ -116,9 +115,10 @@ export const useKeyboard = (props: UseKeyboardProps) => {
             }
           }
           
-          // 優先度2：詳細パネルを閉じる
+          // 優先度2：詳細パネルを閉じ、選択状態も解除（修正箇所）
           if (props.activeArea === "details" && props.isDetailPanelVisible) {
             e.preventDefault()
+            props.setSelectedTaskId(null) // 選択解除を追加
             props.setActiveArea("tasks")
             return
           } 

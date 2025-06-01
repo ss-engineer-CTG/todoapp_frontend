@@ -13,8 +13,7 @@ import {
   ChevronDown,
   ChevronRight,
   Moon,
-  Sun,
-  Edit3
+  Sun
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -206,11 +205,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
               !task.name.trim() ? "text-orange-600 italic" : ""
             )}>
               {taskDisplayName}
-              {isTaskDraft && (
-                <span className="ml-2 text-xs text-muted-foreground" title="作成中のタスク">
-                  ✨
-                </span>
-              )}
             </div>
             <div className="flex items-center text-xs text-muted-foreground mt-1">
               <span className="mr-2">
@@ -223,7 +217,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                 </span>
               )}
               {!task.name.trim() && !isTaskDraft && <span className="text-orange-500 ml-2">⚠ 名前未設定</span>}
-              {isTaskDraft && <span className="text-muted-foreground ml-2">作成中</span>}
             </div>
           </div>
 
@@ -301,8 +294,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     }
   }
 
-  const draftCount = tasks.filter(task => isDraftTask(task)).length
-
   return (
     <div
       ref={panelRef}
@@ -320,12 +311,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
       <div className="border-b p-4 flex items-center justify-between">
         <div className="flex items-center">
           <h1 className="text-xl font-semibold">タスク一覧</h1>
-
-          {draftCount > 0 && (
-            <div className="ml-4 px-2 py-1 bg-muted text-muted-foreground rounded-md text-sm">
-              ✨ 作成中: {draftCount}個
-            </div>
-          )}
 
           {isMultiSelectMode && (
             <div className="ml-4 px-2 py-1 bg-primary/10 text-primary rounded-md text-sm">
@@ -416,11 +401,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         <div className="border-t p-2 bg-muted/50 flex items-center justify-between">
           <div className="text-sm font-medium">
             {selectedTaskIds.length}個のタスクを選択中
-            {draftCount > 0 && (
-              <span className="ml-2 text-xs text-muted-foreground">
-                （作成中タスクは一括操作対象外）
-              </span>
-            )}
           </div>
           <div className="flex gap-2">
             <Button
@@ -460,20 +440,6 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
               選択解除
             </Button>
           </div>
-        </div>
-      )}
-
-      {draftCount > 0 && (
-        <div className="border-t bg-muted/30 p-3 text-sm">
-          <div className="flex items-center text-muted-foreground">
-            <Edit3 className="h-4 w-4 mr-2" />
-            <span className="font-medium">
-              {draftCount}個のタスクが作成中です
-            </span>
-          </div>
-          <p className="text-muted-foreground text-xs mt-1">
-            詳細パネルでタスク名を入力して確定してください
-          </p>
         </div>
       )}
     </div>

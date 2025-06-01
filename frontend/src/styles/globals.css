@@ -220,3 +220,26 @@ html.dark {
     --focus-ring: 0 0% 100%;
   }
 }
+
+/* 統一されたタスク入力フィールドスタイル（草稿タスク専用クラス削除） */
+.task-input-field {
+  transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+.task-input-field:focus {
+  border-color: hsl(var(--ring));
+  background-color: hsl(var(--background));
+}
+
+.task-input-field.has-changes {
+  border-color: hsl(24 95% 53%); /* orange-500 equivalent */
+}
+
+.task-input-field.has-error {
+  border-color: hsl(0 84% 60%); /* red-500 equivalent */
+  background-color: hsl(0 93% 94% / 0.5); /* red-50 equivalent with transparency */
+}
+
+.dark .task-input-field.has-error {
+  background-color: hsl(0 63% 31% / 0.2); /* red-950 equivalent with transparency */
+}

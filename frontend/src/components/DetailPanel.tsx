@@ -82,7 +82,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         taskName: selectedTask.name
       })
       
-      // 修正：日付の初期値処理を変更
       setEditingState({
         name: selectedTask.name || '',
         startDate: (selectedTask.startDate && isValidDate(selectedTask.startDate)) ? selectedTask.startDate : null,
@@ -191,7 +190,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
-  // 修正：タスク名入力でのEnterキー処理を追加
   const handleTaskNameKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -332,7 +330,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     }
   }
 
-  // 修正：日付表示関数を追加
   const formatDateDisplay = (date: Date | null): string => {
     if (!date) return '未設定'
     return formatDate(date)
@@ -368,14 +365,13 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
   const projectInfo = getProjectInfo(selectedTask.projectId)
   const isEmptyName = !selectedTask.name.trim()
-  const showDraftIndicator = isTaskDraft
 
   return (
     <div
       className={cn(
         "w-80 border-l h-full",
         activeArea === "details" ? "bg-accent/40 ring-1 ring-primary/20" : "",
-        isEmptyName || showDraftIndicator ? "border-l-orange-300" : ""
+        isEmptyName ? "border-l-orange-300" : ""
       )}
       onClick={handlePanelClick}
     >
@@ -388,12 +384,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                 •未保存
               </span>
             )}
-            {showDraftIndicator && (
-              <span className="ml-2 text-xs text-blue-500 font-normal">
-                •新規作成中
-              </span>
-            )}
-            {isEmptyName && !showDraftIndicator && (
+            {isEmptyName && (
               <span className="ml-2 text-xs text-red-500 font-normal">
                 •名前未設定
               </span>
@@ -414,9 +405,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           <div>
             <label className="text-sm font-medium mb-1 block">
               タスク名 <span className="text-red-500">*</span>
-              {showDraftIndicator && (
-                <span className="ml-2 text-xs text-blue-500">（Enterで開始日に移動）</span>
-              )}
             </label>
             <Input
               ref={taskNameInputRef}
@@ -426,20 +414,14 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               tabIndex={activeArea === "details" ? 1 : -1}
               className={cn(
                 editingState.name !== selectedTask.name ? "border-orange-300" : "",
-                !editingState.name.trim() ? "border-red-300 bg-red-50" : "",
-                showDraftIndicator ? "border-blue-300 bg-blue-50" : ""
+                !editingState.name.trim() ? "border-red-300 bg-red-50 dark:bg-red-950/20" : ""
               )}
-              placeholder={showDraftIndicator ? "タスク名を入力してください" : "タスク名を入力してください"}
-              autoFocus={showDraftIndicator}
+              placeholder="タスク名を入力してください"
+              autoFocus={isTaskDraft}
             />
             {!editingState.name.trim() && (
               <p className="text-red-500 text-xs mt-1">
                 ⚠ タスク名は必須です
-              </p>
-            )}
-            {showDraftIndicator && editingState.name.trim() && (
-              <p className="text-blue-500 text-xs mt-1">
-                ✓ 保存ボタンで確定できます
               </p>
             )}
           </div>
@@ -460,8 +442,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                       !editingState.startDate ? "text-muted-foreground" : "",
                       editingState.startDate && selectedTask.startDate &&
                       editingState.startDate.getTime() !== selectedTask.startDate.getTime()
-                        ? "border-orange-300" : "",
-                      showDraftIndicator ? "border-blue-200" : ""
+                        ? "border-orange-300" : ""
                     )}
                     tabIndex={activeArea === "details" ? 2 : -1}
                   >
@@ -495,8 +476,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                       !editingState.dueDate ? "text-muted-foreground" : "",
                       editingState.dueDate && selectedTask.dueDate &&
                       editingState.dueDate.getTime() !== selectedTask.dueDate.getTime()
-                        ? "border-orange-300" : "",
-                      showDraftIndicator ? "border-blue-200" : ""
+                        ? "border-orange-300" : ""
                     )}
                     tabIndex={activeArea === "details" ? 3 : -1}
                   >
@@ -516,7 +496,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             </div>
           </div>
 
-          {!showDraftIndicator && selectedTask.completionDate && (
+          {!isTaskDraft && selectedTask.completionDate && (
             <div>
               <label className="text-sm font-medium mb-1 block">完了日</label>
               <div className="text-sm p-2 border rounded-md">
@@ -533,9 +513,6 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
                 style={{ backgroundColor: projectInfo.color }}
               />
               {projectInfo.name}
-              {showDraftIndicator && (
-                <span className="ml-2 text-xs text-blue-500">（保存時に確定）</span>
-              )}
             </div>
           </div>
 
@@ -546,8 +523,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               onChange={(e) => updateEditingState('assignee', e.target.value)}
               tabIndex={activeArea === "details" ? 4 : -1}
               className={cn(
-                editingState.assignee !== selectedTask.assignee ? "border-orange-300" : "",
-                showDraftIndicator ? "border-blue-200" : ""
+                editingState.assignee !== selectedTask.assignee ? "border-orange-300" : ""
               )}
             />
           </div>
@@ -560,8 +536,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               onChange={(e) => updateEditingState('notes', e.target.value)}
               className={cn(
                 "min-h-[100px] resize-none",
-                editingState.notes !== selectedTask.notes ? "border-orange-300" : "",
-                showDraftIndicator ? "border-blue-200" : ""
+                editingState.notes !== selectedTask.notes ? "border-orange-300" : ""
               )}
               placeholder="メモを追加..."
               tabIndex={activeArea === "details" ? 5 : -1}
@@ -576,37 +551,22 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
               tabIndex={activeArea === "details" ? 6 : -1}
               className={cn(
                 "min-w-[80px]",
-                editingState.canSave
-                  ? showDraftIndicator 
-                    ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "bg-orange-600 hover:bg-orange-700 text-white"
-                  : ""
+                editingState.canSave ? "bg-orange-600 hover:bg-orange-700 text-white" : ""
               )}
             >
               {isSaving ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  {showDraftIndicator ? "作成中..." : "保存中..."}
+                  保存中...
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-1" />
-                  {showDraftIndicator ? "タスク作成" : "保存"}
+                  保存
                 </>
               )}
             </Button>
           </div>
-
-          {showDraftIndicator && (
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm">
-              <p className="text-blue-800 font-medium mb-1">📝 新規タスク作成中</p>
-              <ul className="text-blue-700 text-xs space-y-1">
-                <li>• タスク名を入力してEnterで開始日に移動</li>
-                <li>• Escキーでキャンセル（草稿を削除）</li>
-                <li>• 「タスク作成」ボタンで確定</li>
-              </ul>
-            </div>
-          )}
         </div>
       </div>
     </div>
