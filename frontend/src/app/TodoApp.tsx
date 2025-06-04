@@ -1,6 +1,5 @@
 // システムプロンプト準拠：メインアプリロジック統合・簡素化
-// 修正内容：タスク保存後のフォーカス管理機能追加
-// ★ 新規修正：型推論問題を解決（savedTask の型を明示的に定義）
+// 修正内容：型安全性の強化、null安全性チェックの追加
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { AreaType, Task } from '@core/types'
@@ -39,7 +38,6 @@ const TodoApp: React.FC = () => {
     setSelectedTaskId,
     setIsMultiSelectMode,
     setTaskRef,
-    // 修正：フォーカス管理機能を追加
     focusTaskById,
     setPendingFocusTaskId
   } = useAppState()
@@ -53,7 +51,7 @@ const TodoApp: React.FC = () => {
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
 
   // 草稿タスク込みの全タスク管理
-  const [allTasksWithDrafts, setAllTasksWithDrafts] = useState<any[]>([])
+  const [allTasksWithDrafts, setAllTasksWithDrafts] = useState<Task[]>([])
 
   const currentProjects = projects.data || []
   const currentTasks = tasks.data || []
@@ -64,14 +62,14 @@ const TodoApp: React.FC = () => {
 
   const taskRelationMap = buildTaskRelationMap(allTasksWithDrafts)
 
-  // フィルタリング・ソート済みタスク
+  // フィルタリング・ソート済みタスク（型安全性強化）
   const filteredTasks = (() => {
     try {
       const filtered = filterTasks(allTasksWithDrafts, selectedProjectId, showCompleted, taskRelationMap)
       return sortTasksHierarchically(filtered, taskRelationMap)
     } catch (error) {
       logger.error('Task filtering and sorting failed', { error })
-      return currentTasks.filter(task => task.projectId === selectedProjectId)
+      return currentTasks.filter((task: Task) => task.projectId === selectedProjectId)
     }
   })()
 
@@ -109,8 +107,7 @@ const TodoApp: React.FC = () => {
     apiActions: taskApiActions
   })
 
-  // ★ 修正：草稿タスク作成（TaskPanelからの統一呼び出しに対応）
-  // システムプロンプト準拠：DRY原則でキーボードショートカットと同じロジックを共有
+  // 草稿タスク作成（統一ハンドラー）
   const handleAddDraftTask = useCallback(async (parentId: string | null = null, level = 0) => {
     try {
       if (!selectedProjectId) {
@@ -122,7 +119,7 @@ const TodoApp: React.FC = () => {
         parentId, 
         level, 
         selectedProjectId,
-        source: 'unified_handler' // ★ 呼び出し元が統一されたことを示すログ
+        source: 'unified_handler'
       })
 
       const draft = createDraft(parentId, level)
@@ -136,13 +133,12 @@ const TodoApp: React.FC = () => {
     }
   }, [selectedProjectId, createDraft, setSelectedTaskId, setActiveArea, setIsDetailPanelVisible])
 
-  // 修正：草稿タスクキャンセル機能を追加
+  // 草稿タスクキャンセル
   const handleCancelDraft = useCallback((taskId: string) => {
     try {
       const success = cancelDraft(taskId)
       if (success) {
         logger.info('Draft task cancelled successfully', { taskId })
-        // 選択状態をクリアして詳細パネルを閉じる
         setSelectedTaskId(null)
         setActiveArea("tasks")
       }
@@ -211,7 +207,7 @@ const TodoApp: React.FC = () => {
     }
   }, [toggleTaskCollapse, loadTasks, selectedProjectId])
 
-  // キーボード処理
+  // キーボード処理（型安全性強化）
   const keyboardProps = useKeyboard({
     tasks: allTasksWithDrafts,
     projects: currentProjects,
@@ -224,15 +220,14 @@ const TodoApp: React.FC = () => {
     setActiveArea,
     isDetailPanelVisible,
     isMultiSelectMode: selection.isMultiSelectMode,
-    onCreateDraft: handleAddDraftTask, // ★ 統一されたハンドラーを使用
+    onCreateDraft: handleAddDraftTask,
     onDeleteTask: handleDeleteTask,
     onCopyTask: handleCopyTask,
     onPasteTask: handlePasteTask,
     onToggleCompletion: handleToggleTaskCompletion,
     onToggleCollapse: handleToggleTaskCollapse,
     onSelectAll: () => selectAll(filteredTasks),
-    onRangeSelect: (direction) => {
-      // 範囲選択実装は簡素化
+    onRangeSelect: (direction: 'up' | 'down') => {
       logger.info('Range select', { direction })
     },
     onCancelDraft: handleCancelDraft,
@@ -240,41 +235,38 @@ const TodoApp: React.FC = () => {
     isInputActive: isAddingProject || isEditingProject
   })
 
-  // ★ 修正：タスク保存（草稿・確定統一）- 型推論問題を解決
+  // タスク保存（null安全性強化）
   const handleSaveTask = useCallback(async (taskId: string, updates: any): Promise<Task | null> => {
     try {
       const task = allTasksWithDrafts.find(t => t.id === taskId)
       if (!task) return null
 
-      // ★ 修正：savedTask の型を明示的に定義
       let savedTask: Task | null = null
 
       if (isDraftTask(task)) {
-        // 草稿タスクの場合：新規作成してフォーカス制御
         savedTask = await saveDraft(taskId, updates)
         await loadTasks(selectedProjectId)
         
-        // 修正：保存完了後のフォーカス制御
         if (savedTask) {
           logger.info('Setting focus to newly created task', { 
             oldDraftId: taskId, 
             newTaskId: savedTask.id 
           })
           
-          // フォーカス対象タスクIDを設定（非同期でフォーカス実行）
           setPendingFocusTaskId(savedTask.id)
           setSelectedTaskId(savedTask.id)
           setActiveArea("tasks")
           
-          // DOM更新後にフォーカスを実行
+          // null安全性チェック追加
           setTimeout(() => {
-            focusTaskById(savedTask.id)
+            if (savedTask) {
+              focusTaskById(savedTask.id)
+            }
           }, 100)
         }
         
         return savedTask
       } else {
-        // 通常タスクの場合：更新のみ
         await updateTask(taskId, updates)
         await loadTasks(selectedProjectId)
         return task
@@ -388,7 +380,7 @@ const TodoApp: React.FC = () => {
         onToggleTaskCollapse={handleToggleTaskCollapse}
         onClearSelection={clearSelection}
         setTaskRef={setTaskRef}
-        onAddDraftTask={handleAddDraftTask} // ★ 統一されたハンドラーを渡す
+        onAddDraftTask={handleAddDraftTask}
         apiActions={taskApiActions}
       />
 

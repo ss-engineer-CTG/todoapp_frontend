@@ -20,6 +20,7 @@
       "@/*": ["./src/*"],
       "@core/*": ["./src/core/*"],
       "@features/*": ["./src/features/*"],
+      "@tasklist": ["./src/features/tasklist"],
       "@tasklist/*": ["./src/features/tasklist/*"],
       "@timeline/*": ["./src/features/timeline/*"],
       "@template/*": ["./src/features/template/*"],
@@ -29,7 +30,9 @@
       "@utils/*": ["./src/core/utils/*"],
       "@config/*": ["./src/core/config/*"],
       "@types/*": ["./src/core/types/*"],
-      "@services/*": ["./src/core/services/*"]
+      "@services/*": ["./src/core/services/*"],
+      "@/lib/utils": ["./src/core/utils"],
+      "@/components/ui/*": ["./src/core/components/ui/*"]
     }
   },
   "include": ["src"],

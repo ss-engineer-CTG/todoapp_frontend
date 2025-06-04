@@ -28,6 +28,9 @@ export default defineConfig({
       "@services": path.resolve(__dirname, "./src/core/services"),
       "@config": path.resolve(__dirname, "./src/core/config"),
       "@types": path.resolve(__dirname, "./src/core/types"),
+      // システムプロンプト準拠：UIコンポーネント用エイリアス追加
+      "@/lib/utils": path.resolve(__dirname, "./src/core/utils"),
+      "@/components/ui": path.resolve(__dirname, "./src/core/components/ui"),
     },
   },
   server: {
