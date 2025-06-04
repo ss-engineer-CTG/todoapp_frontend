@@ -35,6 +35,5 @@
       "@/components/ui/*": ["./src/core/components/ui/*"]
     }
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src"]
 }
