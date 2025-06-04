@@ -2,9 +2,9 @@
 
 import React, { Component, ReactNode } from 'react'
 import TodoApp from './TodoApp'
-import { ThemeProvider } from './components/ThemeProvider'
-import { APP_CONFIG } from './config'
-import { handleError, logger } from './utils/core'
+import { ThemeProvider } from '@core/components/ThemeProvider'
+import { APP_CONFIG } from '@core/config'
+import { handleError, logger } from '@core/utils/core'
 
 interface ErrorBoundaryState {
   hasError: boolean

@@ -1,13 +1,14 @@
 import React, { useState, useRef } from 'react'
-import { Project, ProjectApiActions } from '../types'
+import { Project } from '@core/types'
+import { ProjectApiActions } from '@tasklist/types'
 import { Plus, MoreHorizontal, Edit, Trash } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Button } from '@core/components/ui/button'
+import { Input } from '@core/components/ui/input'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@core/components/ui/dropdown-menu'
 import { ColorPicker } from './ColorPicker'
-import { PROJECT_COLORS } from '../config'
-import { cn } from '@/lib/utils'
-import { handleError, logger } from '../utils/core'
+import { PROJECT_COLORS } from '@core/config'
+import { cn } from '@core/utils/cn'
+import { handleError, logger } from '@core/utils/core'
 
 interface ProjectPanelProps {
   projects: Project[]

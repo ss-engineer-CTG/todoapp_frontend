@@ -2,10 +2,11 @@
 // 修正内容：フォーカス制御強化、草稿保存後の戻り値最適化
 
 import { useState, useCallback } from 'react'
-import { Task, TaskApiActions } from '../types'
-import { logger, handleError, isValidDate } from '../utils/core'
-import { isDraftTask, createDraftTask, copyTasksWithHierarchy, filterValidTasksForBatch } from '../utils/task'
-import { DEFAULTS, BATCH_OPERATIONS } from '../config'
+import { Task } from '@core/types'
+import { TaskApiActions } from '@tasklist/types'
+import { logger, handleError, isValidDate } from '@core/utils/core'
+import { isDraftTask, createDraftTask, copyTasksWithHierarchy, filterValidTasksForBatch } from '@tasklist/utils/task'
+import { DEFAULTS, BATCH_OPERATIONS } from '@core/config'
 
 interface UseTaskOperationsProps {
   allTasks: Task[]

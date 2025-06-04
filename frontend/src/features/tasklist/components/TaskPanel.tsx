@@ -2,9 +2,10 @@
 // ★ 新規修正：メインの「タスク追加」ボタンでキーボードショートカット（Enter）と同じロジックを使用（最小限の修正）
 
 import React, { useRef } from 'react'
-import { Task, TaskRelationMap, TaskApiActions, BatchOperation } from '../types'
-import { formatDate, logger, handleError } from '../utils/core'
-import { canCompleteTask, canCopyTask, filterValidTasksForBatch, isDraftTask } from '../utils/task'
+import { Task, BatchOperation } from '@core/types'
+import { TaskRelationMap, TaskApiActions } from '@tasklist/types'
+import { formatDate, logger, handleError } from '@core/utils/core'
+import { canCompleteTask, canCopyTask, filterValidTasksForBatch, isDraftTask } from '@tasklist/utils/task'
 import {
   Plus,
   MoreHorizontal,
@@ -18,13 +19,13 @@ import {
   Moon,
   Sun
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Button } from '@core/components/ui/button'
+import { Checkbox } from '@core/components/ui/checkbox'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@core/components/ui/dropdown-menu'
 import { ShortcutGuideDialog } from './ShortcutGuideDialog'
-import { useTheme } from './ThemeProvider'
-import { cn } from '@/lib/utils'
-import { BATCH_OPERATIONS } from '../config'
+import { useTheme } from '@core/components/ThemeProvider'
+import { cn } from '@core/utils/cn'
+import { BATCH_OPERATIONS } from '@core/config'
 
 interface TaskPanelProps {
   tasks: Task[]

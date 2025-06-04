@@ -3,7 +3,7 @@
 import React from 'react'
 import { format, parseISO, isValid } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { ERROR_MESSAGES } from '../config'
+import { ERROR_MESSAGES } from '@core/config'
 
 // ===== ログ機能（簡素化：3レベルのみ） =====
 enum LogLevel {

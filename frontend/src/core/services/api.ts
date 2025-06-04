@@ -1,8 +1,9 @@
 // システムプロンプト準拠：API通信統合（apiService + 日付変換）
 
-import { Project, Task, BatchOperationResult } from '../types'
-import { APP_CONFIG, APP_PATHS, joinPath } from '../config'
-import { logger, handleError, convertApiResponseDate } from '../utils/core'
+import { Project, Task } from '@core/types'
+import { BatchOperationResult } from '@tasklist/types'
+import { APP_CONFIG, APP_PATHS, joinPath } from '@core/config'
+import { logger, handleError, convertApiResponseDate } from '@core/utils/core'
 
 class ApiService {
   private baseUrl = `http://localhost:${APP_CONFIG.PORTS.BACKEND}`

@@ -1,8 +1,8 @@
 import React from 'react'
 import { Check } from 'lucide-react'
-import { PROJECT_COLORS } from '../config'
-import { cn } from '@/lib/utils'
-import { ProjectColor } from '../types'
+import { PROJECT_COLORS } from '@core/config'
+import { cn } from '@core/utils/cn'
+import { ProjectColor } from '@core/types'
 
 interface ColorPickerProps {
   selectedColor: string

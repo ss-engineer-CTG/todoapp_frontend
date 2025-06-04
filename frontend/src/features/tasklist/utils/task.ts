@@ -2,8 +2,9 @@
 // 修正内容：期限順ソート機能を追加
 // ★ 新規修正：未使用変数を削除
 
-import { Task, TaskRelationMap } from '../types'
-import { logger } from './core'
+import { Task } from '@core/types'
+import { TaskRelationMap } from '@tasklist/types'
+import { logger } from '@core/utils/core'
 
 // ===== 草稿タスク管理（簡素化） =====
 export const isDraftTask = (task: Task): boolean => {

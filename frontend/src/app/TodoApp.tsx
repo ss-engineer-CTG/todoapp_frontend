@@ -3,16 +3,21 @@
 // ★ 新規修正：型推論問題を解決（savedTask の型を明示的に定義）
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { AreaType, Task } from './types'
-import { ProjectPanel } from './components/ProjectPanel'
-import { TaskPanel } from './components/TaskPanel'
-import { DetailPanel } from './components/DetailPanel'
-import { LoadingSpinner } from './utils/core'
-import { useAppState } from './hooks/useAppState'
-import { useTaskOperations } from './hooks/useTaskOperations'
-import { useKeyboard } from './hooks/useKeyboard'
-import { buildTaskRelationMap, filterTasks, sortTasksHierarchically, isDraftTask } from './utils/task'
-import { logger } from './utils/core'
+import { AreaType, Task } from '@core/types'
+import { 
+  ProjectPanel, 
+  TaskPanel, 
+  DetailPanel,
+  useAppState,
+  useTaskOperations,
+  useKeyboard,
+  buildTaskRelationMap,
+  filterTasks,
+  sortTasksHierarchically,
+  isDraftTask
+} from '@tasklist'
+import { LoadingSpinner } from '@core/utils/core'
+import { logger } from '@core/utils/core'
 
 const TodoApp: React.FC = () => {
   const {

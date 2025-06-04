@@ -5,11 +5,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+} from '@core/components/ui/dialog'
+import { Button } from '@core/components/ui/button'
 import { HelpCircle } from 'lucide-react'
-import { KEYBOARD_SHORTCUTS } from '../config'
-import { KeyboardShortcut } from '../config'
+import { KEYBOARD_SHORTCUTS } from '@core/config'
+import { KeyboardShortcut } from '@core/types'
 
 export const ShortcutGuideDialog: React.FC = () => {
   return (

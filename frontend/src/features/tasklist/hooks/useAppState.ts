@@ -2,9 +2,10 @@
 // 修正内容：フォーカス管理機能追加、データ検証処理の微調整（期限順ソート対応）
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Task, Project, SelectionState, BatchOperation, BatchOperationResult } from '../types'
-import { apiService } from '../services/api'
-import { logger, handleError, isValidDate } from '../utils/core'
+import { Task, Project, BatchOperation } from '@core/types'
+import { SelectionState, BatchOperationResult } from '@tasklist/types'
+import { apiService } from '@core/services/api'
+import { logger, handleError, isValidDate } from '@core/utils/core'
 
 interface ApiState<T> {
   data: T | null

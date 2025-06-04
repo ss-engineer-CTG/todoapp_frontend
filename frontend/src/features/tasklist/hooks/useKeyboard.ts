@@ -2,9 +2,9 @@
 // 修正内容：左矢印キーの親タスク遷移機能を削除
 
 import { useEffect, useRef, useCallback } from 'react'
-import { Task, Project, AreaType } from '../types'
-import { buildTaskRelationMap, isDraftTask } from '../utils/task'
-import { logger } from '../utils/core'
+import { Task, Project, AreaType } from '@core/types'
+import { buildTaskRelationMap, isDraftTask } from '@tasklist/utils/task'
+import { logger } from '@core/utils/core'
 
 interface UseKeyboardProps {
   tasks: Task[]

@@ -2,16 +2,16 @@
 // ★ 新規修正：型の不整合を解決（null を undefined に適切に変換）
 
 import React, { RefObject, useEffect, useState, useCallback } from 'react'
-import { Task, Project } from '../types'
-import { formatDate, isValidDate, logger, handleError } from '../utils/core'
-import { isDraftTask } from '../utils/task'
+import { Task, Project } from '@core/types'
+import { formatDate, isValidDate, logger, handleError } from '@core/utils/core'
+import { isDraftTask } from '@tasklist/utils/task'
 import { CalendarIcon, X, Save } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
-import { cn } from '@/lib/utils'
+import { Button } from '@core/components/ui/button'
+import { Input } from '@core/components/ui/input'
+import { Textarea } from '@core/components/ui/textarea'
+import { Popover, PopoverContent, PopoverTrigger } from '@core/components/ui/popover'
+import { Calendar } from '@core/components/ui/calendar'
+import { cn } from '@core/utils/cn'
 
 interface TaskEditingState {
   name: string
