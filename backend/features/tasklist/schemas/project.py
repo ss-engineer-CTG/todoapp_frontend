@@ -9,7 +9,7 @@ from datetime import datetime
 class ProjectBase(BaseModel):
     """プロジェクト基底スキーマ"""
     name: str = Field(..., min_length=1, max_length=100, description="プロジェクト名")
-    color: str = Field(..., regex=r"^#[0-9A-Fa-f]{6}$", description="プロジェクトカラー")
+    color: str = Field(..., pattern=r"^#[0-9A-Fa-f]{6}$", description="プロジェクトカラー")
     collapsed: bool = Field(default=False, description="折りたたみ状態")
 
 class ProjectCreate(ProjectBase):
@@ -19,7 +19,7 @@ class ProjectCreate(ProjectBase):
 class ProjectUpdate(BaseModel):
     """プロジェクト更新スキーマ"""
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    color: Optional[str] = Field(None, regex=r"^#[0-9A-Fa-f]{6}$")
+    color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
     collapsed: Optional[bool] = None
 
 class ProjectResponse(ProjectBase):

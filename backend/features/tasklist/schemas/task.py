@@ -52,5 +52,5 @@ class TaskResponse(TaskBase):
 
 class BatchTaskOperation(BaseModel):
     """タスク一括操作スキーマ"""
-    operation: str = Field(..., regex="^(complete|incomplete|delete|copy)$", description="操作種別")
+    operation: str = Field(..., pattern="^(complete|incomplete|delete|copy)$", description="操作種別")
     task_ids: List[str] = Field(..., min_items=1, description="対象タスクIDリスト")
