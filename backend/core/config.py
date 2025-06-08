@@ -4,35 +4,20 @@
 """
 import os
 from pathlib import Path
+from .utils.paths import get_backend_paths
 
-# システムプロンプト準拠：パス管理関数を直接定義（循環依存回避）
-def get_base_dir() -> Path:
-    """ベースディレクトリを取得"""
-    return Path(__file__).parent.parent
-
-def get_database_path() -> Path:
-    """データベースファイルパスを取得"""
-    return get_base_dir() / "todo.db"
-
-def get_schema_path() -> Path:
-    """スキーマファイルパスを取得"""
-    return get_base_dir() / "schema.sql"
-
-def get_log_file_path() -> Path:
-    """ログファイルパスを取得"""
-    log_dir = get_base_dir() / "logs"
-    log_dir.mkdir(exist_ok=True)
-    return log_dir / "app.log"
+# システムプロンプト準拠：パス管理の一元化
+BACKEND_PATHS = get_backend_paths()
 
 class Config:
     """アプリケーション設定クラス"""
     
     def __init__(self):
-        # システムプロンプト準拠：パス管理の一元化（シンプル実装）
-        self.base_dir = get_base_dir()
-        self.database_path = get_database_path()
-        self.schema_path = get_schema_path()
-        self.log_file = get_log_file_path()
+        # システムプロンプト準拠：パス管理の一元化
+        self.base_dir = BACKEND_PATHS['BASE']
+        self.database_path = BACKEND_PATHS['DATABASE']
+        self.schema_path = BACKEND_PATHS['SCHEMA']
+        self.log_file = BACKEND_PATHS['LOG_FILE']
         
         # サーバー設定
         self.host = os.getenv("HOST", "0.0.0.0")

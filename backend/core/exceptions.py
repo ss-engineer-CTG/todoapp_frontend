@@ -3,7 +3,7 @@
 システムプロンプト準拠：統一例外処理、適切なログ出力
 """
 from typing import Dict, Any, Optional
-from core.logger import get_logger
+from .logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -39,7 +39,6 @@ class BusinessLogicError(TodoAppError):
     """ビジネスロジック例外"""
     pass
 
-# システムプロンプト準拠：新規追加 - 日付変換例外
 class DateConversionError(TodoAppError):
     """日付変換関連例外"""
     
@@ -85,7 +84,6 @@ def handle_exception(exc: Exception, context: Optional[Dict[str, Any]] = None) -
         context=error_context
     )
 
-# システムプロンプト準拠：新規追加 - 日付変換エラー専用ハンドラー
 def handle_date_conversion_error(
     field_name: str, 
     original_value: Any, 
@@ -102,7 +100,7 @@ def handle_date_conversion_error(
         'conversion_attempt': True
     })
     
-    logger.warn(f"Date conversion failed for field {field_name}: {original_value}", error_context)
+    logger.warn(f"Date conversion failed for field {field_name}: {original_value}")
     
     return DateConversionError(
         message=f"Failed to convert date field '{field_name}': {exc}",

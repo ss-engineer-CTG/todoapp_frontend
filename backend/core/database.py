@@ -7,9 +7,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Dict, Any, List
 from datetime import datetime
-from core.config import config
-from core.logger import get_logger
-from core.exceptions import DatabaseError
+
+from .config import config
+from .logger import get_logger
+from .exceptions import DatabaseError
 
 logger = get_logger(__name__)
 
@@ -90,14 +91,14 @@ class DatabaseManager:
                     # datetime型の場合はISO形式に変換
                     if isinstance(date_value, datetime):
                         row_dict[field] = date_value.isoformat()
-                        logger.trace(f"Converted datetime field {field} to ISO format")
+                        logger.debug(f"Converted datetime field {field} to ISO format")
                     
                     # 文字列だが非ISO形式の場合は変換を試行
                     elif isinstance(date_value, str):
                         try:
                             parsed_date = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
                             row_dict[field] = parsed_date.isoformat()
-                            logger.trace(f"Normalized date field {field} to ISO format")
+                            logger.debug(f"Normalized date field {field} to ISO format")
                         except ValueError:
                             logger.warn(f"Could not parse date field {field}: {date_value}")
                             # 無効な日付は現在時刻で置換

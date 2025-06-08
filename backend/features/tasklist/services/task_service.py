@@ -1,13 +1,14 @@
 """
 タスクサービス
 システムプロンプト準拠：DRY原則、ビジネスロジック集約
-修正内容：期限順ソート対応、SQLクエリ最適化
 """
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+
 from core.database import DatabaseManager
 from core.exceptions import NotFoundError, ValidationError, handle_date_conversion_error
-from core.logger import get_logger, log_data_conversion
+from core.logger import get_logger
+from core.utils.validators import validate_task_data
 
 logger = get_logger(__name__)
 
@@ -18,13 +19,9 @@ class TaskService:
         self.db_manager = db_manager
     
     def get_tasks(self, project_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """
-        タスク一覧取得
-        修正内容：期限順ソート対応、SQLクエリ最適化
-        """
+        """タスク一覧取得（期限順ソート）"""
         try:
             if project_id:
-                # 修正：期限順ソートをSQLレベルで実行（フロントエンド処理を補助）
                 tasks = self.db_manager.execute_query(
                     """SELECT * FROM tasks 
                        WHERE project_id = ? 
@@ -37,21 +34,7 @@ class TaskService:
                        ORDER BY project_id, due_date ASC, created_at ASC, id ASC"""
                 )
             
-            # システムプロンプト準拠：データ変換ログの出力
-            log_data_conversion(
-                logger, 
-                'get_tasks', 
-                {'project_id': project_id}, 
-                tasks, 
-                True,
-                {
-                    'task_count': len(tasks), 
-                    'sort_method': 'due_date_asc_sql',
-                    'frontend_hierarchy_sort': 'enabled'
-                }
-            )
-            
-            logger.info(f"Retrieved {len(tasks)} tasks" + (f" for project {project_id}" if project_id else "") + " (due date priority SQL + frontend hierarchy sort)")
+            logger.info(f"Retrieved {len(tasks)} tasks" + (f" for project {project_id}" if project_id else ""))
             return tasks
         except Exception as e:
             logger.error(f"Failed to retrieve tasks: {e}")
@@ -68,8 +51,6 @@ class TaskService:
                 raise NotFoundError(f"Task not found: {task_id}")
             
             task = tasks[0]
-            
-            # システムプロンプト準拠：取得データの検証
             self._validate_task_data(task)
             
             logger.debug(f"Retrieved task: {task_id}")
@@ -82,13 +63,9 @@ class TaskService:
         """タスク作成"""
         try:
             # バリデーション
-            if not task_data.get('name', '').strip():
-                raise ValidationError("Task name is required")
+            validate_task_data(task_data)
             
-            if not task_data.get('project_id', '').strip():
-                raise ValidationError("Project ID is required")
-            
-            # システムプロンプト準拠：日付フィールドの正規化
+            # 日付フィールドの正規化
             normalized_task_data = self._normalize_task_dates(task_data)
             
             # ID生成
@@ -121,7 +98,7 @@ class TaskService:
             
             # 作成されたタスクを取得
             created_task = self.get_task_by_id(task_id)
-            logger.info(f"Created task: {created_task['name']} ({task_id}) due: {created_task.get('due_date', 'N/A')}")
+            logger.info(f"Created task: {created_task['name']} ({task_id})")
             return created_task
             
         except Exception as e:
@@ -134,7 +111,7 @@ class TaskService:
             # 存在確認
             self.get_task_by_id(task_id)
             
-            # システムプロンプト準拠：日付フィールドの正規化
+            # 日付フィールドの正規化
             normalized_updates = self._normalize_task_dates(updates)
             
             # 更新フィールド構築
@@ -161,7 +138,7 @@ class TaskService:
             
             # 更新されたタスクを取得
             updated_task = self.get_task_by_id(task_id)
-            logger.info(f"Updated task: {updated_task['name']} ({task_id}) due: {updated_task.get('due_date', 'N/A')}")
+            logger.info(f"Updated task: {updated_task['name']} ({task_id})")
             return updated_task
             
         except Exception as e:
@@ -198,10 +175,7 @@ class TaskService:
             now = datetime.now().isoformat()
             affected_rows = 0
             
-            logger.info(f"Starting batch operation: {operation}", {
-                'task_count': len(task_ids),
-                'task_ids': task_ids
-            })
+            logger.info(f"Starting batch operation: {operation}")
             
             if operation == "complete":
                 # 一括完了
@@ -213,17 +187,6 @@ class TaskService:
                 params = [True, now, now] + task_ids
                 affected_rows = self.db_manager.execute_update(query, tuple(params))
                 
-                # 子タスクも一括完了
-                child_query = f"""UPDATE tasks SET 
-                                completed = ?, 
-                                completion_date = ?, 
-                                updated_at = ? 
-                                WHERE parent_id IN ({placeholders})"""
-                child_affected = self.db_manager.execute_update(child_query, tuple(params))
-                affected_rows += child_affected
-                
-                logger.info(f"Batch complete: {affected_rows} tasks affected")
-                
             elif operation == "incomplete":
                 # 一括未完了
                 query = f"""UPDATE tasks SET 
@@ -234,27 +197,16 @@ class TaskService:
                 params = [False, None, now] + task_ids
                 affected_rows = self.db_manager.execute_update(query, tuple(params))
                 
-                # 子タスクも一括未完了
-                child_query = f"""UPDATE tasks SET 
-                                completed = ?, 
-                                completion_date = ?, 
-                                updated_at = ? 
-                                WHERE parent_id IN ({placeholders})"""
-                child_affected = self.db_manager.execute_update(child_query, tuple(params))
-                affected_rows += child_affected
-                
-                logger.info(f"Batch incomplete: {affected_rows} tasks affected")
-                
             elif operation == "delete":
-                # 一括削除（CASCADE により子タスクも自動削除）
+                # 一括削除
                 query = f"DELETE FROM tasks WHERE id IN ({placeholders})"
                 params = task_ids
                 affected_rows = self.db_manager.execute_update(query, tuple(params))
                 
-                logger.info(f"Batch delete: {affected_rows} tasks affected")
-                
             else:
                 raise ValidationError(f"Invalid operation: {operation}")
+            
+            logger.info(f"Batch operation completed: {operation}, {affected_rows} tasks affected")
             
             return {
                 'success': True,
@@ -272,35 +224,8 @@ class TaskService:
                 'error': str(e)
             }
     
-    def get_task_hierarchy(self, task_id: str) -> List[Dict[str, Any]]:
-        """タスクの階層構造取得（子タスク含む）"""
-        try:
-            # 再帰的に子タスクを取得（期限順）
-            def get_children(parent_id: str) -> List[Dict[str, Any]]:
-                children = self.db_manager.execute_query(
-                    "SELECT * FROM tasks WHERE parent_id = ? ORDER BY due_date ASC, created_at ASC",
-                    (parent_id,)
-                )
-                result = []
-                for child in children:
-                    child['children'] = get_children(child['id'])
-                    result.append(child)
-                return result
-            
-            # ルートタスクとその子タスクを取得
-            root_task = self.get_task_by_id(task_id)
-            root_task['children'] = get_children(task_id)
-            
-            return [root_task]
-            
-        except Exception as e:
-            logger.error(f"Failed to get task hierarchy for {task_id}: {e}")
-            raise
-    
     def _normalize_task_dates(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        システムプロンプト準拠：DRY原則によるタスク日付フィールド正規化
-        """
+        """タスク日付フィールド正規化"""
         normalized_data = task_data.copy()
         date_fields = ['start_date', 'due_date', 'completion_date']
         
@@ -318,13 +243,6 @@ class TaskService:
                     # datetime型の場合
                     if isinstance(value, datetime):
                         normalized_data[field] = value.isoformat()
-                        log_data_conversion(
-                            logger, 
-                            f'normalize_{field}', 
-                            value, 
-                            normalized_data[field], 
-                            True
-                        )
                         continue
                     
                     # その他の型は現在時刻で置換
@@ -344,9 +262,7 @@ class TaskService:
         return normalized_data
     
     def _validate_task_data(self, task: Dict[str, Any]) -> None:
-        """
-        システムプロンプト準拠：タスクデータの検証
-        """
+        """タスクデータの検証"""
         required_fields = ['id', 'name', 'project_id']
         for field in required_fields:
             if not task.get(field):

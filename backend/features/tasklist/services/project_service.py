@@ -4,9 +4,11 @@
 """
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+
 from core.database import DatabaseManager
 from core.exceptions import NotFoundError, ValidationError
-from core.logger import get_logger, log_data_conversion
+from core.logger import get_logger
+from core.utils.validators import validate_project_data
 
 logger = get_logger(__name__)
 
@@ -21,16 +23,6 @@ class ProjectService:
         try:
             projects = self.db_manager.execute_query(
                 "SELECT * FROM projects ORDER BY created_at"
-            )
-            
-            # システムプロンプト準拠：データ変換ログの出力
-            log_data_conversion(
-                logger, 
-                'get_all_projects', 
-                None, 
-                projects, 
-                True,
-                {'project_count': len(projects)}
             )
             
             logger.info(f"Retrieved {len(projects)} projects")
@@ -50,8 +42,6 @@ class ProjectService:
                 raise NotFoundError(f"Project not found: {project_id}")
             
             project = projects[0]
-            
-            # システムプロンプト準拠：取得データの検証
             self._validate_project_data(project)
             
             logger.debug(f"Retrieved project: {project_id}")
@@ -64,11 +54,7 @@ class ProjectService:
         """プロジェクト作成"""
         try:
             # バリデーション
-            if not project_data.get('name', '').strip():
-                raise ValidationError("Project name is required")
-            
-            if not project_data.get('color', '').strip():
-                raise ValidationError("Project color is required")
+            validate_project_data(project_data)
             
             # ID生成
             project_id = f"p{int(datetime.now().timestamp() * 1000)}"
@@ -150,9 +136,7 @@ class ProjectService:
             raise
     
     def _validate_project_data(self, project: Dict[str, Any]) -> None:
-        """
-        システムプロンプト準拠：プロジェクトデータの検証
-        """
+        """プロジェクトデータの検証"""
         required_fields = ['id', 'name', 'color']
         for field in required_fields:
             if not project.get(field):
@@ -162,4 +146,3 @@ class ProjectService:
         color = project.get('color', '')
         if not color.startswith('#') or len(color) != 7:
             logger.warn(f"Invalid color format: {color}")
-            # 警告レベルに留める（致命的ではない）
