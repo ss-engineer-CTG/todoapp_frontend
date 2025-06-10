@@ -46,18 +46,12 @@ export const getDateType = (date: Date): DateType => {
   return 'weekday'
 }
 
-// 月名取得
-export const getMonthName = (date: Date): string => {
-  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
-  return months[date.getMonth()]
-}
-
-// 週番号計算
+// 週番号計算（日付計算エラー修正）
 export const getWeekNumber = (date: Date): number => {
   const mondayOfWeek = new Date(date)
   const daysSinceMonday = (date.getDay() + 6) % 7
   mondayOfWeek.setDate(date.getDate() - daysSinceMonday)
   
   const startOfYear = new Date(date.getFullYear(), 0, 1)
-  return Math.ceil((mondayOfWeek - startOfYear.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1
+  return Math.ceil((mondayOfWeek.getTime() - startOfYear.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1
 }

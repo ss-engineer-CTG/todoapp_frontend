@@ -6,7 +6,6 @@ import {
   Factory, Sun, Moon, Filter, ZoomIn, ZoomOut, RotateCw, 
   Maximize2, Minimize2, ChevronLeft, ChevronRight
 } from 'lucide-react'
-import { Button } from '@core/components/ui/button'
 import { TimelineControlsProps } from '../types'
 import { ZOOM_CONFIG } from '../utils/timelineUtils'
 

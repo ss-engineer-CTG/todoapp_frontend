@@ -4,6 +4,9 @@
 export type AreaType = "projects" | "tasks" | "details" | "timeline" // timeline追加
 export type BatchOperation = 'complete' | 'incomplete' | 'delete' | 'copy'
 
+// タスクステータス型
+export type TaskStatus = 'completed' | 'in-progress' | 'not-started' | 'overdue'
+
 // 基本エンティティ型（全機能で共有）
 export interface Project {
   id: string
@@ -41,7 +44,7 @@ export interface Task {
   process?: string
   line?: string
   subtasks?: Task[]
-  status?: 'completed' | 'in-progress' | 'not-started' | 'overdue'
+  status?: TaskStatus
 }
 
 // 設定・定数型

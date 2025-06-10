@@ -16,11 +16,10 @@ import {
   isDraftTask
 } from '@tasklist'
 import { TimelineView, TimelineProject } from '@timeline'
-import { Button } from '@core/components/ui/button'
-import { Calendar, List, RotateCcw } from 'lucide-react'
+import { Calendar, List } from 'lucide-react'
 import { LoadingSpinner } from '@core/utils/core'
 import { logger } from '@core/utils/core'
-import { VIEW_MODES, SAMPLE_TIMELINE_PROJECTS } from '@core/config'
+import { SAMPLE_TIMELINE_PROJECTS } from '@core/config'
 
 const TodoApp: React.FC = () => {
   const {
@@ -141,17 +140,17 @@ const TodoApp: React.FC = () => {
             .filter(t => t.parentId === task.id)
             .map(subtask => ({
               ...subtask,
-              status: subtask.completed ? 'completed' : 
-                     (subtask.dueDate && new Date() > subtask.dueDate) ? 'overdue' :
-                     'not-started',
+              status: subtask.completed ? 'completed' as const : 
+                     (subtask.dueDate && new Date() > subtask.dueDate) ? 'overdue' as const :
+                     'not-started' as const,
               milestone: false
             }))
 
           return {
             ...task,
-            status: task.completed ? 'completed' : 
-                   (task.dueDate && new Date() > task.dueDate) ? 'overdue' :
-                   'in-progress',
+            status: task.completed ? 'completed' as const : 
+                   (task.dueDate && new Date() > task.dueDate) ? 'overdue' as const :
+                   'in-progress' as const,
             milestone: false,
             expanded: task.collapsed ? false : true,
             subtasks
@@ -168,7 +167,7 @@ const TodoApp: React.FC = () => {
       })
     } catch (error) {
       logger.error('Timeline data conversion failed', { error })
-      return SAMPLE_TIMELINE_PROJECTS as TimelineProject[]
+      return [...SAMPLE_TIMELINE_PROJECTS] as TimelineProject[]
     }
   }, [])
 
@@ -178,14 +177,6 @@ const TodoApp: React.FC = () => {
     
     // タイムラインの変更をタスクリストに反映
     try {
-      const updatedProjects = updatedTimelineProjects.map(project => ({
-        ...project,
-        collapsed: !project.expanded
-      }))
-      
-      // プロジェクト更新通知
-      // onProjectsUpdate(updatedProjects)
-      
       logger.info('Timeline projects updated', { count: updatedTimelineProjects.length })
     } catch (error) {
       logger.error('Timeline to tasklist conversion failed', { error })
@@ -447,26 +438,30 @@ const TodoApp: React.FC = () => {
     <div className="flex h-screen bg-background">
       {/* ビューモード切り替えボタン（左上固定） */}
       <div className="absolute top-4 left-4 z-50 flex bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <Button
-          variant={viewMode === 'tasklist' ? 'default' : 'ghost'}
-          size="sm"
+        <button
+          className={`px-3 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center space-x-2 transition-colors ${
+            viewMode === 'tasklist' 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+          }`}
           onClick={() => handleViewModeChange('tasklist')}
-          className="rounded-none border-r border-gray-200 dark:border-gray-700"
           title="リストビュー (Ctrl+L)"
         >
-          <List size={16} className="mr-1" />
-          リスト
-        </Button>
-        <Button
-          variant={viewMode === 'timeline' ? 'default' : 'ghost'}
-          size="sm"
+          <List size={16} />
+          <span>リスト</span>
+        </button>
+        <button
+          className={`px-3 py-2 text-sm font-medium rounded-none flex items-center space-x-2 transition-colors ${
+            viewMode === 'timeline' 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+          }`}
           onClick={() => handleViewModeChange('timeline')}
-          className="rounded-none"
           title="タイムラインビュー (Ctrl+T)"
         >
-          <Calendar size={16} className="mr-1" />
-          タイムライン
-        </Button>
+          <Calendar size={16} />
+          <span>タイムライン</span>
+        </button>
       </div>
 
       {/* メインコンテンツ */}

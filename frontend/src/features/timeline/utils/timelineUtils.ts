@@ -166,12 +166,12 @@ export const getDatePosition = (
       startOfWeek.setDate(startOfWeek.getDate() - 1)
     }
     
-    const weeksDiff = Math.round((startOfWeek - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000))
+    const weeksDiff = Math.round((startOfWeek.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000))
     const daysInWeek = (date.getDay() + 6) % 7
     
     return weeksDiff * cellWidth * 7 + daysInWeek * cellWidth
   } else {
-    const diffDays = Math.round((date - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    const diffDays = Math.round((date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     return diffDays * cellWidth
   }
 }
@@ -187,6 +187,12 @@ export const getProjectNamePosition = (scrollLeft: number, timelineWidth = 1200)
 // 日付フォーマット
 export const formatDate = (date: Date): string => {
   return `${date.getMonth() + 1}/${date.getDate()}`
+}
+
+// 月名取得（エクスポート追加）
+export const getMonthName = (date: Date): string => {
+  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+  return months[date.getMonth()]
 }
 
 // 月の境界判定

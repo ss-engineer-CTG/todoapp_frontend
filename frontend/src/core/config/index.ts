@@ -135,7 +135,7 @@ export const VIEW_MODES = {
   TIMELINE: 'timeline'
 } as const
 
-// タイムライン用サンプルデータ（製造業向け）
+// タイムライン用サンプルデータ（製造業向け） - mutable版
 export const SAMPLE_TIMELINE_PROJECTS = [
   {
     id: 'PRJ001',
@@ -151,7 +151,7 @@ export const SAMPLE_TIMELINE_PROJECTS = [
         name: '設備仕様検討・選定',
         startDate: new Date(2025, 4, 1),
         dueDate: new Date(2025, 4, 15),
-        status: 'completed',
+        status: 'completed' as const,
         milestone: true,
         process: '企画・設計',
         line: 'ライン A',
@@ -162,7 +162,7 @@ export const SAMPLE_TIMELINE_PROJECTS = [
             name: '現状設備調査',
             startDate: new Date(2025, 4, 1),
             dueDate: new Date(2025, 4, 5),
-            status: 'completed',
+            status: 'completed' as const,
             milestone: false,
             process: '企画・設計'
           },
@@ -171,7 +171,7 @@ export const SAMPLE_TIMELINE_PROJECTS = [
             name: '要求仕様書作成',
             startDate: new Date(2025, 4, 6),
             dueDate: new Date(2025, 4, 10),
-            status: 'completed',
+            status: 'completed' as const,
             milestone: false,
             process: '企画・設計'
           },
@@ -180,7 +180,7 @@ export const SAMPLE_TIMELINE_PROJECTS = [
             name: 'ベンダー選定',
             startDate: new Date(2025, 4, 11),
             dueDate: new Date(2025, 4, 15),
-            status: 'completed',
+            status: 'completed' as const,
             milestone: true,
             process: '企画・設計'
           }
@@ -191,7 +191,7 @@ export const SAMPLE_TIMELINE_PROJECTS = [
         name: '設備発注・製造',
         startDate: new Date(2025, 4, 16),
         dueDate: new Date(2025, 5, 15),
-        status: 'in-progress',
+        status: 'in-progress' as const,
         milestone: false,
         process: '調達・製造',
         line: 'ライン A',
@@ -202,7 +202,7 @@ export const SAMPLE_TIMELINE_PROJECTS = [
             name: '正式発注',
             startDate: new Date(2025, 4, 16),
             dueDate: new Date(2025, 4, 20),
-            status: 'completed',
+            status: 'completed' as const,
             milestone: true,
             process: '調達・製造'
           },
@@ -211,7 +211,7 @@ export const SAMPLE_TIMELINE_PROJECTS = [
             name: '設備製造',
             startDate: new Date(2025, 4, 21),
             dueDate: new Date(2025, 5, 10),
-            status: 'in-progress',
+            status: 'in-progress' as const,
             milestone: false,
             process: '調達・製造'
           },
@@ -220,7 +220,7 @@ export const SAMPLE_TIMELINE_PROJECTS = [
             name: 'FAT実施',
             startDate: new Date(2025, 5, 11),
             dueDate: new Date(2025, 5, 15),
-            status: 'not-started',
+            status: 'not-started' as const,
             milestone: true,
             process: '調達・製造'
           }
@@ -242,7 +242,7 @@ export const SAMPLE_TIMELINE_PROJECTS = [
         name: '現状分析・改善提案',
         startDate: new Date(2025, 4, 10),
         dueDate: new Date(2025, 4, 25),
-        status: 'overdue',
+        status: 'overdue' as const,
         milestone: false,
         process: '分析・企画',
         line: 'ライン B',
@@ -253,7 +253,7 @@ export const SAMPLE_TIMELINE_PROJECTS = [
             name: 'タクトタイム測定',
             startDate: new Date(2025, 4, 10),
             dueDate: new Date(2025, 4, 15),
-            status: 'completed',
+            status: 'completed' as const,
             milestone: false,
             process: '分析・企画'
           }
@@ -261,4 +261,4 @@ export const SAMPLE_TIMELINE_PROJECTS = [
       }
     ]
   }
-] as const
+]

@@ -3,11 +3,11 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { 
-  ChevronDown, ChevronRight, Check, Edit, Copy, Trash, X,
-  AlertTriangle, Clock, Factory, Star, ChevronLeft, ChevronUp
+  ChevronDown, ChevronRight, Check,
+  AlertTriangle, Clock, Factory, Star
 } from 'lucide-react'
 import { TimelineControls } from './TimelineControls'
-import { TimelineViewProps, TimelineState, TimelineProject, TimelineTask } from '../types'
+import { TimelineViewProps, TimelineState, TimelineProject } from '../types'
 import {
   calculateDynamicSizes,
   calculateTimeRange,
@@ -19,14 +19,12 @@ import {
   getWeekBackground,
   isFirstDayOfMonth,
   isFirstDayOfWeek,
-  getMonthName,
-  formatDate
+  getMonthName
 } from '../utils/timelineUtils'
 import { getDateType, getWeekNumber } from '../utils/holidayData'
 
 export const TimelineView: React.FC<TimelineViewProps> = ({
-  projects: initialProjects,
-  onProjectsUpdate
+  projects: initialProjects
 }) => {
   // 状態管理
   const [timelineState, setTimelineState] = useState<TimelineState>({
@@ -290,21 +288,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     }
   }, [dynamicSizes.zoomRatio])
 
-  // ステータスアイコン
-  const getStatusIcon = useCallback((status: string, size = 16) => {
-    const iconSize = Math.max(8, Math.round(size * dynamicSizes.zoomRatio))
-    switch (status) {
-      case 'completed':
-        return <Check size={iconSize} className="text-green-500" />
-      case 'in-progress':
-        return <Clock size={iconSize} className="text-blue-500" />
-      case 'overdue':
-        return <AlertTriangle size={iconSize} className="text-red-500" />
-      default:
-        return <div className={`border-2 border-gray-300 dark:border-gray-600 rounded-full`} style={{width: iconSize, height: iconSize}}></div>
-    }
-  }, [dynamicSizes.zoomRatio])
-
   // テーマクラス
   const getAppClasses = useCallback(() => {
     return timelineState.theme === 'dark' 
@@ -348,8 +331,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
         <div className={`${classes.dateHeader} border-b-2 overflow-hidden`}>
           <div className="w-full overflow-x-auto scrollbar-hide" 
                onScroll={(e) => {
-                 if (timelineRef) {
-                   timelineRef.scrollLeft = e.target.scrollLeft
+                 const target = e.target as HTMLElement
+                 if (timelineRef && target) {
+                   timelineRef.scrollLeft = target.scrollLeft
                  }
                }}
           >
@@ -363,7 +347,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                 }}>
                   {(() => {
                     const monthGroups: Array<{month: number, year: number, startIndex: number, width: number}> = []
-                    let currentMonth = null
+                    let currentMonth: number | null = null
                     let monthStart = 0
                     let monthWidth = 0
                     
@@ -386,7 +370,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                       
                       if (index === visibleDates.length - 1) {
                         monthGroups.push({
-                          month: currentMonth,
+                          month: currentMonth!,
                           year: date.getFullYear(),
                           startIndex: monthStart,
                           width: monthWidth * dateRange.cellWidth
@@ -394,7 +378,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                       }
                     })
                     
-                    return monthGroups.map((monthGroup, index) => (
+                    return monthGroups.map((monthGroup) => (
                       <div 
                         key={`month-${monthGroup.year}-${monthGroup.month}`}
                         className={`text-center font-bold border-r-2 ${classes.dateHeader} flex items-center justify-center`}
@@ -421,7 +405,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                   minWidth: `${visibleDates.length * dateRange.cellWidth}px` 
                 }}>
                   {visibleDates.map((date, index) => {
-                    const isFirstMonth = isFirstDayOfMonth(date, index, visibleDates)
                     const isFirstWeek = isFirstDayOfWeek(date)
                     const nextDate = index < visibleDates.length - 1 ? visibleDates[index + 1] : null
                     const isLastDateOfMonth = nextDate ? date.getMonth() !== nextDate.getMonth() : index === visibleDates.length - 1
@@ -705,12 +688,12 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                           height: `${Math.round(dynamicSizes.taskBarHeight * 0.8)}px`,
                           top: '50%',
                           transform: 'translateY(-50%)',
-                          backgroundColor: getStatusStyle(task.status, project.color, task.milestone, false).backgroundColor,
-                          color: getStatusStyle(task.status, project.color, task.milestone, false).textColor,
-                          borderWidth: getStatusStyle(task.status, project.color, task.milestone, false).borderWidth,
-                          borderStyle: getStatusStyle(task.status, project.color, task.milestone, false).borderStyle,
-                          borderColor: getStatusStyle(task.status, project.color, task.milestone, false).borderColor,
-                          opacity: getStatusStyle(task.status, project.color, task.milestone, false).opacity,
+                          backgroundColor: getStatusStyle(task.status || 'not-started', project.color, task.milestone, false).backgroundColor,
+                          color: getStatusStyle(task.status || 'not-started', project.color, task.milestone, false).textColor,
+                          borderWidth: getStatusStyle(task.status || 'not-started', project.color, task.milestone, false).borderWidth,
+                          borderStyle: getStatusStyle(task.status || 'not-started', project.color, task.milestone, false).borderStyle,
+                          borderColor: getStatusStyle(task.status || 'not-started', project.color, task.milestone, false).borderColor,
+                          opacity: getStatusStyle(task.status || 'not-started', project.color, task.milestone, false).opacity,
                           zIndex: task.milestone ? 3 : 2,
                           overflow: 'visible'
                         }}
@@ -858,12 +841,12 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                             height: `${Math.round(dynamicSizes.taskBarHeight * 0.8)}px`,
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            backgroundColor: getStatusStyle(subtask.status, project.color, subtask.milestone, true).backgroundColor,
-                            color: getStatusStyle(subtask.status, project.color, subtask.milestone, true).textColor,
-                            borderWidth: getStatusStyle(subtask.status, project.color, subtask.milestone, true).borderWidth,
-                            borderStyle: getStatusStyle(subtask.status, project.color, subtask.milestone, true).borderStyle,
-                            borderColor: getStatusStyle(subtask.status, project.color, subtask.milestone, true).borderColor,
-                            opacity: getStatusStyle(subtask.status, project.color, subtask.milestone, true).opacity,
+                            backgroundColor: getStatusStyle(subtask.status || 'not-started', project.color, subtask.milestone, true).backgroundColor,
+                            color: getStatusStyle(subtask.status || 'not-started', project.color, subtask.milestone, true).textColor,
+                            borderWidth: getStatusStyle(subtask.status || 'not-started', project.color, subtask.milestone, true).borderWidth,
+                            borderStyle: getStatusStyle(subtask.status || 'not-started', project.color, subtask.milestone, true).borderStyle,
+                            borderColor: getStatusStyle(subtask.status || 'not-started', project.color, subtask.milestone, true).borderColor,
+                            opacity: getStatusStyle(subtask.status || 'not-started', project.color, subtask.milestone, true).opacity,
                             zIndex: subtask.milestone ? 3 : 1,
                             overflow: 'visible'
                           }}
