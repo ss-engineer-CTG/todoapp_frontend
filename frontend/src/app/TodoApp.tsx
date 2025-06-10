@@ -1,8 +1,8 @@
-// システムプロンプト準拠：メインアプリロジック統合・簡素化
-// 修正内容：型安全性の強化、null安全性チェックの追加
+// システムプロンプト準拠：メインアプリロジック統合・簡素化（タイムライン機能統合版）
+// 修正内容：タイムラインビュー統合、ビューモード切り替え機能追加
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { AreaType, Task } from '@core/types'
+import { AreaType, Task, AppViewMode } from '@core/types'
 import { 
   ProjectPanel, 
   TaskPanel, 
@@ -15,8 +15,12 @@ import {
   sortTasksHierarchically,
   isDraftTask
 } from '@tasklist'
+import { TimelineView, TimelineProject } from '@timeline'
+import { Button } from '@core/components/ui/button'
+import { Calendar, List, RotateCcw } from 'lucide-react'
 import { LoadingSpinner } from '@core/utils/core'
 import { logger } from '@core/utils/core'
+import { VIEW_MODES, SAMPLE_TIMELINE_PROJECTS } from '@core/config'
 
 const TodoApp: React.FC = () => {
   const {
@@ -49,6 +53,10 @@ const TodoApp: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState<boolean>(false)
   const [isAddingProject, setIsAddingProject] = useState<boolean>(false)
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
+  
+  // 新規追加：ビューモード管理
+  const [viewMode, setViewMode] = useState<AppViewMode>('tasklist')
+  const [timelineProjects, setTimelineProjects] = useState<TimelineProject[]>([])
 
   // 草稿タスク込みの全タスク管理
   const [allTasksWithDrafts, setAllTasksWithDrafts] = useState<Task[]>([])
@@ -106,6 +114,83 @@ const TodoApp: React.FC = () => {
     selectedProjectId,
     apiActions: taskApiActions
   })
+
+  // 新規追加：ビューモード切り替え
+  const handleViewModeChange = useCallback((newMode: AppViewMode) => {
+    logger.info('View mode changing', { from: viewMode, to: newMode })
+    setViewMode(newMode)
+    
+    if (newMode === 'timeline') {
+      // タスクリストからタイムライン用データに変換
+      const timelineData = convertTasklistToTimeline(currentProjects, allTasksWithDrafts)
+      setTimelineProjects(timelineData)
+      setActiveArea('timeline')
+    } else {
+      setActiveArea('tasks')
+    }
+  }, [viewMode, currentProjects, allTasksWithDrafts])
+
+  // 新規追加：タスクリスト→タイムライン データ変換
+  const convertTasklistToTimeline = useCallback((projects: any[], tasks: Task[]): TimelineProject[] => {
+    try {
+      return projects.map(project => {
+        const projectTasks = tasks.filter(task => task.projectId === project.id && !task.parentId)
+        
+        const convertedTasks = projectTasks.map(task => {
+          const subtasks = tasks
+            .filter(t => t.parentId === task.id)
+            .map(subtask => ({
+              ...subtask,
+              status: subtask.completed ? 'completed' : 
+                     (subtask.dueDate && new Date() > subtask.dueDate) ? 'overdue' :
+                     'not-started',
+              milestone: false
+            }))
+
+          return {
+            ...task,
+            status: task.completed ? 'completed' : 
+                   (task.dueDate && new Date() > task.dueDate) ? 'overdue' :
+                   'in-progress',
+            milestone: false,
+            expanded: task.collapsed ? false : true,
+            subtasks
+          }
+        })
+
+        return {
+          ...project,
+          expanded: !project.collapsed,
+          process: project.process || 'プロジェクト',
+          line: project.line || '全体',
+          tasks: convertedTasks
+        }
+      })
+    } catch (error) {
+      logger.error('Timeline data conversion failed', { error })
+      return SAMPLE_TIMELINE_PROJECTS as TimelineProject[]
+    }
+  }, [])
+
+  // 新規追加：タイムライン→タスクリスト データ更新
+  const handleTimelineProjectsUpdate = useCallback((updatedTimelineProjects: TimelineProject[]) => {
+    setTimelineProjects(updatedTimelineProjects)
+    
+    // タイムラインの変更をタスクリストに反映
+    try {
+      const updatedProjects = updatedTimelineProjects.map(project => ({
+        ...project,
+        collapsed: !project.expanded
+      }))
+      
+      // プロジェクト更新通知
+      // onProjectsUpdate(updatedProjects)
+      
+      logger.info('Timeline projects updated', { count: updatedTimelineProjects.length })
+    } catch (error) {
+      logger.error('Timeline to tasklist conversion failed', { error })
+    }
+  }, [])
 
   // 草稿タスク作成（統一ハンドラー）
   const handleAddDraftTask = useCallback(async (parentId: string | null = null, level = 0) => {
@@ -207,33 +292,54 @@ const TodoApp: React.FC = () => {
     }
   }, [toggleTaskCollapse, loadTasks, selectedProjectId])
 
-  // キーボード処理（型安全性強化）
-  const keyboardProps = useKeyboard({
-    tasks: allTasksWithDrafts,
-    projects: currentProjects,
-    selectedProjectId,
-    setSelectedProjectId,
-    selectedTaskId: selection.selectedId,
-    setSelectedTaskId,
-    filteredTasks,
-    activeArea,
-    setActiveArea,
-    isDetailPanelVisible,
-    isMultiSelectMode: selection.isMultiSelectMode,
-    onCreateDraft: handleAddDraftTask,
-    onDeleteTask: handleDeleteTask,
-    onCopyTask: handleCopyTask,
-    onPasteTask: handlePasteTask,
-    onToggleCompletion: handleToggleTaskCompletion,
-    onToggleCollapse: handleToggleTaskCollapse,
-    onSelectAll: () => selectAll(filteredTasks),
-    onRangeSelect: (direction: 'up' | 'down') => {
-      logger.info('Range select', { direction })
-    },
-    onCancelDraft: handleCancelDraft,
-    copiedTasksCount: copiedTasks.length,
-    isInputActive: isAddingProject || isEditingProject
-  })
+  // 新規追加：拡張キーボード処理
+  const extendedKeyboardProps = {
+    ...useKeyboard({
+      tasks: allTasksWithDrafts,
+      projects: currentProjects,
+      selectedProjectId,
+      setSelectedProjectId,
+      selectedTaskId: selection.selectedId,
+      setSelectedTaskId,
+      filteredTasks,
+      activeArea,
+      setActiveArea,
+      isDetailPanelVisible,
+      isMultiSelectMode: selection.isMultiSelectMode,
+      onCreateDraft: handleAddDraftTask,
+      onDeleteTask: handleDeleteTask,
+      onCopyTask: handleCopyTask,
+      onPasteTask: handlePasteTask,
+      onToggleCompletion: handleToggleTaskCompletion,
+      onToggleCollapse: handleToggleTaskCollapse,
+      onSelectAll: () => selectAll(filteredTasks),
+      onRangeSelect: (direction: 'up' | 'down') => {
+        logger.info('Range select', { direction })
+      },
+      onCancelDraft: handleCancelDraft,
+      copiedTasksCount: copiedTasks.length,
+      isInputActive: isAddingProject || isEditingProject
+    }),
+    // タイムライン専用ショートカット
+    onViewModeChange: handleViewModeChange
+  }
+
+  // 新規追加：拡張キーボードイベント処理
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ビューモード切り替えショートカット
+      if (e.ctrlKey && e.key === 't') {
+        e.preventDefault()
+        handleViewModeChange('timeline')
+      } else if (e.ctrlKey && e.key === 'l') {
+        e.preventDefault()
+        handleViewModeChange('tasklist')
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleViewModeChange])
 
   // タスク保存（null安全性強化）
   const handleSaveTask = useCallback(async (taskId: string, updates: any): Promise<Task | null> => {
@@ -257,7 +363,6 @@ const TodoApp: React.FC = () => {
           setSelectedTaskId(savedTask.id)
           setActiveArea("tasks")
           
-          // null安全性チェック追加
           setTimeout(() => {
             if (savedTask) {
               focusTaskById(savedTask.id)
@@ -340,65 +445,101 @@ const TodoApp: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-background">
-      <ProjectPanel
-        projects={currentProjects}
-        onProjectsUpdate={() => {}}
-        selectedProjectId={selectedProjectId}
-        onProjectSelect={handleProjectSelect}
-        activeArea={activeArea}
-        setActiveArea={setActiveArea}
-        isAddingProject={isAddingProject}
-        setIsAddingProject={setIsAddingProject}
-        isEditingProject={isEditingProject}
-        setIsEditingProject={setIsEditingProject}
-        apiActions={{
-          createProject,
-          updateProject,
-          deleteProject
-        }}
-      />
+      {/* ビューモード切り替えボタン（左上固定） */}
+      <div className="absolute top-4 left-4 z-50 flex bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <Button
+          variant={viewMode === 'tasklist' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => handleViewModeChange('tasklist')}
+          className="rounded-none border-r border-gray-200 dark:border-gray-700"
+          title="リストビュー (Ctrl+L)"
+        >
+          <List size={16} className="mr-1" />
+          リスト
+        </Button>
+        <Button
+          variant={viewMode === 'timeline' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => handleViewModeChange('timeline')}
+          className="rounded-none"
+          title="タイムラインビュー (Ctrl+T)"
+        >
+          <Calendar size={16} className="mr-1" />
+          タイムライン
+        </Button>
+      </div>
 
-      <TaskPanel
-        tasks={filteredTasks}
-        selectedProjectId={selectedProjectId}
-        selectedTaskId={selection.selectedId}
-        selectedTaskIds={selection.selectedIds}
-        onTaskSelect={handleTaskSelectWrapper}
-        activeArea={activeArea}
-        setActiveArea={setActiveArea}
-        isDetailPanelVisible={isDetailPanelVisible}
-        setIsDetailPanelVisible={setIsDetailPanelVisible}
-        isMultiSelectMode={selection.isMultiSelectMode}
-        setIsMultiSelectMode={setIsMultiSelectMode}
-        showCompleted={showCompleted}
-        setShowCompleted={setShowCompleted}
-        taskRelationMap={taskRelationMap}
-        allTasks={allTasksWithDrafts}
-        onDeleteTask={handleDeleteTask}
-        onCopyTask={handleCopyTask}
-        onToggleTaskCompletion={handleToggleTaskCompletion}
-        onToggleTaskCollapse={handleToggleTaskCollapse}
-        onClearSelection={clearSelection}
-        setTaskRef={setTaskRef}
-        onAddDraftTask={handleAddDraftTask}
-        apiActions={taskApiActions}
-      />
-
-      {isDetailPanelVisible && (
-        <DetailPanel
-          selectedTask={selectedTask}
-          onTaskSave={handleSaveTask}
-          projects={currentProjects}
-          activeArea={activeArea}
-          setActiveArea={setActiveArea}
-          isVisible={isDetailPanelVisible}
-          setIsVisible={setIsDetailPanelVisible}
-          taskNameInputRef={keyboardProps.taskNameInputRef}
-          startDateButtonRef={keyboardProps.startDateButtonRef}
-          dueDateButtonRef={keyboardProps.dueDateButtonRef}
-          taskNotesRef={keyboardProps.taskNotesRef}
-          saveButtonRef={keyboardProps.saveButtonRef}
+      {/* メインコンテンツ */}
+      {viewMode === 'timeline' ? (
+        // タイムラインビュー
+        <TimelineView
+          projects={timelineProjects}
+          onProjectsUpdate={handleTimelineProjectsUpdate}
         />
+      ) : (
+        // タスクリストビュー（既存）
+        <>
+          <ProjectPanel
+            projects={currentProjects}
+            onProjectsUpdate={() => {}}
+            selectedProjectId={selectedProjectId}
+            onProjectSelect={handleProjectSelect}
+            activeArea={activeArea}
+            setActiveArea={setActiveArea}
+            isAddingProject={isAddingProject}
+            setIsAddingProject={setIsAddingProject}
+            isEditingProject={isEditingProject}
+            setIsEditingProject={setIsEditingProject}
+            apiActions={{
+              createProject,
+              updateProject,
+              deleteProject
+            }}
+          />
+
+          <TaskPanel
+            tasks={filteredTasks}
+            selectedProjectId={selectedProjectId}
+            selectedTaskId={selection.selectedId}
+            selectedTaskIds={selection.selectedIds}
+            onTaskSelect={handleTaskSelectWrapper}
+            activeArea={activeArea}
+            setActiveArea={setActiveArea}
+            isDetailPanelVisible={isDetailPanelVisible}
+            setIsDetailPanelVisible={setIsDetailPanelVisible}
+            isMultiSelectMode={selection.isMultiSelectMode}
+            setIsMultiSelectMode={setIsMultiSelectMode}
+            showCompleted={showCompleted}
+            setShowCompleted={setShowCompleted}
+            taskRelationMap={taskRelationMap}
+            allTasks={allTasksWithDrafts}
+            onDeleteTask={handleDeleteTask}
+            onCopyTask={handleCopyTask}
+            onToggleTaskCompletion={handleToggleTaskCompletion}
+            onToggleTaskCollapse={handleToggleTaskCollapse}
+            onClearSelection={clearSelection}
+            setTaskRef={setTaskRef}
+            onAddDraftTask={handleAddDraftTask}
+            apiActions={taskApiActions}
+          />
+
+          {isDetailPanelVisible && (
+            <DetailPanel
+              selectedTask={selectedTask}
+              onTaskSave={handleSaveTask}
+              projects={currentProjects}
+              activeArea={activeArea}
+              setActiveArea={setActiveArea}
+              isVisible={isDetailPanelVisible}
+              setIsVisible={setIsDetailPanelVisible}
+              taskNameInputRef={extendedKeyboardProps.taskNameInputRef}
+              startDateButtonRef={extendedKeyboardProps.startDateButtonRef}
+              dueDateButtonRef={extendedKeyboardProps.dueDateButtonRef}
+              taskNotesRef={extendedKeyboardProps.taskNotesRef}
+              saveButtonRef={extendedKeyboardProps.saveButtonRef}
+            />
+          )}
+        </>
       )}
     </div>
   )
