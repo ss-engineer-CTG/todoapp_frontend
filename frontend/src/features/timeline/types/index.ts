@@ -1,5 +1,5 @@
 // システムプロンプト準拠：タイムライン機能専用型定義
-// KISS原則：最小限の型定義、DRY原則：既存型の活用
+// KISS原則：最小限の型定義、DRY原則：既存型の活用（AppHeader Props追加）
 
 import { Task, Project } from '@core/types'
 
@@ -87,15 +87,21 @@ export interface TimelineViewProps {
   onProjectsUpdate: (projects: TimelineProject[]) => void
 }
 
+// アプリヘッダーProps（新規追加）
+export interface AppHeaderProps {
+  theme: 'light' | 'dark'
+  onThemeToggle: () => void
+  onExpandAll: () => void
+  onCollapseAll: () => void
+}
+
+// タイムラインコントロールProps（簡素化版）
 export interface TimelineControlsProps {
   zoomLevel: number
   onZoomChange: (level: number) => void
   viewUnit: TimelineViewUnit
   onViewUnitChange: (unit: TimelineViewUnit) => void
   theme: 'light' | 'dark'
-  onThemeToggle: () => void
   onTodayClick: () => void
-  onExpandAll: () => void
-  onCollapseAll: () => void
   onFitToScreen: () => void
 }

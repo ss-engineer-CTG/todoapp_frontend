@@ -1,11 +1,12 @@
-// システムプロンプト準拠：メインタイムラインビューコンポーネント
-// プロトタイプmanufacturing-gantt-prototype.tsxの直接移植・最適化
+// システムプロンプト準拠：メインタイムラインビューコンポーネント（画面幅対応版）
+// 修正内容：アプリヘッダー分離、固定表示レイアウト採用、画面幅対応
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { 
   ChevronDown, ChevronRight, Check,
   AlertTriangle, Clock, Factory, Star
 } from 'lucide-react'
+import { AppHeader } from './AppHeader'
 import { TimelineControls } from './TimelineControls'
 import { TimelineViewProps, TimelineState, TimelineProject } from '../types'
 import {
@@ -182,6 +183,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   const handleExpandAll = useCallback(() => {
     setProjects(prev => prev.map(project => ({
       ...project,
+      expanded: true,
       tasks: project.tasks.map(task => ({
         ...task,
         expanded: true
@@ -193,6 +195,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   const handleCollapseAll = useCallback(() => {
     setProjects(prev => prev.map(project => ({
       ...project,
+      expanded: false,
       tasks: project.tasks.map(task => ({
         ...task,
         expanded: false
@@ -310,25 +313,30 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   const classes = getAppClasses()
 
   return (
-    <div className={`h-screen flex flex-col ${classes.app}`}>
-      {/* コントロールヘッダー */}
+    <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
+      {/* 固定アプリヘッダー */}
+      <AppHeader
+        theme={timelineState.theme}
+        onThemeToggle={handleThemeToggle}
+        onExpandAll={handleExpandAll}
+        onCollapseAll={handleCollapseAll}
+      />
+      
+      {/* 固定タイムラインコントロール */}
       <TimelineControls
         zoomLevel={timelineState.zoomLevel}
         onZoomChange={handleZoomChange}
         viewUnit={timelineState.viewUnit}
         onViewUnitChange={handleViewUnitChange}
         theme={timelineState.theme}
-        onThemeToggle={handleThemeToggle}
         onTodayClick={handleTodayClick}
-        onExpandAll={handleExpandAll}
-        onCollapseAll={handleCollapseAll}
         onFitToScreen={handleFitToScreen}
       />
       
-      {/* メインコンテンツ */}
-      <main className="flex-1 flex flex-col overflow-hidden h-0">
+      {/* スクロール可能コンテンツ */}
+      <main className="flex-1 flex flex-col overflow-hidden w-full min-w-0" style={{ height: 'calc(100vh - 114px)' }}>
         {/* 日付ヘッダー */}
-        <div className={`${classes.dateHeader} border-b-2 overflow-hidden`}>
+        <div className={`${classes.dateHeader} border-b-2 overflow-hidden w-full`}>
           <div className="w-full overflow-x-auto scrollbar-hide" 
                onScroll={(e) => {
                  const target = e.target as HTMLElement

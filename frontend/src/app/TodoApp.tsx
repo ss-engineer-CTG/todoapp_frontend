@@ -1,5 +1,5 @@
 // システムプロンプト準拠：メインアプリロジック統合・簡素化（タイムライン機能統合版）
-// 修正内容：タイムラインビュー統合、ビューモード切り替え機能追加
+// 修正内容：タイムラインビュー統合、ビューモード切り替え機能追加、固定ヘッダー対応
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { AreaType, Task, AppViewMode } from '@core/types'
@@ -436,37 +436,39 @@ const TodoApp: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* ビューモード切り替えボタン（左上固定） */}
-      <div className="absolute top-4 left-4 z-50 flex bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <button
-          className={`px-3 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center space-x-2 transition-colors ${
-            viewMode === 'tasklist' 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-          }`}
-          onClick={() => handleViewModeChange('tasklist')}
-          title="リストビュー (Ctrl+L)"
-        >
-          <List size={16} />
-          <span>リスト</span>
-        </button>
-        <button
-          className={`px-3 py-2 text-sm font-medium rounded-none flex items-center space-x-2 transition-colors ${
-            viewMode === 'timeline' 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-          }`}
-          onClick={() => handleViewModeChange('timeline')}
-          title="タイムラインビュー (Ctrl+T)"
-        >
-          <Calendar size={16} />
-          <span>タイムライン</span>
-        </button>
-      </div>
+      {/* ビューモード切り替えボタン（修正：タイムライン時は非表示） */}
+      {viewMode === 'tasklist' && (
+        <div className="absolute top-4 left-4 z-50 flex bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <button
+            className={`px-3 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center space-x-2 transition-colors ${
+              viewMode === 'tasklist' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+            onClick={() => handleViewModeChange('tasklist')}
+            title="リストビュー (Ctrl+L)"
+          >
+            <List size={16} />
+            <span>リスト</span>
+          </button>
+          <button
+            className={`px-3 py-2 text-sm font-medium rounded-none flex items-center space-x-2 transition-colors ${
+              viewMode === 'timeline' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+            onClick={() => handleViewModeChange('timeline')}
+            title="タイムラインビュー (Ctrl+T)"
+          >
+            <Calendar size={16} />
+            <span>タイムライン</span>
+          </button>
+        </div>
+      )}
 
       {/* メインコンテンツ */}
       {viewMode === 'timeline' ? (
-        // タイムラインビュー
+        // タイムラインビュー（全画面表示）
         <TimelineView
           projects={timelineProjects}
           onProjectsUpdate={handleTimelineProjectsUpdate}
