@@ -1,12 +1,11 @@
 // システムプロンプト準拠：timeline機能の公開API
-// DRY原則：エクスポートの一元化（AppHeader追加）
+// DRY原則：エクスポートの一元化（修正版）
 
 // コンポーネント
-export { AppHeader, TimelineView, TimelineControls } from './components'
+export { TimelineView, TimelineControls } from './components'
 
 // ユーティリティ
-export * from './utils/timelineUtils'
-export * from './utils/holidayData'
+export * from './utils'
 
 // 型定義
 export * from './types'

@@ -1,6 +1,5 @@
 // システムプロンプト準拠：timeline機能コンポーネントの統合エクスポート
-// KISS原則：シンプルなエクスポート構成（AppHeader追加）
+// KISS原則：シンプルなエクスポート構成（修正版）
 
-export { AppHeader } from './AppHeader'
 export { TimelineView } from './TimelineView'
 export { TimelineControls } from './TimelineControls'
