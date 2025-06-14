@@ -1,14 +1,13 @@
 // システムプロンプト準拠：タイムライン統合コントロール（軽量化版）
-// 修正内容：Factory アイコンとタイトルを「リストに戻る」ボタンに置き換え
-// AppHeader + TimelineControls + TimelineHeader の機能を統合
+// 🔧 修正内容：軽量化に合わせた設定値調整、不要機能削除
 
 import React from 'react'
 import {
   ZoomIn, ZoomOut, RotateCw, Maximize2, ChevronLeft, ChevronRight,
-  Sun, Moon, Filter, Minimize2, ArrowLeft
+  Sun, Moon, Minimize2, ArrowLeft
 } from 'lucide-react'
 import { TimelineControlsProps } from '../types'
-import { ZOOM_CONFIG } from '../utils/timeline'
+import { ZOOM_CONFIG } from '../utils'
 
 export const TimelineControls: React.FC<TimelineControlsProps> = ({
   zoomLevel,
@@ -21,7 +20,6 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
   onFitToScreen,
   onExpandAll,
   onCollapseAll,
-  // 新規追加：ビューモード変更機能
   onViewModeChange
 }) => {
   const handleZoom = (newLevel: number) => {
@@ -33,7 +31,6 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
   const zoomOut = () => handleZoom(zoomLevel - ZOOM_CONFIG.step)
   const resetZoom = () => handleZoom(ZOOM_CONFIG.default)
 
-  // 修正：リストビューに戻る処理
   const handleBackToList = () => {
     if (onViewModeChange) {
       onViewModeChange('tasklist')
@@ -63,7 +60,6 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
     <div className="w-full">
       {/* アプリケーションヘッダー */}
       <header className={`${classes.header} border-b py-2 px-4 flex items-center justify-between sticky top-0 z-50 w-full min-w-0`}>
-        {/* 修正：Factory アイコンとタイトルを「リストに戻る」ボタンに置き換え */}
         <div className="flex items-center min-w-0 flex-shrink-0">
           <button
             onClick={handleBackToList}
@@ -76,7 +72,6 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
             aria-label="リストビューに戻る"
           >
             <ArrowLeft size={18} className="flex-shrink-0" />
-            {/* レスポンシブ対応：画面サイズに応じてテキストを調整 */}
             <span className="hidden sm:inline">リストに戻る</span>
             <span className="sm:hidden">戻る</span>
           </button>
@@ -103,26 +98,6 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
             </button>
           </div>
 
-          {/* コンパクト版（モバイル表示） */}
-          <div className="flex sm:hidden items-center space-x-1 mr-2">
-            <button 
-              className="p-1 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              onClick={onExpandAll}
-              title="全て展開"
-              aria-label="全て展開"
-            >
-              <Maximize2 size={16} />
-            </button>
-            <button 
-              className="p-1 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              onClick={onCollapseAll}
-              title="全て折り畳み"
-              aria-label="全て折り畳み"
-            >
-              <Minimize2 size={16} />
-            </button>
-          </div>
-
           {/* テーマ切替 */}
           <button 
             className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
@@ -130,14 +105,6 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
             aria-label={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-          
-          {/* フィルター */}
-          <button 
-            className="hidden md:block p-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
-            aria-label="フィルター"
-          >
-            <Filter size={18} />
           </button>
         </div>
       </header>
@@ -197,7 +164,6 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
               </span>
             </div>
             
-            {/* モバイル用ズーム表示 */}
             <div className="md:hidden">
               <span className="text-xs font-medium px-1 text-gray-600 dark:text-gray-400">
                 {zoomLevel}%

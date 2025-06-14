@@ -61,6 +61,8 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
+/* ===== タスクリスト用スタイル ===== */
+
 /* アニメーション・トランジション */
 .task-item {
   transition: all 0.2s ease-in-out;
@@ -91,6 +93,7 @@ body {
 /* カスタムスクロールバー */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -131,15 +134,6 @@ body {
   border: 1px solid hsl(var(--primary));
 }
 
-/* アクセシビリティ */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
 /* フォーカス可能パネルの視覚的フィードバック */
 .panel-focusable {
   transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
@@ -172,56 +166,7 @@ body {
   outline-offset: 1px;
 }
 
-/* ダークモード対応のスムーズな切り替え */
-html {
-  color-scheme: light;
-}
-
-html.dark {
-  color-scheme: dark;
-}
-
-/* レスポンシブデザイン対応 */
-@media (max-width: 768px) {
-  .desktop-only {
-    display: none;
-  }
-}
-
-@media (min-width: 769px) {
-  .mobile-only {
-    display: none;
-  }
-}
-
-/* プリント用スタイル */
-@media print {
-  .no-print {
-    display: none !important;
-  }
-  
-  body {
-    background: white !important;
-    color: black !important;
-  }
-}
-
-/* ハイコントラストモード対応 */
-@media (prefers-contrast: high) {
-  :root {
-    --border: 0 0% 0%;
-    --input: 0 0% 0%;
-    --focus-ring: 0 0% 0%;
-  }
-  
-  .dark {
-    --border: 0 0% 100%;
-    --input: 0 0% 100%;
-    --focus-ring: 0 0% 100%;
-  }
-}
-
-/* 統一されたタスク入力フィールドスタイル（草稿タスク専用クラス削除） */
+/* タスク入力フィールドスタイル */
 .task-input-field {
   transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
@@ -243,3 +188,219 @@ html.dark {
 .dark .task-input-field.has-error {
   background-color: hsl(0 63% 31% / 0.2); /* red-950 equivalent with transparency */
 }
+
+/* ===== Timeline統合スタイル ===== */
+
+/* Timeline日付ヘッダー */
+.timeline-date-header {
+  overflow-x: hidden !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.timeline-date-header::-webkit-scrollbar {
+  display: none;
+}
+
+/* Timelineタスクバー */
+.timeline-task-bar {
+  transition: all 0.2s ease-in-out;
+}
+
+.timeline-task-bar:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 3;
+}
+
+/* Timeline接続線 */
+.timeline-connection-line {
+  opacity: 0.7;
+  border-radius: 2px;
+  background: linear-gradient(to right, #9ca3af, #d1d5db);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.timeline-connection-point {
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border: 1px solid white;
+}
+
+.dark .timeline-connection-point {
+  border-color: hsl(var(--gray-800));
+}
+
+/* Timeline今日のインジケーター */
+.timeline-today-indicator {
+  background-color: #ef4444; /* red-500 */
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+.timeline-today-marker {
+  background-color: #ef4444; /* red-500 */
+  border-radius: 50%;
+  box-shadow: 
+    0 2px 8px rgba(239, 68, 68, 0.4),
+    0 0 0 2px white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark .timeline-today-marker {
+  box-shadow: 
+    0 2px 8px rgba(239, 68, 68, 0.4),
+    0 0 0 2px hsl(var(--gray-900));
+}
+
+/* Timeline展開制御ボタン */
+.timeline-expand-control {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.timeline-expand-control:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.timeline-expand-control:active {
+  transform: scale(0.95);
+}
+
+/* ダークモード対応のスムーズな切り替え */
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* アクセシビリティ */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .timeline-task-bar:hover,
+  .task-item,
+  .project-item,
+  .timeline-expand-control:hover {
+    transform: none !important;
+  }
+}
+
+/* レスポンシブデザイン対応 */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none;
+  }
+  
+  .timeline-date-header {
+    font-size: 0.875rem;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none;
+  }
+}
+
+/* プリント対応 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .timeline-task-bar:hover,
+  .timeline-expand-control:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* ハイコントラストモード対応 */
+@media (prefers-contrast: high) {
+  :root {
+    --border: 0 0% 0%;
+    --input: 0 0% 0%;
+    --focus-ring: 0 0% 0%;
+  }
+  
+  .dark {
+    --border: 0 0% 100%;
+    --input: 0 0% 100%;
+    --focus-ring: 0 0% 100%;
+  }
+  
+  .timeline-connection-line,
+  .timeline-task-bar {
+    border-width: 2px !important;
+  }
+  
+  .timeline-today-indicator {
+    box-shadow: 0 0 0 2px black;
+  }
+}
+
+/* フォーカス管理（Timeline対応） */
+.timeline-task-bar:focus,
+.timeline-expand-control:focus {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Timeline行のフォーカス状態 */
+.timeline-project-row:focus-within,
+.timeline-task-row:focus-within {
+  background-color: hsl(var(--accent) / 0.1);
+}
+
+/* Timeline表示密度対応 */
+.timeline-compact .timeline-task-bar {
+  font-size: 0.875rem;
+}
+
+.timeline-minimal .timeline-task-bar {
+  font-size: 0.75rem;
+}
+
+/* Timeline背景グリッド */
+.timeline-grid-cell {
+  transition: background-color 0.2s ease-in-out;
+}
+
+.timeline-grid-cell.weekend {
+  background-color: hsl(var(--muted) / 0.3);
+}
+
+.timeline-grid-cell.today {
+  background-color: hsl(var(--destructive) / 0.1);
+  border-color: hsl(var(--destructive));
+}
+
+/* Timeline階層インデント */
+.timeline-indent-1 { padding-left: 2rem; }
+.timeline-indent-2 { padding-left: 4rem; }
+.timeline-indent-3 { padding-left: 6rem; }
+.timeline-indent-4 { padding-left: 8rem; }
+.timeline-indent-5 { padding-left: 10rem; }

@@ -1,8 +1,8 @@
-// システムプロンプト準拠：スクロール同期処理の一元化
-// DRY原則：重複していたスクロール処理を統合
+// システムプロンプト準拠：スクロール同期処理の一元化（軽量化版）
+// 🔧 修正内容：TIMELINE_CONFIG参照を統合設定に変更
 
 import { useCallback, useRef, RefObject } from 'react'
-import { TIMELINE_CONFIG } from '@core/config/timeline'
+import { APP_CONFIG } from '@core/config'
 
 // スクロール同期フックの型定義
 interface UseScrollSyncProps {
@@ -45,7 +45,7 @@ export const useScrollSync = ({
     if (!element || !enabled) return
 
     // 現在の値との差分チェック（不要な処理を避ける）
-    const threshold = TIMELINE_CONFIG.SCROLL.SYNC_THRESHOLD
+    const threshold = APP_CONFIG.TIMELINE.SCROLL.SYNC_THRESHOLD
     const needsHorizontalSync = scrollLeft !== undefined && 
       Math.abs(element.scrollLeft - scrollLeft) > threshold
     const needsVerticalSync = scrollTop !== undefined && 
@@ -88,8 +88,8 @@ export const useScrollSync = ({
       // 少し遅延してフラグをリセット
       setTimeout(() => {
         isSyncingRef.current = false
-      }, TIMELINE_CONFIG.SCROLL.DEBOUNCE_MS)
-    }, TIMELINE_CONFIG.SCROLL.DEBOUNCE_MS)
+      }, APP_CONFIG.TIMELINE.SCROLL.DEBOUNCE_MS)
+    }, APP_CONFIG.TIMELINE.SCROLL.DEBOUNCE_MS)
 
   }, [enabled, secondaryRef, safeScrollTo])
 
@@ -117,8 +117,8 @@ export const useScrollSync = ({
       // 少し遅延してフラグをリセット
       setTimeout(() => {
         isSyncingRef.current = false
-      }, TIMELINE_CONFIG.SCROLL.DEBOUNCE_MS)
-    }, TIMELINE_CONFIG.SCROLL.DEBOUNCE_MS)
+      }, APP_CONFIG.TIMELINE.SCROLL.DEBOUNCE_MS)
+    }, APP_CONFIG.TIMELINE.SCROLL.DEBOUNCE_MS)
 
   }, [enabled, primaryRef, safeScrollTo])
 
@@ -134,7 +134,7 @@ export const useScrollSync = ({
     
     setTimeout(() => {
       isSyncingRef.current = false
-    }, TIMELINE_CONFIG.SCROLL.DEBOUNCE_MS)
+    }, APP_CONFIG.TIMELINE.SCROLL.DEBOUNCE_MS)
   }, [enabled, primaryRef, safeScrollTo])
 
   // セカンダリ要素への強制同期
@@ -149,7 +149,7 @@ export const useScrollSync = ({
     
     setTimeout(() => {
       isSyncingRef.current = false
-    }, TIMELINE_CONFIG.SCROLL.DEBOUNCE_MS)
+    }, APP_CONFIG.TIMELINE.SCROLL.DEBOUNCE_MS)
   }, [enabled, secondaryRef, safeScrollTo])
 
   // クリーンアップ

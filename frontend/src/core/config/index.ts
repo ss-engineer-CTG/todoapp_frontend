@@ -1,5 +1,5 @@
 // システムプロンプト準拠：統一設定管理（軽量化版）
-// 修正内容：今日スクロール用Homeキーショートカット説明追加
+// 🔧 修正内容：全設定の一元化、不要設定削除
 
 // 基本型定義
 export interface ProjectColor {
@@ -43,21 +43,16 @@ export const APP_CONFIG = {
   },
   TIMELINE: {
     ZOOM: {
-      MIN: 10,
-      MAX: 200,
+      MIN: 50,
+      MAX: 150,
       DEFAULT: 100,
       STEP: 10
     },
     VIEW_UNITS: ['day', 'week'] as const,
     DEFAULT_VIEW_UNIT: 'week' as const,
-    LAYOUT: {
-      HEADER_HEIGHT: 120,
-      SIDEBAR_WIDTH: 300,
-      ROW_HEIGHT: {
-        PROJECT: 48,
-        TASK: 40,
-        SUBTASK: 32
-      }
+    SCROLL: {
+      SYNC_THRESHOLD: 5,
+      DEBOUNCE_MS: 16
     }
   }
 } as const
@@ -74,7 +69,7 @@ export const PROJECT_COLORS: ProjectColor[] = [
   { name: "ティール", value: "#14b8a6" },
 ] as const
 
-// 🎯 修正：キーボードショートカット（Homeキー追加）
+// キーボードショートカット
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Enter", description: "同じレベルで新規タスク追加" },
   { key: "Tab", description: "選択したタスクの子タスクを追加" },
@@ -90,10 +85,6 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Escape", description: "選択解除・詳細パネルから戻る" },
   { key: "Ctrl + T", description: "タイムラインビューに切り替え" },
   { key: "Ctrl + L", description: "リストビューに切り替え" },
-  { key: "Ctrl + +", description: "ズームイン" },
-  { key: "Ctrl + -", description: "ズームアウト" },
-  { key: "Ctrl + 0", description: "ズームリセット" },
-  // 🎯 新規追加：今日スクロール機能
   { key: "Home", description: "今日の位置にスクロール（タイムラインビュー）" },
 ] as const
 
@@ -103,16 +94,6 @@ export const BATCH_OPERATIONS = {
   INCOMPLETE: 'incomplete',
   DELETE: 'delete',
   COPY: 'copy'
-} as const
-
-// エラーメッセージ
-export const ERROR_MESSAGES = {
-  NETWORK_ERROR: 'ネットワークエラーが発生しました',
-  VALIDATION_ERROR: '入力値に誤りがあります',
-  SERVER_ERROR: 'サーバーエラーが発生しました',
-  UNKNOWN_ERROR: '予期しないエラーが発生しました',
-  TASK_OPERATION_ERROR: 'タスク操作でエラーが発生しました',
-  TIMELINE_ERROR: 'タイムライン表示でエラーが発生しました',
 } as const
 
 // デフォルト値
@@ -127,4 +108,15 @@ export const DEFAULTS = {
 export const VIEW_MODES = {
   TASKLIST: 'tasklist',
   TIMELINE: 'timeline'
+} as const
+
+// Timeline設定（統合）
+export const TIMELINE_CONFIG = {
+  ZOOM: APP_CONFIG.TIMELINE.ZOOM,
+  SCROLL: APP_CONFIG.TIMELINE.SCROLL,
+  BASE_SIZES: {
+    cellWidth: { day: 30, week: 20 },
+    rowHeight: { project: 48, task: 40, subtask: 32 },
+    fontSize: { base: 14, small: 12, large: 16 }
+  }
 } as const

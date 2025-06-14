@@ -1,10 +1,9 @@
 // システムプロンプト準拠：タスク関連完全統合（Timeline用関数追加版）
 // 🔧 修正内容：既存機能保持 + Timeline用ヘルパー関数追加
-// DRY原則：Timelineでも同じ階層管理ロジックを活用
 
 import { Task } from '@core/types'
 import { TaskRelationMap } from '@tasklist/types'
-import { logger } from '@core/utils/core'
+import { logger } from '@core/utils'
 
 // ===== 草稿タスク管理（既存維持） =====
 export const isDraftTask = (task: Task): boolean => {
@@ -200,23 +199,18 @@ export const filterTasks = (
 
 /**
  * Timeline用タスクフィルタリング
- * 既存のfilterTasksをベースに、Timeline固有の条件を追加
  */
 export const filterTasksForTimeline = (
   tasks: Task[],
   projectId: string,
   showCompleted: boolean,
-  relationMap: TaskRelationMap,
-  maxLevel: number = 10
+  relationMap: TaskRelationMap
 ): Task[] => {
   try {
     const basicFiltered = filterTasks(tasks, projectId, showCompleted, relationMap)
     
     // Timeline固有のフィルタ条件
     return basicFiltered.filter(task => {
-      // 階層レベル制限
-      if (task.level > maxLevel) return false
-      
       // 無効な日付のタスクを除外（Timeline表示に必須）
       if (!task.startDate || !task.dueDate) return false
       
@@ -230,7 +224,6 @@ export const filterTasksForTimeline = (
 
 /**
  * タスクの階層深度計算
- * Timeline表示での最大階層深度を取得
  */
 export const calculateMaxTaskLevel = (tasks: Task[]): number => {
   try {
@@ -241,11 +234,7 @@ export const calculateMaxTaskLevel = (tasks: Task[]): number => {
     
     logger.info('Task level analysis', {
       taskCount: tasks.length,
-      maxLevel,
-      levelDistribution: levels.reduce((acc, level) => {
-        acc[level] = (acc[level] || 0) + 1
-        return acc
-      }, {} as { [level: number]: number })
+      maxLevel
     })
     
     return maxLevel
@@ -277,107 +266,29 @@ export const calculateTimelineTaskStatus = (task: Task): 'completed' | 'in-progr
 }
 
 /**
- * プロジェクト内タスクの階層統計情報取得
+ * タスクの表示可否判定（Timeline用）
  */
-export const getProjectTaskHierarchyStats = (
-  tasks: Task[],
-  projectId: string,
+export const isTaskVisibleInTimeline = (
+  task: Task,
+  allTasks: Task[],
   relationMap: TaskRelationMap
-): {
-  totalTasks: number
-  maxLevel: number
-  levelCounts: { [level: number]: number }
-  hasComplexHierarchy: boolean
-} => {
+): boolean => {
   try {
-    const projectTasks = tasks.filter(task => task.projectId === projectId)
-    const maxLevel = calculateMaxTaskLevel(projectTasks)
+    if (!task.parentId) return true
     
-    const levelCounts = projectTasks.reduce((acc, task) => {
-      const level = task.level || 0
-      acc[level] = (acc[level] || 0) + 1
-      return acc
-    }, {} as { [level: number]: number })
+    let currentParentId: string | null = task.parentId
     
-    // 複雑な階層かどうかの判定（3階層以上 or 50タスク以上）
-    const hasComplexHierarchy = maxLevel >= 3 || projectTasks.length >= 50
-    
-    return {
-      totalTasks: projectTasks.length,
-      maxLevel,
-      levelCounts,
-      hasComplexHierarchy
+    while (currentParentId) {
+      const parentTask = allTasks.find(t => t.id === currentParentId)
+      if (!parentTask) break
+      
+      if (parentTask.collapsed) return false
+      currentParentId = relationMap.parentMap[currentParentId] || null
     }
+    
+    return true
   } catch (error) {
-    logger.error('Project hierarchy stats calculation failed', { projectId, error })
-    return {
-      totalTasks: 0,
-      maxLevel: 0,
-      levelCounts: {},
-      hasComplexHierarchy: false
-    }
-  }
-}
-
-/**
- * Timeline表示最適化のためのタスク分析
- */
-export const analyzeTasksForTimelineOptimization = (
-  tasks: Task[],
-  relationMap: TaskRelationMap
-): {
-  shouldUseVirtualization: boolean
-  recommendedZoomLevel: number
-  maxSafeHierarchyLevel: number
-  performanceWarnings: string[]
-} => {
-  try {
-    const warnings: string[] = []
-    const totalTasks = tasks.length
-    const maxLevel = calculateMaxTaskLevel(tasks)
-    
-    // 仮想化推奨条件
-    const shouldUseVirtualization = totalTasks > 100 || maxLevel > 5
-    
-    // 推奨ズームレベル計算
-    let recommendedZoomLevel = 100
-    if (totalTasks > 200) {
-      recommendedZoomLevel = 60
-      warnings.push('大量タスクのため、ズームレベル60%以下を推奨')
-    } else if (maxLevel > 4) {
-      recommendedZoomLevel = 80
-      warnings.push('深い階層のため、ズームレベル80%以下を推奨')
-    }
-    
-    // 安全な階層レベル
-    const maxSafeHierarchyLevel = totalTasks > 500 ? 2 : totalTasks > 200 ? 3 : 5
-    
-    if (maxLevel > maxSafeHierarchyLevel) {
-      warnings.push(`パフォーマンスのため、階層${maxSafeHierarchyLevel}レベルまでの表示を推奨`)
-    }
-    
-    logger.info('Timeline optimization analysis completed', {
-      totalTasks,
-      maxLevel,
-      shouldUseVirtualization,
-      recommendedZoomLevel,
-      maxSafeHierarchyLevel,
-      warningCount: warnings.length
-    })
-    
-    return {
-      shouldUseVirtualization,
-      recommendedZoomLevel,
-      maxSafeHierarchyLevel,
-      performanceWarnings: warnings
-    }
-  } catch (error) {
-    logger.error('Timeline optimization analysis failed', { error })
-    return {
-      shouldUseVirtualization: false,
-      recommendedZoomLevel: 100,
-      maxSafeHierarchyLevel: 3,
-      performanceWarnings: ['分析エラーが発生しました']
-    }
+    logger.error('Task visibility check failed', { taskId: task.id, error })
+    return true
   }
 }

@@ -1,37 +1,21 @@
-// システムプロンプト準拠：タイムライン統合フック（TaskRelationMap対応版）
-// 🔧 修正内容：ネスト構造管理削除、Tasklist準拠の平坦配列 + TaskRelationMap方式に統一
-// DRY原則：Tasklistの階層管理ロジック再利用
+// システムプロンプト準拠：Timeline統合フック（軽量化版）
+// 🔧 修正内容：他のフック統合、不要機能削除
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { ZOOM_CONFIG } from '../utils/timeline'
-import { TimelineState, TimelineProject, TimelineTask, DynamicSizes, TimeRange, TimelineData } from '../types'
-import { TaskRelationMap } from '@tasklist/types'
-import { buildTaskRelationMap } from '@tasklist/utils/task'
-import { 
-  calculateDynamicSizes, 
-  calculateTimeRange, 
-  generateVisibleDates,
-  getDisplayLevel,
-  getDatePosition
-} from '../utils/timeline'
-import { 
-  filterTimelineTasks, 
-  sortTimelineTasksHierarchically,
-  calculateHierarchyDisplayInfo,
-  isTaskVisible
-} from '../utils/hierarchy'
-import { logger } from '@core/utils/core'
+import { useState, useCallback, useMemo, useRef } from 'react'
+import { ZOOM_CONFIG } from '../utils'
+import { TimelineState, DynamicSizes, TimeRange } from '../types'
+import { calculateDynamicSizes, getDatePosition } from '@core/utils'
+import { calculateTimeRange, generateVisibleDates } from '../utils'
+import { logger } from '@core/utils'
 
 interface UseTimelineReturn {
   // 状態
   state: TimelineState
-  timelineData: TimelineData
   
   // 計算された値
   dimensions: DynamicSizes
   timeRange: TimeRange
   visibleDates: Date[]
-  displayLevel: ReturnType<typeof getDisplayLevel>
   
   // 状態更新
   setZoomLevel: (level: number) => void
@@ -39,16 +23,6 @@ interface UseTimelineReturn {
   setScrollLeft: (left: number) => void
   setTheme: (theme: 'light' | 'dark') => void
   toggleTheme: () => void
-  
-  // 🔧 修正：平坦構造データ操作
-  setTimelineData: (data: Partial<TimelineData>) => void
-  updateTimelineProjects: (projects: TimelineProject[]) => void
-  updateTimelineTasks: (tasks: TimelineTask[]) => void
-  
-  // タスク操作（TaskRelationMap準拠）
-  toggleTask: (taskId: string) => void
-  expandAllTasks: () => void
-  collapseAllTasks: () => void
   
   // ズーム制御
   zoomIn: () => void
@@ -77,14 +51,6 @@ export const useTimeline = (
     theme: initialTheme
   })
 
-  // 🔧 修正：Timeline統合データ（平坦構造）
-  const [timelineData, setTimelineDataState] = useState<TimelineData>({
-    projects: [],
-    allTasks: [],
-    taskRelationMap: { childrenMap: {}, parentMap: {} },
-    filteredTasks: []
-  })
-
   // DOM参照
   const timelineRef = useRef<HTMLDivElement>(null)
 
@@ -95,12 +61,6 @@ export const useTimeline = (
   const dimensions = useMemo(() => 
     calculateDynamicSizes(state.zoomLevel, state.viewUnit),
     [state.zoomLevel, state.viewUnit]
-  )
-
-  // 表示レベル計算
-  const displayLevel = useMemo(() => 
-    getDisplayLevel(state.zoomLevel),
-    [state.zoomLevel]
   )
 
   // 時間範囲計算
@@ -114,73 +74,6 @@ export const useTimeline = (
     generateVisibleDates(timeRange.startDate, timeRange.endDate, state.viewUnit),
     [timeRange.startDate, timeRange.endDate, state.viewUnit]
   )
-
-  // 🔧 修正：TaskRelationMapの自動再計算
-  const taskRelationMap = useMemo(() => {
-    if (timelineData.allTasks.length === 0) {
-      return { childrenMap: {}, parentMap: {} }
-    }
-    
-    try {
-      const relationMap = buildTaskRelationMap(timelineData.allTasks)
-      logger.info('TaskRelationMap rebuilt for timeline', {
-        taskCount: timelineData.allTasks.length,
-        parentCount: Object.keys(relationMap.parentMap).length,
-        childrenCount: Object.keys(relationMap.childrenMap).length
-      })
-      return relationMap
-    } catch (error) {
-      logger.error('TaskRelationMap build failed', { error })
-      return { childrenMap: {}, parentMap: {} }
-    }
-  }, [timelineData.allTasks])
-
-  // 🔧 修正：フィルタ済みタスクの自動更新
-  useEffect(() => {
-    if (timelineData.projects.length === 0 || timelineData.allTasks.length === 0) {
-      setTimelineDataState(prev => ({ ...prev, filteredTasks: [] }))
-      return
-    }
-
-    try {
-      // 全プロジェクトのタスクをフィルタリング・ソート
-      let allFilteredTasks: TimelineTask[] = []
-      
-      timelineData.projects.forEach(project => {
-        const projectTasks = filterTimelineTasks(
-          timelineData.allTasks, 
-          project, 
-          true, // showCompleted
-          taskRelationMap
-        )
-        
-        const sortedTasks = sortTimelineTasksHierarchically(projectTasks, taskRelationMap)
-        allFilteredTasks = [...allFilteredTasks, ...sortedTasks]
-      })
-
-      setTimelineDataState(prev => ({
-        ...prev,
-        taskRelationMap,
-        filteredTasks: allFilteredTasks
-      }))
-
-      logger.info('Timeline filtered tasks updated', {
-        projectCount: timelineData.projects.length,
-        totalTasks: timelineData.allTasks.length,
-        filteredTasks: allFilteredTasks.length
-      })
-
-    } catch (error) {
-      logger.error('Timeline task filtering failed', { error })
-      setTimelineDataState(prev => ({ ...prev, filteredTasks: [] }))
-    }
-  }, [timelineData.projects, timelineData.allTasks, taskRelationMap])
-
-  // テーマ適用
-  useEffect(() => {
-    document.documentElement.classList.remove('light', 'dark')
-    document.documentElement.classList.add(state.theme)
-  }, [state.theme])
 
   // ズームレベル設定
   const setZoomLevel = useCallback((level: number) => {
@@ -209,67 +102,6 @@ export const useTimeline = (
       ...prev, 
       theme: prev.theme === 'light' ? 'dark' : 'light' 
     }))
-  }, [])
-
-  // 🔧 修正：Timeline統合データ更新
-  const setTimelineData = useCallback((data: Partial<TimelineData>) => {
-    setTimelineDataState(prev => {
-      const newData = { ...prev, ...data }
-      
-      logger.info('Timeline data updated', {
-        projects: newData.projects.length,
-        allTasks: newData.allTasks.length,
-        updatedFields: Object.keys(data)
-      })
-      
-      return newData
-    })
-  }, [])
-
-  // プロジェクト更新
-  const updateTimelineProjects = useCallback((projects: TimelineProject[]) => {
-    setTimelineDataState(prev => ({ ...prev, projects }))
-    logger.info('Timeline projects updated', { count: projects.length })
-  }, [])
-
-  // タスク更新
-  const updateTimelineTasks = useCallback((tasks: TimelineTask[]) => {
-    setTimelineDataState(prev => ({ ...prev, allTasks: tasks }))
-    logger.info('Timeline tasks updated', { count: tasks.length })
-  }, [])
-
-  // 🔧 修正：タスク展開/折り畳み（TaskRelationMap準拠）
-  const toggleTask = useCallback((taskId: string) => {
-    setTimelineDataState(prev => ({
-      ...prev,
-      allTasks: prev.allTasks.map(task => 
-        task.id === taskId 
-          ? { ...task, collapsed: !task.collapsed }
-          : task
-      )
-    }))
-    
-    logger.info('Task toggle completed', { taskId })
-  }, [])
-
-  // 全タスク展開
-  const expandAllTasks = useCallback(() => {
-    setTimelineDataState(prev => ({
-      ...prev,
-      allTasks: prev.allTasks.map(task => ({ ...task, collapsed: false }))
-    }))
-    
-    logger.info('All tasks expanded')
-  }, [])
-
-  // 全タスク折り畳み
-  const collapseAllTasks = useCallback(() => {
-    setTimelineDataState(prev => ({
-      ...prev,
-      allTasks: prev.allTasks.map(task => ({ ...task, collapsed: true }))
-    }))
-    
-    logger.info('All tasks collapsed')
   }, [])
 
   // ズームイン
@@ -312,7 +144,7 @@ export const useTimeline = (
     setZoomLevel(clampedZoom)
   }, [visibleDates.length, state.viewUnit, setZoomLevel])
 
-  // 🔧 修正：今日にスクロール（精度向上・DRY原則適用）
+  // 今日にスクロール
   const scrollToToday = useCallback((): number => {
     if (!timelineRef.current) {
       logger.warn('Timeline ref not available for scroll to today')
@@ -330,15 +162,13 @@ export const useTimeline = (
       const containerWidth = timelineRef.current.clientWidth
       const scrollPosition = Math.max(0, todayPosition - containerWidth / 2)
       
-      logger.info('Scrolling to today with improved calculation', {
+      logger.info('Scrolling to today', {
         today: today.toISOString().split('T')[0],
         todayPosition,
         containerWidth,
         scrollPosition,
         viewUnit: state.viewUnit,
-        cellWidth: dimensions.cellWidth,
-        startDate: timeRange.startDate.toISOString().split('T')[0],
-        calculationMethod: 'getDatePosition_unified'
+        cellWidth: dimensions.cellWidth
       })
       
       timelineRef.current.scrollTo({
@@ -364,22 +194,14 @@ export const useTimeline = (
 
   return {
     state,
-    timelineData,
     dimensions,
     timeRange,
     visibleDates,
-    displayLevel,
     setZoomLevel,
     setViewUnit,
     setScrollLeft,
     setTheme,
     toggleTheme,
-    setTimelineData,
-    updateTimelineProjects,
-    updateTimelineTasks,
-    toggleTask,
-    expandAllTasks,
-    collapseAllTasks,
     zoomIn,
     zoomOut,
     resetZoom,

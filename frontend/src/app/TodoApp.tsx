@@ -1,5 +1,5 @@
 // システムプロンプト準拠：メインアプリロジック統合・軽量化版
-// 🔧 修正内容：convertTasklistToTimeline大幅簡素化、Timeline用データ変換統一
+// 🔧 修正内容：Timeline統合ロジック大幅簡素化、重複削除
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { AreaType, Task, AppViewMode } from '@core/types'
@@ -15,10 +15,10 @@ import {
   sortTasksHierarchically,
   isDraftTask
 } from '@tasklist'
-import { TimelineView, TimelineProject, TimelineTask } from '@timeline'
+import { TimelineView } from '@timeline'
 import { Calendar, List } from 'lucide-react'
-import { LoadingSpinner } from '@core/utils/core'
-import { logger } from '@core/utils/core'
+import { LoadingSpinner } from '@core/utils'
+import { logger } from '@core/utils'
 
 const TodoApp: React.FC = () => {
   const {
@@ -55,10 +55,6 @@ const TodoApp: React.FC = () => {
   // ビューモード管理
   const [viewMode, setViewMode] = useState<AppViewMode>('tasklist')
   
-  // 🔧 修正：Timeline用データ（平坦構造）
-  const [timelineProjects, setTimelineProjects] = useState<TimelineProject[]>([])
-  const [timelineAllTasks, setTimelineAllTasks] = useState<TimelineTask[]>([])
-
   // タイムライン用今日スクロール状態管理
   const [timelineScrollToToday, setTimelineScrollToToday] = useState<(() => void) | null>(null)
 
@@ -125,103 +121,9 @@ const TodoApp: React.FC = () => {
     setViewMode(newMode)
     
     if (newMode === 'timeline') {
-      // 🔧 修正：データ変換を大幅簡素化
-      const { projects: convertedProjects, tasks: convertedTasks } = convertTasklistToTimeline(
-        currentProjects, 
-        allTasksWithDrafts
-      )
-      
-      setTimelineProjects(convertedProjects)
-      setTimelineAllTasks(convertedTasks)
       setActiveArea('timeline')
-      
-      logger.info('Timeline data conversion completed', {
-        projectCount: convertedProjects.length,
-        taskCount: convertedTasks.length,
-        conversionMethod: 'simplified_flat_structure'
-      })
     } else {
       setActiveArea('tasks')
-    }
-  }, [viewMode, currentProjects, allTasksWithDrafts])
-
-  // 🔧 修正：タスクリスト→タイムライン データ変換（大幅簡素化）
-  const convertTasklistToTimeline = useCallback((
-    projects: any[], 
-    tasks: Task[]
-  ): { projects: TimelineProject[], tasks: TimelineTask[] } => {
-    try {
-      logger.info('Starting simplified timeline data conversion', {
-        projectCount: projects.length,
-        taskCount: tasks.length,
-        method: 'flat_structure_with_relation_map'
-      })
-
-      // ✅ プロジェクト変換：単純なプロパティマッピングのみ
-      const convertedProjects: TimelineProject[] = projects.map(project => ({
-        ...project, // 既存のProject構造をそのまま継承
-        process: project.process || 'プロジェクト',
-        line: project.line || '全体'
-      }))
-
-      // ✅ タスク変換：単純なプロパティマッピングのみ
-      const convertedTasks: TimelineTask[] = tasks.map(task => {
-        // 🔧 ステータス計算（existing logic）
-        const status = task.completed ? 'completed' as const : 
-                      (task.dueDate && new Date() > task.dueDate) ? 'overdue' as const :
-                      'not-started' as const
-
-        return {
-          ...task, // 既存のTask構造をそのまま継承（parentId, level, collapsed等）
-          status,
-          milestone: false, // デフォルト値
-          process: undefined,
-          line: undefined
-        }
-      })
-
-      logger.info('Timeline data conversion completed successfully', {
-        originalProjects: projects.length,
-        convertedProjects: convertedProjects.length,
-        originalTasks: tasks.length,
-        convertedTasks: convertedTasks.length,
-        hierarchyPreserved: true,
-        nestingStructureUsed: false
-      })
-
-      return {
-        projects: convertedProjects,
-        tasks: convertedTasks
-      }
-
-    } catch (error) {
-      logger.error('Timeline data conversion failed', { 
-        error, 
-        projectCount: projects.length, 
-        taskCount: tasks.length 
-      })
-      
-      // フォールバック：空データ返却
-      return {
-        projects: [],
-        tasks: []
-      }
-    }
-  }, [])
-
-  // タイムライン→タスクリスト データ更新（循環依存回避）
-  const handleTimelineProjectsUpdate = useCallback((updatedTimelineProjects: TimelineProject[]) => {
-    if (viewMode === 'timeline') {
-      setTimelineProjects(updatedTimelineProjects)
-      logger.info('Timeline projects updated', { count: updatedTimelineProjects.length })
-    }
-  }, [viewMode])
-
-  // 🔧 修正：タイムライン用タスク更新処理追加
-  const handleTimelineTasksUpdate = useCallback((updatedTimelineTasks: TimelineTask[]) => {
-    if (viewMode === 'timeline') {
-      setTimelineAllTasks(updatedTimelineTasks)
-      logger.info('Timeline tasks updated', { count: updatedTimelineTasks.length })
     }
   }, [viewMode])
 
@@ -481,7 +383,7 @@ const TodoApp: React.FC = () => {
 
   if (!isInitialized) {
     return (
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen bg-background items-center justify-center">
         <LoadingSpinner size="lg" message="アプリケーションを初期化中..." />
       </div>
     )
@@ -521,12 +423,9 @@ const TodoApp: React.FC = () => {
 
       {/* メインコンテンツ */}
       {viewMode === 'timeline' ? (
-        // 🔧 修正：TimelineView に平坦構造データを渡す
         <TimelineView
-          projects={timelineProjects}
-          allTasks={timelineAllTasks}
-          onProjectsUpdate={handleTimelineProjectsUpdate}
-          onTasksUpdate={handleTimelineTasksUpdate}
+          projects={currentProjects}
+          tasks={allTasksWithDrafts}
           onViewModeChange={handleViewModeChange}
           onScrollToToday={setTimelineScrollToToday}
         />
