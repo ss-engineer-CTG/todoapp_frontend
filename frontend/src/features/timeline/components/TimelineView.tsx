@@ -1,5 +1,5 @@
 // システムプロンプト準拠：メインタイムラインビューコンポーネント（軽量化版）
-// TimelineView + TimelineGrid + AppHeader の機能を統合
+// 修正内容：日付ヘッダーのスクロール機能無効化による統合スクロール制御
 
 import React, { useCallback } from 'react'
 import { 
@@ -68,14 +68,15 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     }
   }, [fitToScreen])
 
-  // スクロール処理
+  // 統合スクロール処理（日付ヘッダーとタイムライングリッドの同期）
   const handleTimelineScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const newScrollLeft = e.currentTarget.scrollLeft
     setScrollLeft(newScrollLeft)
     
-    const headerScroll = document.querySelector('.scrollbar-hide') as HTMLElement
-    if (headerScroll) {
-      headerScroll.scrollLeft = newScrollLeft
+    // 日付ヘッダーに同期（一方向制御）
+    const headerElement = document.querySelector('.timeline-date-header') as HTMLElement
+    if (headerElement) {
+      headerElement.scrollLeft = newScrollLeft
     }
   }, [setScrollLeft])
 
@@ -174,16 +175,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
       
       {/* スクロール可能コンテンツ */}
       <main className="flex-1 flex flex-col overflow-hidden w-full min-w-0" style={{ height: 'calc(100vh - 114px)' }}>
-        {/* 日付ヘッダー */}
+        {/* 日付ヘッダー（スクロールバー非表示・追従のみ） */}
         <div className={`${classes.dateHeader} border-b-2 overflow-hidden w-full`}>
-          <div className="w-full overflow-x-auto scrollbar-hide" 
-               onScroll={(e) => {
-                 const target = e.target as HTMLElement
-                 if (timelineRef.current && target) {
-                   timelineRef.current.scrollLeft = target.scrollLeft
-                 }
-               }}
-          >
+          <div className="w-full overflow-x-hidden timeline-date-header">
             {state.viewUnit === 'day' ? (
               // 日表示：2行構造
               <div>
@@ -331,7 +325,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
           </div>
         </div>
         
-        {/* タイムライングリッド */}
+        {/* タイムライングリッド（メインスクロール制御） */}
         <div 
           className="w-full flex-1 relative overflow-auto timeline-scroll-container" 
           onScroll={handleTimelineScroll}
