@@ -1,5 +1,4 @@
-// システムプロンプト準拠：統一設定管理（タイムライン機能拡張版）
-// Feature-Core分離型対応：パス定義を更新
+// システムプロンプト準拠：統一設定管理（軽量化版）
 
 // 基本型定義
 export interface ProjectColor {
@@ -12,21 +11,8 @@ export interface KeyboardShortcut {
   description: string
 }
 
-// システムプロンプト準拠：パス管理統一（Feature-Core分離型対応）
+// パス管理統一
 export const APP_PATHS = {
-  FEATURES: {
-    TASKLIST: './src/features/tasklist',
-    TIMELINE: './src/features/timeline', // 新規追加
-    TEMPLATE: './src/features/template'
-  },
-  CORE: './src/core',
-  APP: './src/app',
-  FRONTEND: {
-    SRC: './src',
-    COMPONENTS: './src/core/components',
-    FEATURES: './src/features',
-    STYLES: './src/styles'
-  },
   API: {
     BASE: '/api',
     PROJECTS: '/api/projects',
@@ -36,7 +22,7 @@ export const APP_PATHS = {
   }
 } as const
 
-// パス結合専用関数（システムプロンプト必須）
+// パス結合専用関数
 export const joinPath = (...segments: string[]): string => {
   return segments
     .map(segment => segment.replace(/^\/+|\/+$/g, ''))
@@ -54,7 +40,6 @@ export const APP_CONFIG = {
     STORAGE_KEY: 'vite-ui-theme',
     DEFAULT: 'system' as const
   },
-  // タイムライン設定追加
   TIMELINE: {
     ZOOM: {
       MIN: 10,
@@ -63,7 +48,16 @@ export const APP_CONFIG = {
       STEP: 10
     },
     VIEW_UNITS: ['day', 'week'] as const,
-    DEFAULT_VIEW_UNIT: 'week' as const
+    DEFAULT_VIEW_UNIT: 'week' as const,
+    LAYOUT: {
+      HEADER_HEIGHT: 120,
+      SIDEBAR_WIDTH: 300,
+      ROW_HEIGHT: {
+        PROJECT: 48,
+        TASK: 40,
+        SUBTASK: 32
+      }
+    }
   }
 } as const
 
@@ -79,7 +73,7 @@ export const PROJECT_COLORS: ProjectColor[] = [
   { name: "ティール", value: "#14b8a6" },
 ] as const
 
-// キーボードショートカット（タイムライン機能追加）
+// キーボードショートカット
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Enter", description: "同じレベルで新規タスク追加" },
   { key: "Tab", description: "選択したタスクの子タスクを追加" },
@@ -93,13 +87,11 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Shift + ↑/↓", description: "複数タスクを選択" },
   { key: "Ctrl + A", description: "すべてのタスクを選択" },
   { key: "Escape", description: "選択解除・詳細パネルから戻る" },
-  // タイムライン専用ショートカット
   { key: "Ctrl + T", description: "タイムラインビューに切り替え" },
   { key: "Ctrl + L", description: "リストビューに切り替え" },
   { key: "Ctrl + +", description: "ズームイン" },
   { key: "Ctrl + -", description: "ズームアウト" },
   { key: "Ctrl + 0", description: "ズームリセット" },
-  { key: "Ctrl + F", description: "画面にフィット" },
   { key: "Home", description: "今日の位置にスクロール" },
 ] as const
 
@@ -118,7 +110,7 @@ export const ERROR_MESSAGES = {
   SERVER_ERROR: 'サーバーエラーが発生しました',
   UNKNOWN_ERROR: '予期しないエラーが発生しました',
   TASK_OPERATION_ERROR: 'タスク操作でエラーが発生しました',
-  TIMELINE_ERROR: 'タイムライン表示でエラーが発生しました', // 新規追加
+  TIMELINE_ERROR: 'タイムライン表示でエラーが発生しました',
 } as const
 
 // デフォルト値
@@ -135,11 +127,11 @@ export const VIEW_MODES = {
   TIMELINE: 'timeline'
 } as const
 
-// タイムライン用サンプルデータ（製造業向け） - mutable版
+// タイムライン用最小サンプルデータ
 export const SAMPLE_TIMELINE_PROJECTS = [
   {
     id: 'PRJ001',
-    name: '生産ライン A設備更新プロジェクト',
+    name: '生産ライン A設備更新',
     color: '#3B82F6',
     expanded: true,
     collapsed: false,
@@ -165,97 +157,6 @@ export const SAMPLE_TIMELINE_PROJECTS = [
             status: 'completed' as const,
             milestone: false,
             process: '企画・設計'
-          },
-          {
-            id: 'STSK002',
-            name: '要求仕様書作成',
-            startDate: new Date(2025, 4, 6),
-            dueDate: new Date(2025, 4, 10),
-            status: 'completed' as const,
-            milestone: false,
-            process: '企画・設計'
-          },
-          {
-            id: 'STSK003',
-            name: 'ベンダー選定',
-            startDate: new Date(2025, 4, 11),
-            dueDate: new Date(2025, 4, 15),
-            status: 'completed' as const,
-            milestone: true,
-            process: '企画・設計'
-          }
-        ]
-      },
-      {
-        id: 'TSK002',
-        name: '設備発注・製造',
-        startDate: new Date(2025, 4, 16),
-        dueDate: new Date(2025, 5, 15),
-        status: 'in-progress' as const,
-        milestone: false,
-        process: '調達・製造',
-        line: 'ライン A',
-        expanded: true,
-        subtasks: [
-          {
-            id: 'STSK004',
-            name: '正式発注',
-            startDate: new Date(2025, 4, 16),
-            dueDate: new Date(2025, 4, 20),
-            status: 'completed' as const,
-            milestone: true,
-            process: '調達・製造'
-          },
-          {
-            id: 'STSK005',
-            name: '設備製造',
-            startDate: new Date(2025, 4, 21),
-            dueDate: new Date(2025, 5, 10),
-            status: 'in-progress' as const,
-            milestone: false,
-            process: '調達・製造'
-          },
-          {
-            id: 'STSK006',
-            name: 'FAT実施',
-            startDate: new Date(2025, 5, 11),
-            dueDate: new Date(2025, 5, 15),
-            status: 'not-started' as const,
-            milestone: true,
-            process: '調達・製造'
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'PRJ002',
-    name: '生産ライン B効率化プロジェクト',
-    color: '#10B981',
-    expanded: true,
-    collapsed: false,
-    process: '効率化',
-    line: 'ライン B',
-    tasks: [
-      {
-        id: 'TSK004',
-        name: '現状分析・改善提案',
-        startDate: new Date(2025, 4, 10),
-        dueDate: new Date(2025, 4, 25),
-        status: 'overdue' as const,
-        milestone: false,
-        process: '分析・企画',
-        line: 'ライン B',
-        expanded: false,
-        subtasks: [
-          {
-            id: 'STSK010',
-            name: 'タクトタイム測定',
-            startDate: new Date(2025, 4, 10),
-            dueDate: new Date(2025, 4, 15),
-            status: 'completed' as const,
-            milestone: false,
-            process: '分析・企画'
           }
         ]
       }

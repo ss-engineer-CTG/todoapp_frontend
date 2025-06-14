@@ -1,13 +1,14 @@
-// システムプロンプト準拠: 共通型定義（タイムライン機能拡張版）
+// システムプロンプト準拠: 共通型定義（軽量化版）
 
-// UI関連型（簡素化）
-export type AreaType = "projects" | "tasks" | "details" | "timeline" // timeline追加
+// UI関連型
+export type AreaType = "projects" | "tasks" | "details" | "timeline"
 export type BatchOperation = 'complete' | 'incomplete' | 'delete' | 'copy'
+export type AppViewMode = 'tasklist' | 'timeline'
 
 // タスクステータス型
 export type TaskStatus = 'completed' | 'in-progress' | 'not-started' | 'overdue'
 
-// 基本エンティティ型（全機能で共有）
+// 基本エンティティ型
 export interface Project {
   id: string
   name: string
@@ -15,10 +16,6 @@ export interface Project {
   collapsed: boolean
   createdAt?: Date
   updatedAt?: Date
-  // タイムライン拡張フィールド
-  expanded?: boolean
-  process?: string
-  line?: string
 }
 
 export interface Task {
@@ -36,15 +33,7 @@ export interface Task {
   collapsed: boolean
   createdAt?: Date
   updatedAt?: Date
-  // 草稿フラグ（簡素化）
   _isDraft?: boolean
-  // タイムライン拡張フィールド
-  expanded?: boolean
-  milestone?: boolean
-  process?: string
-  line?: string
-  subtasks?: Task[]
-  status?: TaskStatus
 }
 
 // 設定・定数型
@@ -58,5 +47,32 @@ export interface KeyboardShortcut {
   description: string
 }
 
-// アプリビューモード
-export type AppViewMode = 'tasklist' | 'timeline'
+// フォーカス管理型
+export interface FocusManagement {
+  activeArea: AreaType
+  lastFocusedTaskId: string | null
+  shouldMaintainTaskFocus: boolean
+  detailPanelAutoShow: boolean
+  preventNextFocusChange: boolean
+}
+
+// タスク編集状態管理型
+export interface TaskEditingState {
+  name: string
+  startDate: Date | null
+  dueDate: Date | null
+  assignee: string
+  notes: string
+  hasChanges: boolean
+  isStartDateCalendarOpen: boolean
+  isDueDateCalendarOpen: boolean
+  focusTransitionMode: 'navigation' | 'calendar-selection'
+  canSave: boolean
+}
+
+// 選択状態管理型
+export interface SelectionState {
+  selectedId: string | null
+  selectedIds: string[]
+  isMultiSelectMode: boolean
+}

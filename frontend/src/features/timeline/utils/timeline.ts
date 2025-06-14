@@ -1,9 +1,10 @@
-// システムプロンプト準拠：タイムライン計算ユーティリティ統合
+// システムプロンプト準拠：タイムライン統合ユーティリティ（軽量化版）
 // DRY原則：計算ロジックの一元化、KISS原則：シンプルな関数群
 
-import { getDateType } from './holidayData'
+import { format, parseISO, isValid } from 'date-fns'
+import { ja } from 'date-fns/locale'
 
-// ズーム設定
+// ===== 基本設定 =====
 export const ZOOM_CONFIG = {
   min: 10,
   max: 200,
@@ -11,25 +12,75 @@ export const ZOOM_CONFIG = {
   step: 10
 } as const
 
-// 基準サイズ（100%時のサイズ）
 export const BASE_SIZES = {
-  cellWidth: {
-    day: 30,
-    week: 20
-  },
-  rowHeight: {
-    project: 32,
-    task: 48,
-    subtask: 40
-  },
-  fontSize: {
-    base: 14,
-    small: 12,
-    large: 16
-  }
+  cellWidth: { day: 30, week: 20 },
+  rowHeight: { project: 48, task: 40, subtask: 32 },
+  fontSize: { base: 14, small: 12, large: 16 }
 } as const
 
-// 動的フォントサイズ計算
+// ===== 日本の祝日データ（2025年） =====
+export interface Holiday {
+  date: Date
+  name: string
+  type: 'national' | 'substitute'
+}
+
+export const holidays2025: Holiday[] = [
+  { date: new Date(2025, 0, 1), name: '元日', type: 'national' },
+  { date: new Date(2025, 0, 13), name: '成人の日', type: 'national' },
+  { date: new Date(2025, 1, 11), name: '建国記念の日', type: 'national' },
+  { date: new Date(2025, 1, 23), name: '天皇誕生日', type: 'national' },
+  { date: new Date(2025, 2, 20), name: '春分の日', type: 'national' },
+  { date: new Date(2025, 3, 29), name: '昭和の日', type: 'national' },
+  { date: new Date(2025, 4, 3), name: '憲法記念日', type: 'national' },
+  { date: new Date(2025, 4, 4), name: 'みどりの日', type: 'national' },
+  { date: new Date(2025, 4, 5), name: 'こどもの日', type: 'national' },
+  { date: new Date(2025, 6, 21), name: '海の日', type: 'national' },
+  { date: new Date(2025, 7, 11), name: '山の日', type: 'national' },
+  { date: new Date(2025, 8, 15), name: '敬老の日', type: 'national' },
+  { date: new Date(2025, 8, 23), name: '秋分の日', type: 'national' },
+  { date: new Date(2025, 9, 13), name: 'スポーツの日', type: 'national' },
+  { date: new Date(2025, 10, 3), name: '文化の日', type: 'national' },
+  { date: new Date(2025, 10, 23), name: '勤労感謝の日', type: 'national' }
+]
+
+// ===== 日付ユーティリティ =====
+export type DateType = 'weekday' | 'saturday' | 'sunday' | 'holiday'
+
+export const isHoliday = (date: Date): boolean => {
+  return holidays2025.some(holiday => 
+    holiday.date.getFullYear() === date.getFullYear() &&
+    holiday.date.getMonth() === date.getMonth() &&
+    holiday.date.getDate() === date.getDate()
+  )
+}
+
+export const getDateType = (date: Date): DateType => {
+  if (isHoliday(date)) return 'holiday'
+  if (date.getDay() === 0) return 'sunday'
+  if (date.getDay() === 6) return 'saturday'
+  return 'weekday'
+}
+
+export const formatDate = (date: Date | string | null | undefined): string => {
+  try {
+    if (!date) return '未設定'
+    const dateObj = typeof date === 'string' ? parseISO(date) : date
+    
+    if (!isValid(dateObj)) return '無効な日付'
+    
+    return format(dateObj, 'yyyy年M月d日', { locale: ja })
+  } catch (error) {
+    return '無効な日付'
+  }
+}
+
+export const getMonthName = (date: Date): string => {
+  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+  return months[date.getMonth()]
+}
+
+// ===== 動的サイズ計算 =====
 export const calculateFontSize = (zoom: number) => {
   if (zoom <= 30) return { base: 8, small: 7, large: 9, week: 8 }
   if (zoom <= 50) return { base: 10, small: 9, large: 11, week: 10 }
@@ -39,7 +90,6 @@ export const calculateFontSize = (zoom: number) => {
   return { base: 18, small: 16, large: 20, week: 17 }
 }
 
-// 動的サイズ計算
 export const calculateDynamicSizes = (zoomLevel: number, viewUnit: 'day' | 'week') => {
   const zoomRatio = zoomLevel / 100
   
@@ -56,7 +106,7 @@ export const calculateDynamicSizes = (zoomLevel: number, viewUnit: 'day' | 'week
   }
 }
 
-// 表示レベル判定
+// ===== 表示レベル判定 =====
 export const getDisplayLevel = (zoom: number): 'minimal' | 'compact' | 'reduced' | 'full' => {
   if (zoom <= 30) return 'minimal'
   if (zoom <= 50) return 'compact'
@@ -64,39 +114,23 @@ export const getDisplayLevel = (zoom: number): 'minimal' | 'compact' | 'reduced'
   return 'full'
 }
 
-// テキスト表示制御
 export const getDisplayText = (text: string, zoomLevel: number, maxLength?: number): string => {
   const displayLevel = getDisplayLevel(zoomLevel)
   
   switch (displayLevel) {
-    case 'minimal':
-      return ''
-    case 'compact':
-      return text.length > 5 ? text.substring(0, 3) + '…' : text
+    case 'minimal': return ''
+    case 'compact': return text.length > 5 ? text.substring(0, 3) + '…' : text
     case 'reduced':
       const shortLength = maxLength || Math.floor(text.length * 0.7)
       return text.length > shortLength ? text.substring(0, shortLength - 1) + '…' : text
-    default:
-      return text
+    default: return text
   }
 }
 
-// 時間範囲計算
+// ===== 時間範囲計算 =====
 export const calculateTimeRange = (viewUnit: 'day' | 'week', today: Date) => {
-  const viewConfigs = {
-    'day': {
-      days: 365,
-      ratio: [0.3, 0.7],
-      label: '日表示'
-    },
-    'week': {
-      days: 365,
-      ratio: [0.3, 0.7],
-      label: '週表示'
-    }
-  }
+  const config = { days: 365, ratio: [0.3, 0.7] }
   
-  const config = viewConfigs[viewUnit]
   const beforeDays = Math.floor(config.days * config.ratio[0])
   const afterDays = Math.floor(config.days * config.ratio[1])
   
@@ -108,7 +142,6 @@ export const calculateTimeRange = (viewUnit: 'day' | 'week', today: Date) => {
   let actualStartDate = rawStartDate
   let actualEndDate = rawEndDate
   
-  // 週表示の場合は月曜日基準に調整
   if (viewUnit === 'week') {
     actualStartDate = new Date(rawStartDate)
     while (actualStartDate.getDay() !== 1) {
@@ -127,11 +160,11 @@ export const calculateTimeRange = (viewUnit: 'day' | 'week', today: Date) => {
     rawStartDate,
     rawEndDate,
     unit: viewUnit,
-    label: config.label
+    label: viewUnit === 'day' ? '日表示' : '週表示'
   }
 }
 
-// 表示日付配列生成
+// ===== 表示日付配列生成 =====
 export const generateVisibleDates = (startDate: Date, endDate: Date, viewUnit: 'day' | 'week') => {
   if (viewUnit === 'week') {
     const weeks = []
@@ -153,7 +186,7 @@ export const generateVisibleDates = (startDate: Date, endDate: Date, viewUnit: '
   }
 }
 
-// 日付位置計算
+// ===== 日付位置計算 =====
 export const getDatePosition = (
   date: Date, 
   startDate: Date, 
@@ -176,7 +209,7 @@ export const getDatePosition = (
   }
 }
 
-// プロジェクト名動的位置計算
+// ===== プロジェクト名動的位置計算 =====
 export const getProjectNamePosition = (scrollLeft: number, timelineWidth = 1200): number => {
   const visibleAreaWidth = Math.min(timelineWidth, 800)
   const nameWidth = 200
@@ -184,28 +217,16 @@ export const getProjectNamePosition = (scrollLeft: number, timelineWidth = 1200)
   return Math.max(8, Math.min(scrollLeft + 8, scrollLeft + visibleAreaWidth - nameWidth - 8))
 }
 
-// 日付フォーマット
-export const formatDate = (date: Date): string => {
-  return `${date.getMonth() + 1}/${date.getDate()}`
-}
-
-// 月名取得（エクスポート追加）
-export const getMonthName = (date: Date): string => {
-  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
-  return months[date.getMonth()]
-}
-
-// 月の境界判定
+// ===== 境界判定 =====
 export const isFirstDayOfMonth = (date: Date, index: number, visibleDates: Date[]): boolean => {
   return index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
 }
 
-// 週の境界判定
 export const isFirstDayOfWeek = (date: Date): boolean => {
   return date.getDay() === 1
 }
 
-// 日付セルクラス取得
+// ===== 日付セルクラス取得 =====
 export const getDateCellClass = (date: Date, today: Date, theme: string): string => {
   const isToday = date.toDateString() === today.toDateString()
   if (isToday) return theme === 'dark' ? 'bg-yellow-900/40 border-yellow-400' : 'bg-yellow-100 border-yellow-400'
@@ -217,7 +238,7 @@ export const getDateCellClass = (date: Date, today: Date, theme: string): string
   return ''
 }
 
-// 週背景色取得
+// ===== 週背景色取得 =====
 export const getWeekBackground = (date: Date, startDate: Date, theme: string): string => {
   const mondayOfWeek = new Date(date)
   const daysSinceMonday = (date.getDay() + 6) % 7
@@ -227,4 +248,14 @@ export const getWeekBackground = (date: Date, startDate: Date, theme: string): s
   return weekNumber % 2 === 0 ? 
     (theme === 'dark' ? 'bg-gray-900/60' : 'bg-gray-50/60') : 
     (theme === 'dark' ? 'bg-gray-800/60' : 'bg-white/60')
+}
+
+// ===== 週番号計算 =====
+export const getWeekNumber = (date: Date): number => {
+  const mondayOfWeek = new Date(date)
+  const daysSinceMonday = (date.getDay() + 6) % 7
+  mondayOfWeek.setDate(date.getDate() - daysSinceMonday)
+  
+  const startOfYear = new Date(date.getFullYear(), 0, 1)
+  return Math.ceil((mondayOfWeek.getTime() - startOfYear.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1
 }

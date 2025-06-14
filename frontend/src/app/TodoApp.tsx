@@ -1,5 +1,5 @@
-// システムプロンプト準拠：メインアプリロジック統合・簡素化（タイムライン機能統合版）
-// 修正内容：タイムラインビュー統合、ビューモード切り替え機能追加、固定ヘッダー対応
+// システムプロンプト準拠：メインアプリロジック統合・軽量化版
+// タイムライン統合、ビューモード切り替え機能、軽量化対応
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { AreaType, Task, AppViewMode } from '@core/types'
@@ -53,7 +53,7 @@ const TodoApp: React.FC = () => {
   const [isAddingProject, setIsAddingProject] = useState<boolean>(false)
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
   
-  // 新規追加：ビューモード管理
+  // ビューモード管理
   const [viewMode, setViewMode] = useState<AppViewMode>('tasklist')
   const [timelineProjects, setTimelineProjects] = useState<TimelineProject[]>([])
 
@@ -69,7 +69,7 @@ const TodoApp: React.FC = () => {
 
   const taskRelationMap = buildTaskRelationMap(allTasksWithDrafts)
 
-  // フィルタリング・ソート済みタスク（型安全性強化）
+  // フィルタリング・ソート済みタスク
   const filteredTasks = (() => {
     try {
       const filtered = filterTasks(allTasksWithDrafts, selectedProjectId, showCompleted, taskRelationMap)
@@ -114,7 +114,7 @@ const TodoApp: React.FC = () => {
     apiActions: taskApiActions
   })
 
-  // 新規追加：ビューモード切り替え
+  // ビューモード切り替え
   const handleViewModeChange = useCallback((newMode: AppViewMode) => {
     logger.info('View mode changing', { from: viewMode, to: newMode })
     setViewMode(newMode)
@@ -129,7 +129,7 @@ const TodoApp: React.FC = () => {
     }
   }, [viewMode, currentProjects, allTasksWithDrafts])
 
-  // 新規追加：タスクリスト→タイムライン データ変換
+  // タスクリスト→タイムライン データ変換（軽量化版）
   const convertTasklistToTimeline = useCallback((projects: any[], tasks: Task[]): TimelineProject[] => {
     try {
       return projects.map(project => {
@@ -171,19 +171,13 @@ const TodoApp: React.FC = () => {
     }
   }, [])
 
-  // 新規追加：タイムライン→タスクリスト データ更新
+  // タイムライン→タスクリスト データ更新
   const handleTimelineProjectsUpdate = useCallback((updatedTimelineProjects: TimelineProject[]) => {
     setTimelineProjects(updatedTimelineProjects)
-    
-    // タイムラインの変更をタスクリストに反映
-    try {
-      logger.info('Timeline projects updated', { count: updatedTimelineProjects.length })
-    } catch (error) {
-      logger.error('Timeline to tasklist conversion failed', { error })
-    }
+    logger.info('Timeline projects updated', { count: updatedTimelineProjects.length })
   }, [])
 
-  // 草稿タスク作成（統一ハンドラー）
+  // 草稿タスク作成
   const handleAddDraftTask = useCallback(async (parentId: string | null = null, level = 0) => {
     try {
       if (!selectedProjectId) {
@@ -283,7 +277,7 @@ const TodoApp: React.FC = () => {
     }
   }, [toggleTaskCollapse, loadTasks, selectedProjectId])
 
-  // 新規追加：拡張キーボード処理
+  // キーボード処理
   const extendedKeyboardProps = {
     ...useKeyboard({
       tasks: allTasksWithDrafts,
@@ -310,15 +304,12 @@ const TodoApp: React.FC = () => {
       onCancelDraft: handleCancelDraft,
       copiedTasksCount: copiedTasks.length,
       isInputActive: isAddingProject || isEditingProject
-    }),
-    // タイムライン専用ショートカット
-    onViewModeChange: handleViewModeChange
+    })
   }
 
-  // 新規追加：拡張キーボードイベント処理
+  // 拡張キーボードイベント処理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // ビューモード切り替えショートカット
       if (e.ctrlKey && e.key === 't') {
         e.preventDefault()
         handleViewModeChange('timeline')
@@ -332,7 +323,7 @@ const TodoApp: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleViewModeChange])
 
-  // タスク保存（null安全性強化）
+  // タスク保存
   const handleSaveTask = useCallback(async (taskId: string, updates: any): Promise<Task | null> => {
     try {
       const task = allTasksWithDrafts.find(t => t.id === taskId)
@@ -436,7 +427,7 @@ const TodoApp: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* ビューモード切り替えボタン（修正：タイムライン時は非表示） */}
+      {/* ビューモード切り替えボタン */}
       {viewMode === 'tasklist' && (
         <div className="absolute top-4 left-4 z-50 flex bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <button

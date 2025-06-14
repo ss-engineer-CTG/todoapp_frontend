@@ -1,4 +1,5 @@
-// システムプロンプト準拠：基盤ユーティリティ統合（logger + errorHandler + dateUtils）
+// システムプロンプト準拠：基盤ユーティリティ統合（軽量化版）
+// レイアウト計算機能も統合
 
 import React from 'react'
 import { format, parseISO, isValid } from 'date-fns'
@@ -120,6 +121,52 @@ export const convertApiResponseDate = (dateString: string | null | undefined): D
 
 export const isValidDate = (date: any): date is Date => {
   return date instanceof Date && isValid(date)
+}
+
+// ===== レイアウト計算（layout.tsから統合） =====
+export const calculateScrollPosition = (
+  targetDate: Date,
+  startDate: Date,
+  cellWidth: number,
+  viewUnit: 'day' | 'week' = 'week'
+): number => {
+  
+  if (viewUnit === 'week') {
+    // 週の開始日（月曜日）を取得
+    const startOfWeek = new Date(targetDate)
+    while (startOfWeek.getDay() !== 1) {
+      startOfWeek.setDate(startOfWeek.getDate() - 1)
+    }
+    
+    const weeksDiff = Math.round(
+      (startOfWeek.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)
+    )
+    const daysInWeek = (targetDate.getDay() + 6) % 7
+    
+    return weeksDiff * cellWidth * 7 + daysInWeek * cellWidth
+  } else {
+    // 日表示の場合
+    const diffDays = Math.round(
+      (targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    return diffDays * cellWidth
+  }
+}
+
+export const isElementInViewport = (
+  elementLeft: number,
+  elementWidth: number,
+  viewportLeft: number,
+  viewportWidth: number,
+  margin: number = 0
+): boolean => {
+  const elementRight = elementLeft + elementWidth
+  const viewportRight = viewportLeft + viewportWidth
+  
+  return !(
+    elementRight < viewportLeft - margin ||
+    elementLeft > viewportRight + margin
+  )
 }
 
 // ===== ローディングスピナー（統合） =====
