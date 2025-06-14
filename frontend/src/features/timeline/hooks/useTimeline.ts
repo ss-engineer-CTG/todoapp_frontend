@@ -1,5 +1,5 @@
 // システムプロンプト準拠：タイムライン統合フック（軽量化版）
-// 修正内容：MINIMAL_SAMPLE_PROJECTS完全削除、サンプルデータフォールバック削除
+// 修正内容：今日スクロール機能の精度向上、getDatePosition関数活用
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Task, Project } from '@core/types'
@@ -9,7 +9,8 @@ import {
   calculateDynamicSizes, 
   calculateTimeRange, 
   generateVisibleDates,
-  getDisplayLevel 
+  getDisplayLevel,
+  getDatePosition // 🎯 修正：正確な位置計算のため追加インポート
 } from '../utils/timeline'
 import { logger } from '@core/utils/core'
 
@@ -67,7 +68,6 @@ export const useTimeline = (
     theme: initialTheme
   })
 
-  // 修正：プロジェクトデータの初期化を空配列に変更（サンプルデータ削除）
   const [projects, setProjectsState] = useState<TimelineProject[]>([])
 
   // DOM参照
@@ -135,7 +135,6 @@ export const useTimeline = (
     }))
   }, [])
 
-  // 修正：プロジェクト設定（サンプルデータフォールバック削除）
   const setProjects = useCallback((newProjects: TimelineProject[]) => {
     logger.info('Setting timeline projects', { 
       projectCount: newProjects.length,
@@ -227,46 +226,61 @@ export const useTimeline = (
     setZoomLevel(clampedZoom)
   }, [visibleDates.length, state.viewUnit, setZoomLevel])
 
-  // 今日にスクロール
+  // 🎯 修正：今日にスクロール（精度向上・DRY原則適用）
   const scrollToToday = useCallback((): number => {
-    if (timelineRef.current && visibleDates.length > 0) {
-      try {
-        // 今日の位置を計算
-        const todayIndex = visibleDates.findIndex(date => 
-          date.toDateString() === today.toDateString()
-        )
-        
-        if (todayIndex >= 0) {
-          const todayPosition = state.viewUnit === 'week'
-            ? todayIndex * dimensions.cellWidth * 7
-            : todayIndex * dimensions.cellWidth
-          
-          const containerWidth = timelineRef.current.clientWidth
-          const scrollPosition = Math.max(0, todayPosition - containerWidth / 2)
-          
-          logger.info('Scrolling to today', {
-            todayIndex,
-            todayPosition,
-            scrollPosition
-          })
-          
-          timelineRef.current.scrollTo({
-            left: scrollPosition,
-            behavior: 'smooth'
-          })
-          
-          return scrollPosition
-        } else {
-          logger.warn('Today not found in visible dates range')
-          return 0
-        }
-      } catch (error) {
-        logger.error('Scroll to today failed', { error })
-        return 0
-      }
+    if (!timelineRef.current) {
+      logger.warn('Timeline ref not available for scroll to today')
+      return 0
     }
-    return 0
-  }, [visibleDates, today, state.viewUnit, dimensions.cellWidth])
+
+    try {
+      // 🔧 修正：getDatePosition関数を使用して正確な位置計算（DRY原則）
+      const todayPosition = getDatePosition(
+        today, 
+        timeRange.startDate, 
+        dimensions.cellWidth, 
+        state.viewUnit
+      )
+      
+      const containerWidth = timelineRef.current.clientWidth
+      
+      // 🔧 修正：より正確な画面センター計算
+      const scrollPosition = Math.max(0, todayPosition - containerWidth / 2)
+      
+      logger.info('Scrolling to today with improved calculation', {
+        today: today.toISOString().split('T')[0],
+        todayPosition,
+        containerWidth,
+        scrollPosition,
+        viewUnit: state.viewUnit,
+        cellWidth: dimensions.cellWidth,
+        startDate: timeRange.startDate.toISOString().split('T')[0],
+        calculationMethod: 'getDatePosition_unified'
+      })
+      
+      // スムーズスクロール実行
+      timelineRef.current.scrollTo({
+        left: scrollPosition,
+        behavior: 'smooth'
+      })
+      
+      // スクロール位置の状態更新
+      setScrollLeft(scrollPosition)
+      
+      return scrollPosition
+      
+    } catch (error) {
+      logger.error('Scroll to today failed', { 
+        error, 
+        today, 
+        timeRange: {
+          start: timeRange.startDate.toISOString().split('T')[0],
+          end: timeRange.endDate.toISOString().split('T')[0]
+        }
+      })
+      return 0
+    }
+  }, [today, timeRange.startDate, dimensions.cellWidth, state.viewUnit, setScrollLeft])
 
   return {
     state,

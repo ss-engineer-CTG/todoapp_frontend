@@ -1,5 +1,5 @@
 // システムプロンプト準拠：キーボード処理簡素化（useKeyboardShortcuts + useTaskRelations統合）
-// 修正内容：左矢印キーの親タスク遷移機能を削除
+// 修正内容：Homeキーによる今日スクロール機能追加
 
 import { useEffect, useRef, useCallback } from 'react'
 import { Task, Project, AreaType } from '@core/types'
@@ -29,6 +29,8 @@ interface UseKeyboardProps {
   onCancelDraft: (taskId: string) => void
   copiedTasksCount: number
   isInputActive: boolean
+  // 🎯 新規追加：タイムライン用今日スクロール機能
+  onScrollToToday?: () => void
 }
 
 export const useKeyboard = (props: UseKeyboardProps) => {
@@ -116,10 +118,10 @@ export const useKeyboard = (props: UseKeyboardProps) => {
             }
           }
           
-          // 優先度2：詳細パネルを閉じ、選択状態も解除（修正箇所）
+          // 優先度2：詳細パネルを閉じ、選択状態も解除
           if (props.activeArea === "details" && props.isDetailPanelVisible) {
             e.preventDefault()
-            props.setSelectedTaskId(null) // 選択解除を追加
+            props.setSelectedTaskId(null)
             props.setActiveArea("tasks")
             return
           } 
@@ -127,7 +129,6 @@ export const useKeyboard = (props: UseKeyboardProps) => {
           // 優先度3：複数選択モードを解除
           else if (props.isMultiSelectMode) {
             e.preventDefault()
-            // clearSelection は上位で処理
             return
           }
         }
@@ -135,6 +136,16 @@ export const useKeyboard = (props: UseKeyboardProps) => {
         // 詳細パネル内Tab制限
         if (e.key === "Tab" && isDetailPanelInputFocused()) {
           if (handleDetailTabNavigation(e)) return
+        }
+
+        // 🎯 新規追加：Homeキーで今日スクロール（タイムライン専用）
+        if (e.key === "Home") {
+          if (props.activeArea === "timeline" && props.onScrollToToday) {
+            e.preventDefault()
+            logger.info('Home key pressed - scrolling to today in timeline')
+            props.onScrollToToday()
+            return
+          }
         }
 
         // メインキーボードショートカット
@@ -260,7 +271,6 @@ export const useKeyboard = (props: UseKeyboardProps) => {
             }
             break
 
-          // 修正：左矢印キーの親タスク遷移を削除、エリア間遷移のみに簡素化
           case "ArrowLeft":
             e.preventDefault()
             if (props.activeArea === "details") {
@@ -268,7 +278,6 @@ export const useKeyboard = (props: UseKeyboardProps) => {
             } else if (props.activeArea === "tasks") {
               props.setActiveArea("projects")
             }
-            // 親タスクへの遷移処理を削除
             break
 
           case "a":

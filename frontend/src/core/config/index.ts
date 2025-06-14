@@ -1,5 +1,5 @@
 // システムプロンプト準拠：統一設定管理（軽量化版）
-// 修正内容：SAMPLE_TIMELINE_PROJECTS完全削除、サンプルデータ削除
+// 修正内容：今日スクロール用Homeキーショートカット説明追加
 
 // 基本型定義
 export interface ProjectColor {
@@ -74,7 +74,7 @@ export const PROJECT_COLORS: ProjectColor[] = [
   { name: "ティール", value: "#14b8a6" },
 ] as const
 
-// キーボードショートカット
+// 🎯 修正：キーボードショートカット（Homeキー追加）
 export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Enter", description: "同じレベルで新規タスク追加" },
   { key: "Tab", description: "選択したタスクの子タスクを追加" },
@@ -93,7 +93,8 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
   { key: "Ctrl + +", description: "ズームイン" },
   { key: "Ctrl + -", description: "ズームアウト" },
   { key: "Ctrl + 0", description: "ズームリセット" },
-  { key: "Home", description: "今日の位置にスクロール" },
+  // 🎯 新規追加：今日スクロール機能
+  { key: "Home", description: "今日の位置にスクロール（タイムラインビュー）" },
 ] as const
 
 // 一括操作タイプ
@@ -127,7 +128,3 @@ export const VIEW_MODES = {
   TASKLIST: 'tasklist',
   TIMELINE: 'timeline'
 } as const
-
-// 修正：SAMPLE_TIMELINE_PROJECTS完全削除
-// タイムライン用サンプルデータは不要となったため削除
-// DBデータのみに依存するクリーンな設計に変更

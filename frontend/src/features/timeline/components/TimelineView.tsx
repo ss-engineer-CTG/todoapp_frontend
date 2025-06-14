@@ -1,5 +1,5 @@
 // システムプロンプト準拠：メインタイムラインビューコンポーネント（軽量化版）
-// 修正内容：サンプルデータ処理削除、useEffectの依存配列修正、循環依存解決
+// 修正内容：今日スクロール機能のプロパティ中継、キーボードイベント統合
 
 import React, { useCallback } from 'react'
 import { 
@@ -25,7 +25,9 @@ import {
 export const TimelineView: React.FC<TimelineViewProps> = ({
   projects: initialProjects,
   onProjectsUpdate,
-  onViewModeChange
+  onViewModeChange,
+  // 🎯 新規追加：今日スクロール機能プロパティ
+  onScrollToToday
 }) => {
   const {
     state,
@@ -50,7 +52,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   const today = new Date()
 
-  // 修正：プロジェクトデータの初期化（一度のみ実行、循環依存回避）
+  // プロジェクトデータの初期化（一度のみ実行、循環依存回避）
   React.useEffect(() => {
     if (initialProjects.length > 0 && projects.length === 0) {
       logger.info('Initializing timeline with projects data', { 
@@ -60,9 +62,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     }
   }, [initialProjects.length, projects.length, setProjects])
 
-  // 修正：プロジェクト更新の伝播（循環依存回避、条件付き実行）
+  // プロジェクト更新の伝播（循環依存回避、条件付き実行）
   React.useEffect(() => {
-    // プロジェクトデータに変更があり、かつ空でない場合のみ伝播
     if (projects.length > 0 && JSON.stringify(projects) !== JSON.stringify(initialProjects)) {
       logger.info('Timeline projects state changed, propagating update', { 
         projectCount: projects.length 
@@ -77,6 +78,21 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
       fitToScreen(timelineRef.current.clientWidth)
     }
   }, [fitToScreen])
+
+  // 🎯 修正：今日スクロール機能のラッパー（上位コンポーネントとの連携）
+  const handleScrollToToday = useCallback(() => {
+    logger.info('Today scroll requested from timeline view')
+    const scrollPosition = scrollToToday()
+    return scrollPosition
+  }, [scrollToToday])
+
+  // 🔧 修正：今日スクロール関数を上位コンポーネントに登録
+  React.useEffect(() => {
+    if (onScrollToToday) {
+      logger.info('Registering scroll to today function with parent component')
+      onScrollToToday(handleScrollToToday)
+    }
+  }, [onScrollToToday, handleScrollToToday])
 
   // 統合スクロール処理（日付ヘッダーとタイムライングリッドの同期）
   const handleTimelineScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -167,7 +183,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   const classes = getAppClasses()
 
-  // 修正：プロジェクトデータが空の場合の表示
+  // プロジェクトデータが空の場合の表示
   if (projects.length === 0) {
     return (
       <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
@@ -178,7 +194,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
           onViewUnitChange={setViewUnit}
           theme={state.theme}
           onThemeToggle={toggleTheme}
-          onTodayClick={scrollToToday}
+          onTodayClick={handleScrollToToday}
           onFitToScreen={handleFitToScreen}
           onExpandAll={expandAllProjects}
           onCollapseAll={collapseAllProjects}
@@ -214,7 +230,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
         onViewUnitChange={setViewUnit}
         theme={state.theme}
         onThemeToggle={toggleTheme}
-        onTodayClick={scrollToToday}
+        onTodayClick={handleScrollToToday}
         onFitToScreen={handleFitToScreen}
         onExpandAll={expandAllProjects}
         onCollapseAll={collapseAllProjects}

@@ -1,5 +1,5 @@
 // システムプロンプト準拠：メインアプリロジック統合・軽量化版
-// 修正内容：サンプルデータ参照削除、循環依存解決、データフロー一方向化
+// 修正内容：タイムライン用キーボードショートカット統合、今日スクロール機能追加
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { AreaType, Task, AppViewMode } from '@core/types'
@@ -54,11 +54,13 @@ const TodoApp: React.FC = () => {
   
   // ビューモード管理
   const [viewMode, setViewMode] = useState<AppViewMode>('tasklist')
-  // 修正：タイムラインプロジェクトの初期化を空配列に変更
   const [timelineProjects, setTimelineProjects] = useState<TimelineProject[]>([])
 
   // 草稿タスク込みの全タスク管理
   const [allTasksWithDrafts, setAllTasksWithDrafts] = useState<Task[]>([])
+
+  // 🎯 新規追加：タイムライン用今日スクロール状態管理
+  const [timelineScrollToToday, setTimelineScrollToToday] = useState<(() => void) | null>(null)
 
   const currentProjects = projects.data || []
   const currentTasks = tasks.data || []
@@ -120,7 +122,6 @@ const TodoApp: React.FC = () => {
     setViewMode(newMode)
     
     if (newMode === 'timeline') {
-      // 修正：タスクリストからタイムライン用データに変換（サンプルデータフォールバック削除）
       const timelineData = convertTasklistToTimeline(currentProjects, allTasksWithDrafts)
       setTimelineProjects(timelineData)
       setActiveArea('timeline')
@@ -129,10 +130,9 @@ const TodoApp: React.FC = () => {
     }
   }, [viewMode, currentProjects, allTasksWithDrafts])
 
-  // 修正：タスクリスト→タイムライン データ変換（サンプルデータ削除）
+  // タスクリスト→タイムライン データ変換
   const convertTasklistToTimeline = useCallback((projects: any[], tasks: Task[]): TimelineProject[] => {
     try {
-      // DBデータが空の場合は空配列を返す（サンプルデータ使用しない）
       if (projects.length === 0) {
         logger.info('No projects data, returning empty timeline')
         return []
@@ -173,19 +173,25 @@ const TodoApp: React.FC = () => {
       })
     } catch (error) {
       logger.error('Timeline data conversion failed', { error })
-      // 修正：サンプルデータではなく空配列を返す
       return []
     }
   }, [])
 
-  // 修正：タイムライン→タスクリスト データ更新（循環依存回避）
+  // タイムライン→タスクリスト データ更新（循環依存回避）
   const handleTimelineProjectsUpdate = useCallback((updatedTimelineProjects: TimelineProject[]) => {
-    // 修正：viewMode === 'timeline'の時のみ更新処理を実行（循環依存回避）
     if (viewMode === 'timeline') {
       setTimelineProjects(updatedTimelineProjects)
       logger.info('Timeline projects updated', { count: updatedTimelineProjects.length })
     }
   }, [viewMode])
+
+  // 🎯 新規追加：タイムライン用今日スクロール処理
+  const handleTimelineScrollToToday = useCallback(() => {
+    logger.info('Timeline scroll to today requested from main app')
+    if (timelineScrollToToday) {
+      timelineScrollToToday()
+    }
+  }, [timelineScrollToToday])
 
   // 草稿タスク作成
   const handleAddDraftTask = useCallback(async (parentId: string | null = null, level = 0) => {
@@ -313,13 +319,16 @@ const TodoApp: React.FC = () => {
       },
       onCancelDraft: handleCancelDraft,
       copiedTasksCount: copiedTasks.length,
-      isInputActive: isAddingProject || isEditingProject
+      isInputActive: isAddingProject || isEditingProject,
+      // 🎯 新規追加：タイムライン用今日スクロール機能
+      onScrollToToday: handleTimelineScrollToToday
     })
   }
 
   // 拡張キーボードイベント処理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 🎯 修正：ビューモード切り替えショートカット
       if (e.ctrlKey && e.key === 't') {
         e.preventDefault()
         handleViewModeChange('timeline')
@@ -327,11 +336,17 @@ const TodoApp: React.FC = () => {
         e.preventDefault()
         handleViewModeChange('tasklist')
       }
+      // 🎯 新規追加：今日スクロールショートカット（タイムライン専用）
+      else if (e.key === 'Home' && activeArea === 'timeline') {
+        e.preventDefault()
+        logger.info('Home key pressed - triggering timeline scroll to today')
+        handleTimelineScrollToToday()
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleViewModeChange])
+  }, [handleViewModeChange, activeArea, handleTimelineScrollToToday])
 
   // タスク保存
   const handleSaveTask = useCallback(async (taskId: string, updates: any): Promise<Task | null> => {
@@ -474,6 +489,7 @@ const TodoApp: React.FC = () => {
           projects={timelineProjects}
           onProjectsUpdate={handleTimelineProjectsUpdate}
           onViewModeChange={handleViewModeChange}
+          onScrollToToday={setTimelineScrollToToday}
         />
       ) : (
         // タスクリストビュー（既存）

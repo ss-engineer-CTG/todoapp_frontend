@@ -1,9 +1,9 @@
 // システムプロンプト準拠：タイムライン機能専用型定義（軽量化版）
-// 修正内容：ビューモード変更機能の型定義を追加
+// 修正内容：今日スクロール機能の型定義を追加
 
 import { Task, Project, TaskStatus } from '@core/types'
 
-// ビューモード型（修正：AppViewModeをインポート）
+// ビューモード型
 export type AppViewMode = 'tasklist' | 'timeline'
 
 // タイムライン表示単位
@@ -59,15 +59,17 @@ export interface TimelineProject extends Project {
 
 // コンポーネントProps型
 
-// 修正：TimelineViewPropsにビューモード変更機能を追加
+// 🎯 修正：TimelineViewPropsに今日スクロール機能を追加
 export interface TimelineViewProps {
   projects: TimelineProject[]
   onProjectsUpdate: (projects: TimelineProject[]) => void
-  // 新規追加：リストビューに戻る機能
+  // リストビューに戻る機能
   onViewModeChange?: (mode: AppViewMode) => void
+  // 🎯 新規追加：今日スクロール機能のコールバック設定
+  onScrollToToday?: (scrollFunction: () => void) => void
 }
 
-// 修正：TimelineControlsPropsにビューモード変更機能を追加
+// TimelineControlsPropsは既存のまま（変更不要）
 export interface TimelineControlsProps {
   zoomLevel: number
   onZoomChange: (level: number) => void
@@ -79,6 +81,6 @@ export interface TimelineControlsProps {
   onFitToScreen: () => void
   onExpandAll: () => void
   onCollapseAll: () => void
-  // 新規追加：リストビューに戻る機能
+  // リストビューに戻る機能
   onViewModeChange?: (mode: AppViewMode) => void
 }
