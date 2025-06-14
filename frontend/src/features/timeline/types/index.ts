@@ -1,18 +1,20 @@
-// システムプロンプト準拠：タイムライン機能専用型定義（軽量化版）
-// 修正内容：今日スクロール機能の型定義を追加
+// システムプロンプト準拠：Timeline型定義統一（Task準拠・軽量化版）
+// 修正内容：ネスト構造削除、Tasklist準拠の平坦構造 + TaskRelationMap方式に統一
+// DRY原則：Task/Project基本構造の再利用、重複削除
 
 import { Task, Project, TaskStatus } from '@core/types'
+import { TaskRelationMap } from '@tasklist/types'
 
-// ビューモード型
+// ビューモード型（既存維持）
 export type AppViewMode = 'tasklist' | 'timeline'
 
-// タイムライン表示単位
+// タイムライン表示単位（既存維持）
 export type TimelineViewUnit = 'day' | 'week'
 
-// タイムライン表示レベル  
+// タイムライン表示レベル（既存維持）
 export type TimelineDisplayLevel = 'minimal' | 'compact' | 'reduced' | 'full'
 
-// 動的サイズ設定
+// 動的サイズ設定（既存維持）
 export interface DynamicSizes {
   cellWidth: number
   rowHeight: { project: number; task: number; subtask: number }
@@ -21,7 +23,7 @@ export interface DynamicSizes {
   zoomRatio: number
 }
 
-// 時間範囲設定
+// 時間範囲設定（既存維持）
 export interface TimeRange {
   startDate: Date
   endDate: Date
@@ -31,7 +33,7 @@ export interface TimeRange {
   label: string
 }
 
-// タイムライン状態
+// タイムライン状態（既存維持）
 export interface TimelineState {
   zoomLevel: number
   viewUnit: TimelineViewUnit
@@ -39,37 +41,72 @@ export interface TimelineState {
   theme: 'light' | 'dark'
 }
 
-// タイムライン拡張タスク
+// 🔧 修正：Timeline拡張タスク（ネスト構造削除、Task準拠）
 export interface TimelineTask extends Task {
-  subtasks?: TimelineTask[]
-  expanded?: boolean
-  milestone?: boolean
-  process?: string
-  line?: string
-  status?: TaskStatus
+  // ❌ 削除：subtasks?: TimelineTask[] - ネスト構造廃止
+  // ❌ 削除：expanded?: boolean - TaskRelationMapで管理
+  
+  // ✅ 既存のTask構造をそのまま継承
+  // parentId, level, collapsed等はTaskから継承
+  
+  // Timeline表示用の最小限プロパティのみ追加
+  status?: TaskStatus    // 表示用詳細ステータス
+  milestone?: boolean    // マイルストーン表示フラグ
+  process?: string      // プロセス名（任意）
+  line?: string         // ライン名（任意）
 }
 
-// タイムライン拡張プロジェクト
+// 🔧 修正：Timeline拡張プロジェクト（シンプル化）
 export interface TimelineProject extends Project {
-  expanded: boolean
-  process: string
-  line: string
-  tasks: TimelineTask[]
+  // ❌ 削除：tasks: TimelineTask[] - ネスト構造廃止
+  
+  // ✅ 既存のProject構造をそのまま継承
+  // collapsed等はProjectから継承
+  
+  // Timeline表示用の最小限プロパティのみ追加  
+  process: string       // プロセス名（表示用）
+  line: string         // ライン名（表示用）
 }
 
-// コンポーネントProps型
+// 🆕 新規：Timeline統合データ構造（Tasklist準拠）
+export interface TimelineData {
+  projects: TimelineProject[]        // プロジェクト配列
+  allTasks: TimelineTask[]          // 全タスクの平坦配列
+  taskRelationMap: TaskRelationMap  // 階層管理（Tasklist統一）
+  filteredTasks: TimelineTask[]     // 表示用フィルタ済みタスク
+}
 
-// 🎯 修正：TimelineViewPropsに今日スクロール機能を追加
+// 🆕 新規：階層表示制御情報
+export interface HierarchyDisplayInfo {
+  taskId: string
+  level: number
+  hasChildren: boolean
+  isVisible: boolean
+  indentLeft: number
+  connectionInfo?: {
+    showVerticalLine: boolean
+    showHorizontalLine: boolean
+    parentLeft: number
+    lineColor: string
+  }
+}
+
+// コンポーネントProps型（修正）
+
+// TimelineViewProps（onScrollToToday追加済み、データ構造修正）
 export interface TimelineViewProps {
+  // 🔧 修正：平坦構造データを受け取り
   projects: TimelineProject[]
+  allTasks: TimelineTask[]
   onProjectsUpdate: (projects: TimelineProject[]) => void
-  // リストビューに戻る機能
+  onTasksUpdate: (tasks: TimelineTask[]) => void
+  
+  // 既存機能
   onViewModeChange?: (mode: AppViewMode) => void
-  // 🎯 新規追加：今日スクロール機能のコールバック設定
   onScrollToToday?: (scrollFunction: () => void) => void
 }
 
-// TimelineControlsPropsは既存のまま（変更不要）
+// TimelineControlsProps（既存維持）
 export interface TimelineControlsProps {
   zoomLevel: number
   onZoomChange: (level: number) => void
@@ -81,6 +118,35 @@ export interface TimelineControlsProps {
   onFitToScreen: () => void
   onExpandAll: () => void
   onCollapseAll: () => void
-  // リストビューに戻る機能
   onViewModeChange?: (mode: AppViewMode) => void
+}
+
+// 🆕 新規：階層表示コンポーネント用Props
+export interface TimelineTaskRowProps {
+  task: TimelineTask
+  project: TimelineProject
+  hierarchyInfo: HierarchyDisplayInfo
+  dimensions: DynamicSizes
+  timeRange: TimeRange
+  state: TimelineState
+  onToggleTask: (taskId: string) => void
+  taskRelationMap: TaskRelationMap // 追加
+}
+
+export interface TimelineHierarchyProps {
+  tasks: TimelineTask[]
+  taskRelationMap: TaskRelationMap
+  dimensions: DynamicSizes
+  timeRange: TimeRange
+  state: TimelineState
+}
+
+export interface TimelineTaskRendererProps {
+  project: TimelineProject
+  tasks: TimelineTask[]
+  taskRelationMap: TaskRelationMap
+  dimensions: DynamicSizes
+  timeRange: TimeRange
+  state: TimelineState
+  onToggleTask: (taskId: string) => void
 }

@@ -1,23 +1,31 @@
-// システムプロンプト準拠：タイムライン統合フック（軽量化版）
-// 修正内容：今日スクロール機能の精度向上、getDatePosition関数活用
+// システムプロンプト準拠：タイムライン統合フック（TaskRelationMap対応版）
+// 🔧 修正内容：ネスト構造管理削除、Tasklist準拠の平坦配列 + TaskRelationMap方式に統一
+// DRY原則：Tasklistの階層管理ロジック再利用
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { Task, Project } from '@core/types'
 import { ZOOM_CONFIG } from '../utils/timeline'
-import { TimelineState, TimelineProject, TimelineTask, DynamicSizes, TimeRange } from '../types'
+import { TimelineState, TimelineProject, TimelineTask, DynamicSizes, TimeRange, TimelineData } from '../types'
+import { TaskRelationMap } from '@tasklist/types'
+import { buildTaskRelationMap } from '@tasklist/utils/task'
 import { 
   calculateDynamicSizes, 
   calculateTimeRange, 
   generateVisibleDates,
   getDisplayLevel,
-  getDatePosition // 🎯 修正：正確な位置計算のため追加インポート
+  getDatePosition
 } from '../utils/timeline'
+import { 
+  filterTimelineTasks, 
+  sortTimelineTasksHierarchically,
+  calculateHierarchyDisplayInfo,
+  isTaskVisible
+} from '../utils/hierarchy'
 import { logger } from '@core/utils/core'
 
 interface UseTimelineReturn {
   // 状態
   state: TimelineState
-  projects: TimelineProject[]
+  timelineData: TimelineData
   
   // 計算された値
   dimensions: DynamicSizes
@@ -32,14 +40,15 @@ interface UseTimelineReturn {
   setTheme: (theme: 'light' | 'dark') => void
   toggleTheme: () => void
   
-  // プロジェクト操作
-  setProjects: (projects: TimelineProject[]) => void
-  toggleProject: (projectId: string) => void
-  expandAllProjects: () => void
-  collapseAllProjects: () => void
+  // 🔧 修正：平坦構造データ操作
+  setTimelineData: (data: Partial<TimelineData>) => void
+  updateTimelineProjects: (projects: TimelineProject[]) => void
+  updateTimelineTasks: (tasks: TimelineTask[]) => void
   
-  // タスク操作
-  toggleTask: (projectId: string, taskId: string) => void
+  // タスク操作（TaskRelationMap準拠）
+  toggleTask: (taskId: string) => void
+  expandAllTasks: () => void
+  collapseAllTasks: () => void
   
   // ズーム制御
   zoomIn: () => void
@@ -68,7 +77,13 @@ export const useTimeline = (
     theme: initialTheme
   })
 
-  const [projects, setProjectsState] = useState<TimelineProject[]>([])
+  // 🔧 修正：Timeline統合データ（平坦構造）
+  const [timelineData, setTimelineDataState] = useState<TimelineData>({
+    projects: [],
+    allTasks: [],
+    taskRelationMap: { childrenMap: {}, parentMap: {} },
+    filteredTasks: []
+  })
 
   // DOM参照
   const timelineRef = useRef<HTMLDivElement>(null)
@@ -99,6 +114,67 @@ export const useTimeline = (
     generateVisibleDates(timeRange.startDate, timeRange.endDate, state.viewUnit),
     [timeRange.startDate, timeRange.endDate, state.viewUnit]
   )
+
+  // 🔧 修正：TaskRelationMapの自動再計算
+  const taskRelationMap = useMemo(() => {
+    if (timelineData.allTasks.length === 0) {
+      return { childrenMap: {}, parentMap: {} }
+    }
+    
+    try {
+      const relationMap = buildTaskRelationMap(timelineData.allTasks)
+      logger.info('TaskRelationMap rebuilt for timeline', {
+        taskCount: timelineData.allTasks.length,
+        parentCount: Object.keys(relationMap.parentMap).length,
+        childrenCount: Object.keys(relationMap.childrenMap).length
+      })
+      return relationMap
+    } catch (error) {
+      logger.error('TaskRelationMap build failed', { error })
+      return { childrenMap: {}, parentMap: {} }
+    }
+  }, [timelineData.allTasks])
+
+  // 🔧 修正：フィルタ済みタスクの自動更新
+  useEffect(() => {
+    if (timelineData.projects.length === 0 || timelineData.allTasks.length === 0) {
+      setTimelineDataState(prev => ({ ...prev, filteredTasks: [] }))
+      return
+    }
+
+    try {
+      // 全プロジェクトのタスクをフィルタリング・ソート
+      let allFilteredTasks: TimelineTask[] = []
+      
+      timelineData.projects.forEach(project => {
+        const projectTasks = filterTimelineTasks(
+          timelineData.allTasks, 
+          project, 
+          true, // showCompleted
+          taskRelationMap
+        )
+        
+        const sortedTasks = sortTimelineTasksHierarchically(projectTasks, taskRelationMap)
+        allFilteredTasks = [...allFilteredTasks, ...sortedTasks]
+      })
+
+      setTimelineDataState(prev => ({
+        ...prev,
+        taskRelationMap,
+        filteredTasks: allFilteredTasks
+      }))
+
+      logger.info('Timeline filtered tasks updated', {
+        projectCount: timelineData.projects.length,
+        totalTasks: timelineData.allTasks.length,
+        filteredTasks: allFilteredTasks.length
+      })
+
+    } catch (error) {
+      logger.error('Timeline task filtering failed', { error })
+      setTimelineDataState(prev => ({ ...prev, filteredTasks: [] }))
+    }
+  }, [timelineData.projects, timelineData.allTasks, taskRelationMap])
 
   // テーマ適用
   useEffect(() => {
@@ -135,55 +211,65 @@ export const useTimeline = (
     }))
   }, [])
 
-  const setProjects = useCallback((newProjects: TimelineProject[]) => {
-    logger.info('Setting timeline projects', { 
-      projectCount: newProjects.length,
-      projectNames: newProjects.map(p => p.name)
+  // 🔧 修正：Timeline統合データ更新
+  const setTimelineData = useCallback((data: Partial<TimelineData>) => {
+    setTimelineDataState(prev => {
+      const newData = { ...prev, ...data }
+      
+      logger.info('Timeline data updated', {
+        projects: newData.projects.length,
+        allTasks: newData.allTasks.length,
+        updatedFields: Object.keys(data)
+      })
+      
+      return newData
     })
-    setProjectsState(newProjects)
   }, [])
 
-  // プロジェクト展開/折り畳み
-  const toggleProject = useCallback((projectId: string) => {
-    setProjectsState(prev => prev.map(project => 
-      project.id === projectId 
-        ? { ...project, expanded: !project.expanded } 
-        : project
-    ))
+  // プロジェクト更新
+  const updateTimelineProjects = useCallback((projects: TimelineProject[]) => {
+    setTimelineDataState(prev => ({ ...prev, projects }))
+    logger.info('Timeline projects updated', { count: projects.length })
   }, [])
 
-  // 全プロジェクト展開
-  const expandAllProjects = useCallback(() => {
-    setProjectsState(prev => prev.map(project => ({
-      ...project,
-      expanded: true,
-      tasks: project.tasks.map(task => ({ ...task, expanded: true }))
-    })))
+  // タスク更新
+  const updateTimelineTasks = useCallback((tasks: TimelineTask[]) => {
+    setTimelineDataState(prev => ({ ...prev, allTasks: tasks }))
+    logger.info('Timeline tasks updated', { count: tasks.length })
   }, [])
 
-  // 全プロジェクト折り畳み
-  const collapseAllProjects = useCallback(() => {
-    setProjectsState(prev => prev.map(project => ({
-      ...project,
-      expanded: false,
-      tasks: project.tasks.map(task => ({ ...task, expanded: false }))
-    })))
+  // 🔧 修正：タスク展開/折り畳み（TaskRelationMap準拠）
+  const toggleTask = useCallback((taskId: string) => {
+    setTimelineDataState(prev => ({
+      ...prev,
+      allTasks: prev.allTasks.map(task => 
+        task.id === taskId 
+          ? { ...task, collapsed: !task.collapsed }
+          : task
+      )
+    }))
+    
+    logger.info('Task toggle completed', { taskId })
   }, [])
 
-  // タスク展開/折り畳み
-  const toggleTask = useCallback((projectId: string, taskId: string) => {
-    setProjectsState(prev => prev.map(project => 
-      project.id === projectId 
-        ? { 
-            ...project, 
-            tasks: project.tasks.map(task =>
-              task.id === taskId 
-                ? { ...task, expanded: !task.expanded }
-                : task
-            )
-          }
-        : project
-    ))
+  // 全タスク展開
+  const expandAllTasks = useCallback(() => {
+    setTimelineDataState(prev => ({
+      ...prev,
+      allTasks: prev.allTasks.map(task => ({ ...task, collapsed: false }))
+    }))
+    
+    logger.info('All tasks expanded')
+  }, [])
+
+  // 全タスク折り畳み
+  const collapseAllTasks = useCallback(() => {
+    setTimelineDataState(prev => ({
+      ...prev,
+      allTasks: prev.allTasks.map(task => ({ ...task, collapsed: true }))
+    }))
+    
+    logger.info('All tasks collapsed')
   }, [])
 
   // ズームイン
@@ -226,7 +312,7 @@ export const useTimeline = (
     setZoomLevel(clampedZoom)
   }, [visibleDates.length, state.viewUnit, setZoomLevel])
 
-  // 🎯 修正：今日にスクロール（精度向上・DRY原則適用）
+  // 🔧 修正：今日にスクロール（精度向上・DRY原則適用）
   const scrollToToday = useCallback((): number => {
     if (!timelineRef.current) {
       logger.warn('Timeline ref not available for scroll to today')
@@ -234,7 +320,6 @@ export const useTimeline = (
     }
 
     try {
-      // 🔧 修正：getDatePosition関数を使用して正確な位置計算（DRY原則）
       const todayPosition = getDatePosition(
         today, 
         timeRange.startDate, 
@@ -243,8 +328,6 @@ export const useTimeline = (
       )
       
       const containerWidth = timelineRef.current.clientWidth
-      
-      // 🔧 修正：より正確な画面センター計算
       const scrollPosition = Math.max(0, todayPosition - containerWidth / 2)
       
       logger.info('Scrolling to today with improved calculation', {
@@ -258,15 +341,12 @@ export const useTimeline = (
         calculationMethod: 'getDatePosition_unified'
       })
       
-      // スムーズスクロール実行
       timelineRef.current.scrollTo({
         left: scrollPosition,
         behavior: 'smooth'
       })
       
-      // スクロール位置の状態更新
       setScrollLeft(scrollPosition)
-      
       return scrollPosition
       
     } catch (error) {
@@ -284,7 +364,7 @@ export const useTimeline = (
 
   return {
     state,
-    projects,
+    timelineData,
     dimensions,
     timeRange,
     visibleDates,
@@ -294,11 +374,12 @@ export const useTimeline = (
     setScrollLeft,
     setTheme,
     toggleTheme,
-    setProjects,
-    toggleProject,
-    expandAllProjects,
-    collapseAllProjects,
+    setTimelineData,
+    updateTimelineProjects,
+    updateTimelineTasks,
     toggleTask,
+    expandAllTasks,
+    collapseAllTasks,
     zoomIn,
     zoomOut,
     resetZoom,

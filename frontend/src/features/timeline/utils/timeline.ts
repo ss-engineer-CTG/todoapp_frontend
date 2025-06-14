@@ -1,10 +1,11 @@
-// システムプロンプト準拠：タイムライン統合ユーティリティ（軽量化版）
-// DRY原則：計算ロジックの一元化、KISS原則：シンプルな関数群
+// システムプロンプト準拠：タイムライン統合ユーティリティ（階層表示機能追加版）
+// 🔧 修正内容：既存機能保持 + 階層表示専用関数追加
+// DRY原則：既存のタイムライン関数を維持しつつ、階層機能を追加
 
 import { format, parseISO, isValid } from 'date-fns'
 import { ja } from 'date-fns/locale'
 
-// ===== 基本設定 =====
+// ===== 基本設定（既存維持） =====
 export const ZOOM_CONFIG = {
   min: 10,
   max: 200,
@@ -18,7 +19,7 @@ export const BASE_SIZES = {
   fontSize: { base: 14, small: 12, large: 16 }
 } as const
 
-// ===== 日本の祝日データ（2025年） =====
+// ===== 日本の祝日データ（2025年）（既存維持） =====
 export interface Holiday {
   date: Date
   name: string
@@ -44,7 +45,7 @@ export const holidays2025: Holiday[] = [
   { date: new Date(2025, 10, 23), name: '勤労感謝の日', type: 'national' }
 ]
 
-// ===== 日付ユーティリティ =====
+// ===== 日付ユーティリティ（既存維持） =====
 export type DateType = 'weekday' | 'saturday' | 'sunday' | 'holiday'
 
 export const isHoliday = (date: Date): boolean => {
@@ -80,7 +81,7 @@ export const getMonthName = (date: Date): string => {
   return months[date.getMonth()]
 }
 
-// ===== 動的サイズ計算 =====
+// ===== 動的サイズ計算（既存維持） =====
 export const calculateFontSize = (zoom: number) => {
   if (zoom <= 30) return { base: 8, small: 7, large: 9, week: 8 }
   if (zoom <= 50) return { base: 10, small: 9, large: 11, week: 10 }
@@ -106,7 +107,7 @@ export const calculateDynamicSizes = (zoomLevel: number, viewUnit: 'day' | 'week
   }
 }
 
-// ===== 表示レベル判定 =====
+// ===== 表示レベル判定（既存維持） =====
 export const getDisplayLevel = (zoom: number): 'minimal' | 'compact' | 'reduced' | 'full' => {
   if (zoom <= 30) return 'minimal'
   if (zoom <= 50) return 'compact'
@@ -127,7 +128,7 @@ export const getDisplayText = (text: string, zoomLevel: number, maxLength?: numb
   }
 }
 
-// ===== 時間範囲計算 =====
+// ===== 時間範囲計算（既存維持） =====
 export const calculateTimeRange = (viewUnit: 'day' | 'week', today: Date) => {
   const config = { days: 365, ratio: [0.3, 0.7] }
   
@@ -164,7 +165,7 @@ export const calculateTimeRange = (viewUnit: 'day' | 'week', today: Date) => {
   }
 }
 
-// ===== 表示日付配列生成 =====
+// ===== 表示日付配列生成（既存維持） =====
 export const generateVisibleDates = (startDate: Date, endDate: Date, viewUnit: 'day' | 'week') => {
   if (viewUnit === 'week') {
     const weeks = []
@@ -186,7 +187,7 @@ export const generateVisibleDates = (startDate: Date, endDate: Date, viewUnit: '
   }
 }
 
-// ===== 日付位置計算 =====
+// ===== 日付位置計算（既存維持） =====
 export const getDatePosition = (
   date: Date, 
   startDate: Date, 
@@ -209,7 +210,7 @@ export const getDatePosition = (
   }
 }
 
-// ===== プロジェクト名動的位置計算 =====
+// ===== プロジェクト名動的位置計算（既存維持） =====
 export const getProjectNamePosition = (scrollLeft: number, timelineWidth = 1200): number => {
   const visibleAreaWidth = Math.min(timelineWidth, 800)
   const nameWidth = 200
@@ -217,7 +218,7 @@ export const getProjectNamePosition = (scrollLeft: number, timelineWidth = 1200)
   return Math.max(8, Math.min(scrollLeft + 8, scrollLeft + visibleAreaWidth - nameWidth - 8))
 }
 
-// ===== 境界判定 =====
+// ===== 境界判定（既存維持） =====
 export const isFirstDayOfMonth = (date: Date, index: number, visibleDates: Date[]): boolean => {
   return index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
 }
@@ -226,7 +227,7 @@ export const isFirstDayOfWeek = (date: Date): boolean => {
   return date.getDay() === 1
 }
 
-// ===== 日付セルクラス取得 =====
+// ===== 日付セルクラス取得（既存維持） =====
 export const getDateCellClass = (date: Date, today: Date, theme: string): string => {
   const isToday = date.toDateString() === today.toDateString()
   if (isToday) return theme === 'dark' ? 'bg-yellow-900/40 border-yellow-400' : 'bg-yellow-100 border-yellow-400'
@@ -238,7 +239,7 @@ export const getDateCellClass = (date: Date, today: Date, theme: string): string
   return ''
 }
 
-// ===== 週背景色取得 =====
+// ===== 週背景色取得（既存維持） =====
 export const getWeekBackground = (date: Date, startDate: Date, theme: string): string => {
   const mondayOfWeek = new Date(date)
   const daysSinceMonday = (date.getDay() + 6) % 7
@@ -250,7 +251,7 @@ export const getWeekBackground = (date: Date, startDate: Date, theme: string): s
     (theme === 'dark' ? 'bg-gray-800/60' : 'bg-white/60')
 }
 
-// ===== 週番号計算 =====
+// ===== 週番号計算（既存維持） =====
 export const getWeekNumber = (date: Date): number => {
   const mondayOfWeek = new Date(date)
   const daysSinceMonday = (date.getDay() + 6) % 7
@@ -258,4 +259,159 @@ export const getWeekNumber = (date: Date): number => {
   
   const startOfYear = new Date(date.getFullYear(), 0, 1)
   return Math.ceil((mondayOfWeek.getTime() - startOfYear.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1
+}
+
+// 🆕 ===== 階層表示専用関数（新規追加） =====
+
+/**
+ * 階層レベルに応じたインデント幅計算
+ * システムプロンプト準拠：KISS原則でシンプルな計算
+ */
+export const calculateHierarchyIndent = (level: number, zoomRatio: number): number => {
+  const baseIndentWidth = Math.max(20, Math.round(32 * zoomRatio))
+  return level * baseIndentWidth
+}
+
+/**
+ * 階層レベルに応じたタスクバー高さ調整
+ */
+export const calculateHierarchyTaskBarHeight = (level: number, baseHeight: number, zoomRatio: number): number => {
+  // 階層が深くなるほどバーを少し小さく
+  const levelReduction = Math.min(level * 2, 8) // 最大8px減少
+  const adjustedHeight = Math.max(16, baseHeight - levelReduction)
+  return Math.round(adjustedHeight * zoomRatio)
+}
+
+/**
+ * 階層レベルに応じたフォントサイズ調整
+ */
+export const calculateHierarchyFontSize = (level: number, baseFontSize: number): number => {
+  // 階層が深くなるほどフォントを少し小さく
+  const levelReduction = Math.min(level, 3) // 最大3px減少
+  return Math.max(8, baseFontSize - levelReduction)
+}
+
+/**
+ * 階層接続線の座標計算
+ */
+export const calculateConnectionLinePosition = (
+  parentLevel: number,
+  childLevel: number,
+  parentStartPos: number,
+  childStartPos: number,
+  zoomRatio: number
+): { vertical: any, horizontal: any } => {
+  const baseIndentWidth = Math.max(20, Math.round(32 * zoomRatio))
+  const parentIndent = parentLevel * baseIndentWidth
+  const childIndent = childLevel * baseIndentWidth
+  
+  const connectionPointOffset = Math.round(16 * zoomRatio)
+  const lineWidth = Math.max(1, Math.round(2 * zoomRatio))
+  
+  return {
+    vertical: {
+      left: parentStartPos + parentIndent + connectionPointOffset,
+      width: lineWidth,
+      top: 0,
+      height: Math.round(40 * zoomRatio) // 基本行高さ
+    },
+    horizontal: {
+      left: Math.min(
+        parentStartPos + parentIndent + connectionPointOffset,
+        childStartPos + childIndent + connectionPointOffset
+      ),
+      width: Math.abs(
+        (childStartPos + childIndent + connectionPointOffset) - 
+        (parentStartPos + parentIndent + connectionPointOffset)
+      ),
+      height: lineWidth,
+      top: Math.round(20 * zoomRatio) // 中央位置
+    }
+  }
+}
+
+/**
+ * 階層レベルに応じた色調整
+ */
+export const getHierarchyColor = (level: number, baseColor: string, theme: 'light' | 'dark'): string => {
+  try {
+    // 階層が深いほど薄く表示
+    const opacityReduction = Math.min(level * 0.1, 0.4)
+    const targetOpacity = 1 - opacityReduction
+    
+    // HEX色をRGBAに変換
+    if (baseColor.startsWith('#')) {
+      const r = parseInt(baseColor.substr(1, 2), 16)
+      const g = parseInt(baseColor.substr(3, 2), 16)
+      const b = parseInt(baseColor.substr(5, 2), 16)
+      return `rgba(${r}, ${g}, ${b}, ${targetOpacity})`
+    }
+    
+    // すでにrgba形式の場合はopacityのみ調整
+    if (baseColor.includes('rgba')) {
+      return baseColor.replace(/[\d\.]+\)$/g, `${targetOpacity})`)
+    }
+    
+    return baseColor
+  } catch (error) {
+    return baseColor // フォールバック
+  }
+}
+
+/**
+ * 階層バッジ表示用のカウント計算
+ */
+export const calculateHierarchyBadgeCount = (
+  taskId: string,
+  childrenMap: { [parentId: string]: string[] }
+): { directChildren: number, totalDescendants: number } => {
+  const directChildren = childrenMap[taskId]?.length || 0
+  
+  const getTotalDescendants = (id: string): number => {
+    const children = childrenMap[id] || []
+    let total = children.length
+    children.forEach(childId => {
+      total += getTotalDescendants(childId)
+    })
+    return total
+  }
+  
+  const totalDescendants = getTotalDescendants(taskId)
+  
+  return { directChildren, totalDescendants }
+}
+
+/**
+ * ズームレベルに応じた階層表示制御
+ */
+export const getHierarchyVisibilityControls = (zoomLevel: number) => {
+  return {
+    showConnectionLines: zoomLevel > 30,
+    showHierarchyBadges: zoomLevel > 40,
+    showSubtaskLabels: zoomLevel > 50,
+    maxVisibleLevel: zoomLevel <= 30 ? 1 : zoomLevel <= 50 ? 2 : zoomLevel <= 80 ? 3 : 10,
+    compactMode: zoomLevel <= 50
+  }
+}
+
+/**
+ * 階層表示用のタスクバー幅計算（接続考慮）
+ */
+export const calculateHierarchyTaskBarWidth = (
+  startDate: Date,
+  endDate: Date,
+  timeRangeStart: Date,
+  cellWidth: number,
+  viewUnit: 'day' | 'week',
+  level: number,
+  zoomRatio: number
+): number => {
+  const basicWidth = getDatePosition(endDate, timeRangeStart, cellWidth, viewUnit) - 
+                   getDatePosition(startDate, timeRangeStart, cellWidth, viewUnit) + cellWidth
+  
+  // 階層が深い場合は最小幅を確保
+  const minWidth = Math.max(60, Math.round(80 * zoomRatio))
+  const levelAdjustment = level > 2 ? Math.round(20 * zoomRatio) : 0
+  
+  return Math.max(minWidth, basicWidth - levelAdjustment)
 }
