@@ -1,6 +1,5 @@
 // システムプロンプト準拠：メインタイムラインビューコンポーネント（軽量化版）
-// 修正内容：ビューモード変更機能のプロパティ受け取りと中継
-// 修正内容：日付ヘッダーのスクロール機能無効化による統合スクロール制御
+// 修正内容：サンプルデータ処理削除、useEffectの依存配列修正、循環依存解決
 
 import React, { useCallback } from 'react'
 import { 
@@ -9,6 +8,7 @@ import {
 import { TimelineControls } from './TimelineControls'
 import { TimelineViewProps } from '../types'
 import { useTimeline } from '../hooks/useTimeline'
+import { logger } from '@core/utils/core'
 import {
   getDatePosition,
   getProjectNamePosition,
@@ -25,7 +25,6 @@ import {
 export const TimelineView: React.FC<TimelineViewProps> = ({
   projects: initialProjects,
   onProjectsUpdate,
-  // 修正：ビューモード変更機能を受け取る
   onViewModeChange
 }) => {
   const {
@@ -46,22 +45,30 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     toggleTask,
     fitToScreen,
     scrollToToday,
-    convertFromTasklist,
     timelineRef
   } = useTimeline(100, 'week', 'light')
 
   const today = new Date()
 
-  // プロジェクトデータの初期化
+  // 修正：プロジェクトデータの初期化（一度のみ実行、循環依存回避）
   React.useEffect(() => {
-    if (initialProjects.length > 0) {
+    if (initialProjects.length > 0 && projects.length === 0) {
+      logger.info('Initializing timeline with projects data', { 
+        projectCount: initialProjects.length 
+      })
       setProjects(initialProjects)
     }
-  }, [initialProjects, setProjects])
+  }, [initialProjects.length, projects.length, setProjects])
 
-  // プロジェクト更新の伝播
+  // 修正：プロジェクト更新の伝播（循環依存回避、条件付き実行）
   React.useEffect(() => {
-    onProjectsUpdate(projects)
+    // プロジェクトデータに変更があり、かつ空でない場合のみ伝播
+    if (projects.length > 0 && JSON.stringify(projects) !== JSON.stringify(initialProjects)) {
+      logger.info('Timeline projects state changed, propagating update', { 
+        projectCount: projects.length 
+      })
+      onProjectsUpdate(projects)
+    }
   }, [projects, onProjectsUpdate])
 
   // フィット機能
@@ -160,10 +167,46 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   const classes = getAppClasses()
 
+  // 修正：プロジェクトデータが空の場合の表示
+  if (projects.length === 0) {
+    return (
+      <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
+        <TimelineControls
+          zoomLevel={state.zoomLevel}
+          onZoomChange={setZoomLevel}
+          viewUnit={state.viewUnit}
+          onViewUnitChange={setViewUnit}
+          theme={state.theme}
+          onThemeToggle={toggleTheme}
+          onTodayClick={scrollToToday}
+          onFitToScreen={handleFitToScreen}
+          onExpandAll={expandAllProjects}
+          onCollapseAll={collapseAllProjects}
+          onViewModeChange={onViewModeChange}
+        />
+        
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-6xl mb-4">📅</div>
+            <h2 className="text-2xl font-bold mb-4">プロジェクトがありません</h2>
+            <p className="text-muted-foreground mb-6">
+              リストビューでプロジェクトを作成してからタイムラインビューをお使いください
+            </p>
+            <button
+              onClick={() => onViewModeChange?.('tasklist')}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              リストビューに戻る
+            </button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
       {/* 統合コントロール */}
-      {/* 修正：onViewModeChangeをTimelineControlsに渡す */}
       <TimelineControls
         zoomLevel={state.zoomLevel}
         onZoomChange={setZoomLevel}

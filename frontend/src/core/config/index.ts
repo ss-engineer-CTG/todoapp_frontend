@@ -1,4 +1,5 @@
 // システムプロンプト準拠：統一設定管理（軽量化版）
+// 修正内容：SAMPLE_TIMELINE_PROJECTS完全削除、サンプルデータ削除
 
 // 基本型定義
 export interface ProjectColor {
@@ -127,39 +128,6 @@ export const VIEW_MODES = {
   TIMELINE: 'timeline'
 } as const
 
-// タイムライン用最小サンプルデータ
-export const SAMPLE_TIMELINE_PROJECTS = [
-  {
-    id: 'PRJ001',
-    name: '生産ライン A設備更新',
-    color: '#3B82F6',
-    expanded: true,
-    collapsed: false,
-    process: '設備導入',
-    line: 'ライン A',
-    tasks: [
-      {
-        id: 'TSK001',
-        name: '設備仕様検討・選定',
-        startDate: new Date(2025, 4, 1),
-        dueDate: new Date(2025, 4, 15),
-        status: 'completed' as const,
-        milestone: true,
-        process: '企画・設計',
-        line: 'ライン A',
-        expanded: true,
-        subtasks: [
-          {
-            id: 'STSK001',
-            name: '現状設備調査',
-            startDate: new Date(2025, 4, 1),
-            dueDate: new Date(2025, 4, 5),
-            status: 'completed' as const,
-            milestone: false,
-            process: '企画・設計'
-          }
-        ]
-      }
-    ]
-  }
-]
+// 修正：SAMPLE_TIMELINE_PROJECTS完全削除
+// タイムライン用サンプルデータは不要となったため削除
+// DBデータのみに依存するクリーンな設計に変更

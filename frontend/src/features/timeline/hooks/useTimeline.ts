@@ -1,5 +1,5 @@
 // システムプロンプト準拠：タイムライン統合フック（軽量化版）
-// DRY原則：状態管理ロジックの一元化
+// 修正内容：MINIMAL_SAMPLE_PROJECTS完全削除、サンプルデータフォールバック削除
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Task, Project } from '@core/types'
@@ -11,39 +11,7 @@ import {
   generateVisibleDates,
   getDisplayLevel 
 } from '../utils/timeline'
-
-// 軽量化：サンプルデータは最小限に
-const MINIMAL_SAMPLE_PROJECTS = [
-  {
-    id: 'sample-001',
-    name: 'サンプルプロジェクト',
-    color: '#3B82F6',
-    expanded: true,
-    collapsed: false,
-    process: 'プロジェクト',
-    line: '全体',
-    tasks: [
-      {
-        id: 'sample-task-001',
-        name: 'サンプルタスク',
-        projectId: 'sample-001',
-        parentId: null,
-        startDate: new Date(2025, 5, 1),
-        dueDate: new Date(2025, 5, 15),
-        status: 'in-progress' as const,
-        milestone: false,
-        expanded: false,
-        subtasks: [],
-        completed: false,
-        completionDate: null,
-        notes: '',
-        assignee: '自分',
-        level: 0,
-        collapsed: false
-      }
-    ]
-  }
-]
+import { logger } from '@core/utils/core'
 
 interface UseTimelineReturn {
   // 状態
@@ -81,9 +49,6 @@ interface UseTimelineReturn {
   // スクロール制御
   scrollToToday: () => number
   
-  // データ変換
-  convertFromTasklist: (projects: Project[], tasks: Task[]) => void
-  
   // DOM参照
   timelineRef: React.RefObject<HTMLDivElement>
 }
@@ -102,8 +67,8 @@ export const useTimeline = (
     theme: initialTheme
   })
 
-  // プロジェクトデータ
-  const [projects, setProjectsState] = useState<TimelineProject[]>(MINIMAL_SAMPLE_PROJECTS)
+  // 修正：プロジェクトデータの初期化を空配列に変更（サンプルデータ削除）
+  const [projects, setProjectsState] = useState<TimelineProject[]>([])
 
   // DOM参照
   const timelineRef = useRef<HTMLDivElement>(null)
@@ -170,9 +135,13 @@ export const useTimeline = (
     }))
   }, [])
 
-  // プロジェクト設定
+  // 修正：プロジェクト設定（サンプルデータフォールバック削除）
   const setProjects = useCallback((newProjects: TimelineProject[]) => {
-    setProjectsState(newProjects.length > 0 ? newProjects : MINIMAL_SAMPLE_PROJECTS)
+    logger.info('Setting timeline projects', { 
+      projectCount: newProjects.length,
+      projectNames: newProjects.map(p => p.name)
+    })
+    setProjectsState(newProjects)
   }, [])
 
   // プロジェクト展開/折り畳み
@@ -238,82 +207,66 @@ export const useTimeline = (
     if (containerWidth <= 0) return
     
     const totalDates = visibleDates.length
+    if (totalDates === 0) return
+    
     const requiredCellWidth = state.viewUnit === 'week' 
       ? containerWidth / (totalDates * 7) 
       : containerWidth / totalDates
     
     const baseWidth = state.viewUnit === 'week' ? 20 : 30
     const fitZoom = Math.round((requiredCellWidth / baseWidth) * 100)
-    setZoomLevel(fitZoom)
+    const clampedZoom = Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max, fitZoom))
+    
+    logger.info('Fitting timeline to screen', {
+      containerWidth,
+      totalDates,
+      requiredCellWidth,
+      fitZoom: clampedZoom
+    })
+    
+    setZoomLevel(clampedZoom)
   }, [visibleDates.length, state.viewUnit, setZoomLevel])
 
   // 今日にスクロール
   const scrollToToday = useCallback((): number => {
-    if (timelineRef.current) {
-      // 今日の位置を計算（簡易版）
-      const todayPosition = 0 // 実際の計算は省略
-      const containerWidth = timelineRef.current.clientWidth
-      const scrollPosition = Math.max(0, todayPosition - containerWidth / 2)
-      
-      timelineRef.current.scrollTo({
-        left: scrollPosition,
-        behavior: 'smooth'
-      })
-      
-      return scrollPosition
-    }
-    return 0
-  }, [])
-
-  // タスクリストからタイムライン形式への変換
-  const convertFromTasklist = useCallback((
-    tasklistProjects: Project[], 
-    tasklistTasks: Task[]
-  ) => {
-    try {
-      const timelineProjects: TimelineProject[] = tasklistProjects.map(project => {
-        const projectTasks = tasklistTasks.filter(task => 
-          task.projectId === project.id && !task.parentId
+    if (timelineRef.current && visibleDates.length > 0) {
+      try {
+        // 今日の位置を計算
+        const todayIndex = visibleDates.findIndex(date => 
+          date.toDateString() === today.toDateString()
         )
         
-        const convertedTasks: TimelineTask[] = projectTasks.map(task => {
-          const subtasks = tasklistTasks
-            .filter(t => t.parentId === task.id)
-            .map(subtask => ({
-              ...subtask,
-              status: subtask.completed ? 'completed' as const : 'not-started' as const,
-              milestone: false,
-              expanded: false
-            }))
-
-          return {
-            ...task,
-            status: task.completed ? 'completed' as const : 'not-started' as const,
-            milestone: false,
-            expanded: !task.collapsed,
-            subtasks: subtasks.length > 0 ? subtasks : undefined,
-            process: 'プロジェクト',
-            line: '全体'
-          }
-        })
-
-        return {
-          ...project,
-          expanded: !project.collapsed,
-          process: 'プロジェクト',
-          line: '全体',
-          tasks: convertedTasks
+        if (todayIndex >= 0) {
+          const todayPosition = state.viewUnit === 'week'
+            ? todayIndex * dimensions.cellWidth * 7
+            : todayIndex * dimensions.cellWidth
+          
+          const containerWidth = timelineRef.current.clientWidth
+          const scrollPosition = Math.max(0, todayPosition - containerWidth / 2)
+          
+          logger.info('Scrolling to today', {
+            todayIndex,
+            todayPosition,
+            scrollPosition
+          })
+          
+          timelineRef.current.scrollTo({
+            left: scrollPosition,
+            behavior: 'smooth'
+          })
+          
+          return scrollPosition
+        } else {
+          logger.warn('Today not found in visible dates range')
+          return 0
         }
-      })
-
-      setProjectsState(timelineProjects.length > 0 ? timelineProjects : MINIMAL_SAMPLE_PROJECTS)
-      
-    } catch (error) {
-      console.error('Tasklist to timeline conversion failed', { error })
-      // フォールバック：サンプルデータを使用
-      setProjectsState(MINIMAL_SAMPLE_PROJECTS)
+      } catch (error) {
+        logger.error('Scroll to today failed', { error })
+        return 0
+      }
     }
-  }, [])
+    return 0
+  }, [visibleDates, today, state.viewUnit, dimensions.cellWidth])
 
   return {
     state,
@@ -337,7 +290,6 @@ export const useTimeline = (
     resetZoom,
     fitToScreen,
     scrollToToday,
-    convertFromTasklist,
     timelineRef
   }
 }

@@ -1,6 +1,5 @@
 // システムプロンプト準拠：メインアプリロジック統合・軽量化版
-// 修正内容：TimelineViewにビューモード変更機能を渡す
-// タイムライン統合、ビューモード切り替え機能、軽量化対応
+// 修正内容：サンプルデータ参照削除、循環依存解決、データフロー一方向化
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { AreaType, Task, AppViewMode } from '@core/types'
@@ -20,7 +19,6 @@ import { TimelineView, TimelineProject } from '@timeline'
 import { Calendar, List } from 'lucide-react'
 import { LoadingSpinner } from '@core/utils/core'
 import { logger } from '@core/utils/core'
-import { SAMPLE_TIMELINE_PROJECTS } from '@core/config'
 
 const TodoApp: React.FC = () => {
   const {
@@ -56,6 +54,7 @@ const TodoApp: React.FC = () => {
   
   // ビューモード管理
   const [viewMode, setViewMode] = useState<AppViewMode>('tasklist')
+  // 修正：タイムラインプロジェクトの初期化を空配列に変更
   const [timelineProjects, setTimelineProjects] = useState<TimelineProject[]>([])
 
   // 草稿タスク込みの全タスク管理
@@ -121,7 +120,7 @@ const TodoApp: React.FC = () => {
     setViewMode(newMode)
     
     if (newMode === 'timeline') {
-      // タスクリストからタイムライン用データに変換
+      // 修正：タスクリストからタイムライン用データに変換（サンプルデータフォールバック削除）
       const timelineData = convertTasklistToTimeline(currentProjects, allTasksWithDrafts)
       setTimelineProjects(timelineData)
       setActiveArea('timeline')
@@ -130,9 +129,15 @@ const TodoApp: React.FC = () => {
     }
   }, [viewMode, currentProjects, allTasksWithDrafts])
 
-  // タスクリスト→タイムライン データ変換（軽量化版）
+  // 修正：タスクリスト→タイムライン データ変換（サンプルデータ削除）
   const convertTasklistToTimeline = useCallback((projects: any[], tasks: Task[]): TimelineProject[] => {
     try {
+      // DBデータが空の場合は空配列を返す（サンプルデータ使用しない）
+      if (projects.length === 0) {
+        logger.info('No projects data, returning empty timeline')
+        return []
+      }
+
       return projects.map(project => {
         const projectTasks = tasks.filter(task => task.projectId === project.id && !task.parentId)
         
@@ -168,15 +173,19 @@ const TodoApp: React.FC = () => {
       })
     } catch (error) {
       logger.error('Timeline data conversion failed', { error })
-      return [...SAMPLE_TIMELINE_PROJECTS] as TimelineProject[]
+      // 修正：サンプルデータではなく空配列を返す
+      return []
     }
   }, [])
 
-  // タイムライン→タスクリスト データ更新
+  // 修正：タイムライン→タスクリスト データ更新（循環依存回避）
   const handleTimelineProjectsUpdate = useCallback((updatedTimelineProjects: TimelineProject[]) => {
-    setTimelineProjects(updatedTimelineProjects)
-    logger.info('Timeline projects updated', { count: updatedTimelineProjects.length })
-  }, [])
+    // 修正：viewMode === 'timeline'の時のみ更新処理を実行（循環依存回避）
+    if (viewMode === 'timeline') {
+      setTimelineProjects(updatedTimelineProjects)
+      logger.info('Timeline projects updated', { count: updatedTimelineProjects.length })
+    }
+  }, [viewMode])
 
   // 草稿タスク作成
   const handleAddDraftTask = useCallback(async (parentId: string | null = null, level = 0) => {
@@ -461,7 +470,6 @@ const TodoApp: React.FC = () => {
       {/* メインコンテンツ */}
       {viewMode === 'timeline' ? (
         // タイムラインビュー（全画面表示）
-        // 修正：onViewModeChangeプロパティをTimelineViewに渡す
         <TimelineView
           projects={timelineProjects}
           onProjectsUpdate={handleTimelineProjectsUpdate}
