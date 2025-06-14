@@ -1,4 +1,5 @@
 // システムプロンプト準拠：メインタイムラインビューコンポーネント（軽量化版）
+// 修正内容：ビューモード変更機能のプロパティ受け取りと中継
 // 修正内容：日付ヘッダーのスクロール機能無効化による統合スクロール制御
 
 import React, { useCallback } from 'react'
@@ -23,7 +24,9 @@ import {
 
 export const TimelineView: React.FC<TimelineViewProps> = ({
   projects: initialProjects,
-  onProjectsUpdate
+  onProjectsUpdate,
+  // 修正：ビューモード変更機能を受け取る
+  onViewModeChange
 }) => {
   const {
     state,
@@ -160,6 +163,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   return (
     <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
       {/* 統合コントロール */}
+      {/* 修正：onViewModeChangeをTimelineControlsに渡す */}
       <TimelineControls
         zoomLevel={state.zoomLevel}
         onZoomChange={setZoomLevel}
@@ -171,6 +175,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
         onFitToScreen={handleFitToScreen}
         onExpandAll={expandAllProjects}
         onCollapseAll={collapseAllProjects}
+        onViewModeChange={onViewModeChange}
       />
       
       {/* スクロール可能コンテンツ */}

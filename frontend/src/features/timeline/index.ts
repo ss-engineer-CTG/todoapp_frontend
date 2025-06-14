@@ -1,5 +1,5 @@
 // システムプロンプト準拠：timeline機能の公開API
-// DRY原則：エクスポートの一元化（修正版）
+// DRY原則：エクスポートの一元化
 
 // コンポーネント
 export { TimelineView, TimelineControls } from './components'

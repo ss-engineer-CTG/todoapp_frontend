@@ -11,8 +11,39 @@ import {
   generateVisibleDates,
   getDisplayLevel 
 } from '../utils/timeline'
-import { SAMPLE_TIMELINE_PROJECTS } from '@core/config'
-import { logger } from '@core/utils/core'
+
+// 軽量化：サンプルデータは最小限に
+const MINIMAL_SAMPLE_PROJECTS = [
+  {
+    id: 'sample-001',
+    name: 'サンプルプロジェクト',
+    color: '#3B82F6',
+    expanded: true,
+    collapsed: false,
+    process: 'プロジェクト',
+    line: '全体',
+    tasks: [
+      {
+        id: 'sample-task-001',
+        name: 'サンプルタスク',
+        projectId: 'sample-001',
+        parentId: null,
+        startDate: new Date(2025, 5, 1),
+        dueDate: new Date(2025, 5, 15),
+        status: 'in-progress' as const,
+        milestone: false,
+        expanded: false,
+        subtasks: [],
+        completed: false,
+        completionDate: null,
+        notes: '',
+        assignee: '自分',
+        level: 0,
+        collapsed: false
+      }
+    ]
+  }
+]
 
 interface UseTimelineReturn {
   // 状態
@@ -72,7 +103,7 @@ export const useTimeline = (
   })
 
   // プロジェクトデータ
-  const [projects, setProjectsState] = useState<TimelineProject[]>([])
+  const [projects, setProjectsState] = useState<TimelineProject[]>(MINIMAL_SAMPLE_PROJECTS)
 
   // DOM参照
   const timelineRef = useRef<HTMLDivElement>(null)
@@ -141,7 +172,7 @@ export const useTimeline = (
 
   // プロジェクト設定
   const setProjects = useCallback((newProjects: TimelineProject[]) => {
-    setProjectsState(newProjects)
+    setProjectsState(newProjects.length > 0 ? newProjects : MINIMAL_SAMPLE_PROJECTS)
   }, [])
 
   // プロジェクト展開/折り畳み
@@ -275,16 +306,12 @@ export const useTimeline = (
         }
       })
 
-      setProjectsState(timelineProjects)
-      logger.info('Tasklist to timeline conversion completed', {
-        projectCount: timelineProjects.length,
-        taskCount: tasklistTasks.length
-      })
+      setProjectsState(timelineProjects.length > 0 ? timelineProjects : MINIMAL_SAMPLE_PROJECTS)
       
     } catch (error) {
-      logger.error('Tasklist to timeline conversion failed', { error })
+      console.error('Tasklist to timeline conversion failed', { error })
       // フォールバック：サンプルデータを使用
-      setProjectsState([...SAMPLE_TIMELINE_PROJECTS] as TimelineProject[])
+      setProjectsState(MINIMAL_SAMPLE_PROJECTS)
     }
   }, [])
 

@@ -1,10 +1,11 @@
 // システムプロンプト準拠：タイムライン統合コントロール（軽量化版）
+// 修正内容：Factory アイコンとタイトルを「リストに戻る」ボタンに置き換え
 // AppHeader + TimelineControls + TimelineHeader の機能を統合
 
 import React from 'react'
 import {
   ZoomIn, ZoomOut, RotateCw, Maximize2, ChevronLeft, ChevronRight,
-  Factory, Sun, Moon, Filter, Minimize2
+  Sun, Moon, Filter, Minimize2, ArrowLeft
 } from 'lucide-react'
 import { TimelineControlsProps } from '../types'
 import { ZOOM_CONFIG } from '../utils/timeline'
@@ -19,7 +20,9 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
   onTodayClick,
   onFitToScreen,
   onExpandAll,
-  onCollapseAll
+  onCollapseAll,
+  // 新規追加：ビューモード変更機能
+  onViewModeChange
 }) => {
   const handleZoom = (newLevel: number) => {
     const clampedLevel = Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max, newLevel))
@@ -30,18 +33,27 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
   const zoomOut = () => handleZoom(zoomLevel - ZOOM_CONFIG.step)
   const resetZoom = () => handleZoom(ZOOM_CONFIG.default)
 
+  // 修正：リストビューに戻る処理
+  const handleBackToList = () => {
+    if (onViewModeChange) {
+      onViewModeChange('tasklist')
+    }
+  }
+
   // テーマに基づくクラス
   const getControlClasses = () => {
     return theme === 'dark' 
       ? {
           header: "bg-gray-900 border-gray-600",
           control: "bg-gray-800 hover:bg-gray-700 text-gray-100 border-gray-500",
-          active: "bg-indigo-800 text-indigo-100 border-indigo-600"
+          active: "bg-indigo-800 text-indigo-100 border-indigo-600",
+          backButton: "bg-blue-700 hover:bg-blue-600 text-white border-blue-500"
         }
       : {
           header: "bg-white border-gray-300",
           control: "bg-white hover:bg-gray-50 text-gray-800 border-gray-400",
-          active: "bg-indigo-100 text-indigo-800 border-indigo-300"
+          active: "bg-indigo-100 text-indigo-800 border-indigo-300",
+          backButton: "bg-blue-600 hover:bg-blue-700 text-white border-blue-500"
         }
   }
 
@@ -51,9 +63,23 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
     <div className="w-full">
       {/* アプリケーションヘッダー */}
       <header className={`${classes.header} border-b py-2 px-4 flex items-center justify-between sticky top-0 z-50 w-full min-w-0`}>
+        {/* 修正：Factory アイコンとタイトルを「リストに戻る」ボタンに置き換え */}
         <div className="flex items-center min-w-0 flex-shrink-0">
-          <Factory size={20} className="mr-2 text-indigo-600 flex-shrink-0" />
-          <h1 className="text-lg font-medium truncate">製造プロジェクト ガントチャート</h1>
+          <button
+            onClick={handleBackToList}
+            className={`
+              flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-all duration-200
+              font-medium text-sm shadow-sm hover:shadow-md active:scale-95
+              ${classes.backButton}
+            `}
+            title="リストビューに戻る (Ctrl+L)"
+            aria-label="リストビューに戻る"
+          >
+            <ArrowLeft size={18} className="flex-shrink-0" />
+            {/* レスポンシブ対応：画面サイズに応じてテキストを調整 */}
+            <span className="hidden sm:inline">リストに戻る</span>
+            <span className="sm:hidden">戻る</span>
+          </button>
         </div>
         
         <div className="flex items-center space-x-2 flex-shrink-0 ml-4">

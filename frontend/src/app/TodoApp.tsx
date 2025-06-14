@@ -1,4 +1,5 @@
 // システムプロンプト準拠：メインアプリロジック統合・軽量化版
+// 修正内容：TimelineViewにビューモード変更機能を渡す
 // タイムライン統合、ビューモード切り替え機能、軽量化対応
 
 import React, { useState, useEffect, useCallback } from 'react'
@@ -460,9 +461,11 @@ const TodoApp: React.FC = () => {
       {/* メインコンテンツ */}
       {viewMode === 'timeline' ? (
         // タイムラインビュー（全画面表示）
+        // 修正：onViewModeChangeプロパティをTimelineViewに渡す
         <TimelineView
           projects={timelineProjects}
           onProjectsUpdate={handleTimelineProjectsUpdate}
+          onViewModeChange={handleViewModeChange}
         />
       ) : (
         // タスクリストビュー（既存）

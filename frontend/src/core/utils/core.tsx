@@ -1,10 +1,18 @@
 // システムプロンプト準拠：基盤ユーティリティ統合（軽量化版）
-// レイアウト計算機能も統合
 
 import React from 'react'
 import { format, parseISO, isValid } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { ERROR_MESSAGES } from '@core/config'
+
+// エラーメッセージ定数
+const ERROR_MESSAGES = {
+  NETWORK_ERROR: 'ネットワークエラーが発生しました',
+  VALIDATION_ERROR: '入力値に誤りがあります',
+  SERVER_ERROR: 'サーバーエラーが発生しました',
+  UNKNOWN_ERROR: '予期しないエラーが発生しました',
+  TASK_OPERATION_ERROR: 'タスク操作でエラーが発生しました',
+  TIMELINE_ERROR: 'タイムライン表示でエラーが発生しました',
+}
 
 // ===== ログ機能（簡素化：3レベルのみ） =====
 enum LogLevel {
@@ -123,7 +131,7 @@ export const isValidDate = (date: any): date is Date => {
   return date instanceof Date && isValid(date)
 }
 
-// ===== レイアウト計算（layout.tsから統合） =====
+// ===== レイアウト計算 =====
 export const calculateScrollPosition = (
   targetDate: Date,
   startDate: Date,
@@ -169,7 +177,7 @@ export const isElementInViewport = (
   )
 }
 
-// ===== ローディングスピナー（統合） =====
+// ===== ローディングスピナー =====
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg'
   message?: string

@@ -1,6 +1,10 @@
 // システムプロンプト準拠：タイムライン機能専用型定義（軽量化版）
+// 修正内容：ビューモード変更機能の型定義を追加
 
 import { Task, Project, TaskStatus } from '@core/types'
+
+// ビューモード型（修正：AppViewModeをインポート）
+export type AppViewMode = 'tasklist' | 'timeline'
 
 // タイムライン表示単位
 export type TimelineViewUnit = 'day' | 'week'
@@ -54,11 +58,16 @@ export interface TimelineProject extends Project {
 }
 
 // コンポーネントProps型
+
+// 修正：TimelineViewPropsにビューモード変更機能を追加
 export interface TimelineViewProps {
   projects: TimelineProject[]
   onProjectsUpdate: (projects: TimelineProject[]) => void
+  // 新規追加：リストビューに戻る機能
+  onViewModeChange?: (mode: AppViewMode) => void
 }
 
+// 修正：TimelineControlsPropsにビューモード変更機能を追加
 export interface TimelineControlsProps {
   zoomLevel: number
   onZoomChange: (level: number) => void
@@ -70,4 +79,6 @@ export interface TimelineControlsProps {
   onFitToScreen: () => void
   onExpandAll: () => void
   onCollapseAll: () => void
+  // 新規追加：リストビューに戻る機能
+  onViewModeChange?: (mode: AppViewMode) => void
 }
