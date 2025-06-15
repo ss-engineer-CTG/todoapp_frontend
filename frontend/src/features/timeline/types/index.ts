@@ -1,10 +1,25 @@
-// システムプロンプト準拠：Timeline型定義統一（折りたたみ機能対応版）
-// 🔧 修正内容：折りたたみ関数4つの型定義追加
+// システムプロンプト準拠：Timeline型定義統一（TaskWithChildren型追加版）
+// 🔧 修正内容：TaskWithChildren型の追加、型定義の明確化
 
 import { Task, Project, AppViewMode } from '@core/types'
 
 // タイムライン表示単位
 export type TimelineViewUnit = 'day' | 'week'
+
+// 🔧 新規追加：子タスク情報を含むタスク型
+export interface TaskWithChildren {
+  task: Task
+  hasChildren: boolean
+  childrenCount: number
+}
+
+// 🔧 新規追加：子タスクマップ型
+export interface TaskChildrenMap {
+  [taskId: string]: {
+    hasChildren: boolean
+    childrenCount: number
+  }
+}
 
 // 動的サイズ設定
 export interface DynamicSizes {
@@ -33,7 +48,7 @@ export interface TimelineState {
   theme: 'light' | 'dark'
 }
 
-// 🔧 修正：TimelineViewProps - 折りたたみ関数4つを追加
+// TimelineViewProps
 export interface TimelineViewProps {
   projects: Project[]
   tasks: Task[]
@@ -45,14 +60,12 @@ export interface TimelineViewProps {
   onCollapseAll?: () => void
 }
 
-// 🔧 修正：TimelineControlsProps - 折りたたみ関数4つを追加
+// TimelineControlsProps
 export interface TimelineControlsProps {
   zoomLevel: number
   onZoomChange: (level: number) => void
   viewUnit: TimelineViewUnit
   onViewUnitChange: (unit: TimelineViewUnit) => void
-  theme: 'light' | 'dark'
-  onThemeToggle: () => void
   onTodayClick: () => void
   onFitToScreen: () => void
   onExpandAll: () => void
@@ -60,7 +73,7 @@ export interface TimelineControlsProps {
   onViewModeChange?: (mode: AppViewMode) => void
 }
 
-// 🆕 新規追加：TimelineRendererProps - 折りたたみ関数2つを追加
+// TimelineRendererProps
 export interface TimelineRendererProps {
   projects: Project[]
   tasks: Task[]

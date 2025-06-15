@@ -1,5 +1,5 @@
-// システムプロンプト準拠：タスク関連完全統合（Timeline折りたたみ対応強化版）
-// 🔧 修正内容：isTaskVisibleInTimeline関数の折りたたみ対応強化
+// システムプロンプト準拠：タスク関連完全統合（buildTaskChildrenMap関数追加版）
+// 🔧 修正内容：Timeline用ヘルパー関数追加
 
 import { Task } from '@core/types'
 import { TaskRelationMap } from '@tasklist/types'
@@ -47,6 +47,21 @@ export const buildTaskRelationMap = (tasks: Task[]): TaskRelationMap => {
   })
 
   return { childrenMap, parentMap }
+}
+
+// 🔧 新規追加：Timeline用子タスクマップ構築
+export const buildTaskChildrenMap = (tasks: Task[], relationMap: TaskRelationMap) => {
+  const childrenMap: { [taskId: string]: { hasChildren: boolean; childrenCount: number } } = {}
+  
+  tasks.forEach(task => {
+    const childrenIds = relationMap.childrenMap[task.id] || []
+    childrenMap[task.id] = {
+      hasChildren: childrenIds.length > 0,
+      childrenCount: childrenIds.length
+    }
+  })
+  
+  return childrenMap
 }
 
 // ===== 期限順ソート処理（既存維持） =====
@@ -266,7 +281,7 @@ export const calculateTimelineTaskStatus = (task: Task): 'completed' | 'in-progr
 }
 
 /**
- * 🔧 修正：タスクの表示可否判定（Timeline用・折りたたみ完全対応）
+ * タスクの表示可否判定（Timeline用・折りたたみ完全対応）
  */
 export const isTaskVisibleInTimeline = (
   task: Task,
@@ -279,12 +294,12 @@ export const isTaskVisibleInTimeline = (
       return false
     }
     
-    // 🔧 修正：親タスクが存在しない場合は表示
+    // 親タスクが存在しない場合は表示
     if (!task.parentId) {
       return true
     }
     
-    // 🔧 修正：親タスクの折りたたみ状態を階層的にチェック
+    // 親タスクの折りたたみ状態を階層的にチェック
     let currentParentId: string | null = task.parentId
     
     while (currentParentId) {
@@ -300,7 +315,7 @@ export const isTaskVisibleInTimeline = (
         break
       }
       
-      // 🆕 新規追加：親タスクが折りたたまれている場合は非表示
+      // 親タスクが折りたたまれている場合は非表示
       if (parentTask.collapsed) {
         logger.debug('Task hidden due to collapsed parent', {
           taskId: task.id,
@@ -316,7 +331,7 @@ export const isTaskVisibleInTimeline = (
       currentParentId = relationMap.parentMap[currentParentId] || null
     }
     
-    // 🔧 修正：すべての親タスクが展開されている場合は表示
+    // すべての親タスクが展開されている場合は表示
     return true
     
   } catch (error) {
@@ -330,7 +345,7 @@ export const isTaskVisibleInTimeline = (
   }
 }
 
-// 🆕 新規追加：Timeline用子タスク取得（折りたたみ対応）
+// Timeline用子タスク取得（折りたたみ対応）
 export const getVisibleChildTasks = (
   parentTaskId: string,
   allTasks: Task[],
@@ -367,7 +382,7 @@ export const getVisibleChildTasks = (
   }
 }
 
-// 🆕 新規追加：Timeline用タスク数カウント（折りたたみ対応）
+// Timeline用タスク数カウント（折りたたみ対応）
 export const countVisibleTasksInProject = (
   projectId: string,
   allTasks: Task[],

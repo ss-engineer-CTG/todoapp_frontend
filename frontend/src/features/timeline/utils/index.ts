@@ -1,5 +1,8 @@
-// システムプロンプト準拠：Timeline統合ユーティリティ（修正版）
-// 🔧 修正内容：未使用インポート削除・軽量化
+// システムプロンプト準拠：Timeline統合ユーティリティ（子タスクマップ追加版）
+// 🔧 修正内容：buildTaskChildrenMap関数追加
+
+import { Task } from '@core/types'
+import { TaskRelationMap, TaskChildrenMap } from '../types'
 
 // ===== 基本設定 =====
 export const ZOOM_CONFIG = {
@@ -8,6 +11,21 @@ export const ZOOM_CONFIG = {
   default: 100,
   step: 10
 } as const
+
+// 🔧 新規追加：子タスクマップ構築関数
+export const buildTaskChildrenMap = (tasks: Task[], relationMap: TaskRelationMap): TaskChildrenMap => {
+  const childrenMap: TaskChildrenMap = {}
+  
+  tasks.forEach(task => {
+    const childrenIds = relationMap.childrenMap[task.id] || []
+    childrenMap[task.id] = {
+      hasChildren: childrenIds.length > 0,
+      childrenCount: childrenIds.length
+    }
+  })
+  
+  return childrenMap
+}
 
 // ===== 時間範囲計算 =====
 export const calculateTimeRange = (viewUnit: 'day' | 'week', today: Date) => {

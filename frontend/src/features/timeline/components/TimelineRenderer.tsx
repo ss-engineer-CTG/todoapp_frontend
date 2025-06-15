@@ -1,5 +1,5 @@
-// システムプロンプト準拠：Timeline描画統合コンポーネント（折りたたみ機能完全対応版）
-// 🔧 修正内容：子タスク表示制御ロジック追加・タスククリック処理強化
+// システムプロンプト準拠：Timeline描画統合コンポーネント（フックネスト解消版）
+// 🔧 修正内容：renderTaskBar内のフック除去、シンプル化
 
 import React, { useMemo, useCallback } from 'react'
 import { 
@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { Task, Project } from '@core/types'
 import { TaskRelationMap } from '@tasklist/types'
-import { TimelineRendererProps } from '../types'
+import { TimelineRendererProps, TaskWithChildren } from '../types'
 import { 
   calculateTimelineTaskStatus,
   isTaskVisibleInTimeline,
@@ -22,6 +22,7 @@ import {
   isWeekend,
   logger
 } from '@core/utils'
+import { buildTaskChildrenMap } from '../utils'
 
 export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
   projects,
@@ -40,7 +41,10 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
   const today = new Date()
   const dimensions = useMemo(() => calculateDynamicSizes(zoomLevel, viewUnit), [zoomLevel, viewUnit])
 
-  // 🔧 修正：プロジェクト名動的位置計算（画面サイズ対応）
+  // 🔧 修正：子タスクマップを事前計算（フック規則準拠）
+  const taskChildrenMap = useMemo(() => buildTaskChildrenMap(tasks, taskRelationMap), [tasks, taskRelationMap])
+
+  // 🔧 修正：プロジェクト名動的位置計算
   const getProjectNamePosition = useCallback((scrollLeft: number): number => {
     const visibleAreaWidth = typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.6, 800) : 800
     const nameWidth = 200
@@ -150,8 +154,10 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     )
   }, [calculateIndent, dimensions])
 
-  // 🔧 修正：タスクバー描画（クリック処理強化）
-  const renderTaskBar = useCallback((task: Task, project: Project) => {
+  // 🔧 修正：タスクバー描画（フックネスト解消）
+  const renderTaskBar = useCallback((taskWithChildren: TaskWithChildren, project: Project) => {
+    const { task, hasChildren, childrenCount } = taskWithChildren
+    
     if (!isValidDate(task.startDate) || !isValidDate(task.dueDate)) return null
 
     const statusStyle = getTaskStatusStyle(task, project.color)
@@ -160,15 +166,9 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     const endPos = getDatePosition(task.dueDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
     const barWidth = Math.max(80, endPos - startPos + dimensions.cellWidth)
     const barHeight = Math.max(20, dimensions.taskBarHeight - (task.level * 2))
-    
-    // 🔧 修正：子タスク存在チェック強化
-    const hasChildren = useMemo(() => {
-      const childrenIds = taskRelationMap.childrenMap[task.id] || []
-      return childrenIds.length > 0
-    }, [taskRelationMap, task.id])
 
-    // 🔧 修正：タスククリック処理
-    const handleTaskClick = useCallback((e: React.MouseEvent) => {
+    // 🔧 修正：シンプルなクリック処理（フックなし）
+    const handleTaskClick = (e: React.MouseEvent) => {
       e.preventDefault()
       e.stopPropagation()
       
@@ -182,7 +182,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
       if (hasChildren && onToggleTask) {
         onToggleTask(task.id)
       }
-    }, [task.id, task.name, task.collapsed, hasChildren, onToggleTask])
+    }
 
     return (
       <div
@@ -215,7 +215,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
           }}
           onClick={handleTaskClick}
           title={hasChildren ? 
-            `${task.name} (${taskRelationMap.childrenMap[task.id]?.length || 0}個の子タスク - クリックで${task.collapsed ? '展開' : '折りたたみ'})` :
+            `${task.name} (${childrenCount}個の子タスク - クリックで${task.collapsed ? '展開' : '折りたたみ'})` :
             task.name
           }
         >
@@ -239,29 +239,27 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
                 <ChevronRight size={Math.max(8, 12)} />
               }
               <span className="text-xs font-bold">
-                {taskRelationMap.childrenMap[task.id]?.length || 0}
+                {childrenCount}
               </span>
             </div>
           )}
         </div>
       </div>
     )
-  }, [getTaskStatusStyle, calculateIndent, getDatePosition, taskRelationMap, dimensions, timeRange, viewUnit, zoomLevel, theme, onToggleTask])
+  }, [getTaskStatusStyle, calculateIndent, getDatePosition, dimensions, timeRange, viewUnit, zoomLevel, theme, onToggleTask])
 
-  // 🔧 修正：プロジェクト表示用タスクフィルタリング（折りたたみ対応）
-  const getProjectTasks = useCallback((projectId: string): Task[] => {
+  // 🔧 修正：プロジェクト表示用タスクフィルタリング（事前計算済み子タスク情報使用）
+  const getProjectTasks = useCallback((projectId: string): TaskWithChildren[] => {
     try {
       const filtered = filterTasksForTimeline(tasks, projectId, true, taskRelationMap)
       const sorted = sortTasksHierarchically(filtered, taskRelationMap)
       
       // 🔧 修正：折りたたみ状態を考慮したフィルタリング
-      return sorted.filter(task => {
-        // 基本的な表示可否チェック
+      const visibleTasks = sorted.filter(task => {
         if (!isTaskVisibleInTimeline(task, tasks, taskRelationMap)) {
           return false
         }
         
-        // 🆕 新規追加：親タスクが折りたたまれている場合は非表示
         if (task.parentId) {
           let currentParentId: string | null = task.parentId
           
@@ -269,7 +267,6 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
             const parentTask = tasks.find(t => t.id === currentParentId)
             if (!parentTask) break
             
-            // 親タスクが折りたたまれている場合は非表示
             if (parentTask.collapsed) {
               logger.debug('Task hidden due to collapsed parent', {
                 taskId: task.id,
@@ -286,11 +283,18 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
         
         return true
       })
+
+      // 🔧 修正：TaskWithChildren形式に変換
+      return visibleTasks.map(task => ({
+        task,
+        hasChildren: taskChildrenMap[task.id]?.hasChildren || false,
+        childrenCount: taskChildrenMap[task.id]?.childrenCount || 0
+      }))
     } catch (error) {
       logger.error('Project tasks filtering failed', { projectId, error })
       return []
     }
-  }, [tasks, taskRelationMap])
+  }, [tasks, taskRelationMap, taskChildrenMap])
 
   // 🔧 修正：タイムライン全体幅
   const totalTimelineWidth = getTotalTimelineWidth()
@@ -338,7 +342,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
 
       {/* プロジェクト・タスク表示 */}
       {projects.map(project => {
-        const projectTasks = getProjectTasks(project.id)
+        const projectTasksWithChildren = getProjectTasks(project.id)
         
         return (
           <div key={project.id} className={`relative border-b-2 ${
@@ -390,9 +394,9 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
                   <div className="font-bold truncate" style={{ fontSize: `${dimensions.fontSize.base}px` }}>
                     {getDisplayText(project.name, zoomLevel, 20)}
                   </div>
-                  {projectTasks.length > 0 && (
+                  {projectTasksWithChildren.length > 0 && (
                     <div className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                      {projectTasks.length}
+                      {projectTasksWithChildren.length}
                     </div>
                   )}
                 </div>
@@ -400,13 +404,13 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
             </div>
             
             {/* 🔧 修正：プロジェクト内タスク（折りたたみ対応） */}
-            {!project.collapsed && projectTasks.map(task => {
-              const parentTask = task.parentId ? tasks.find(t => t.id === task.parentId) || null : null
+            {!project.collapsed && projectTasksWithChildren.map(taskWithChildren => {
+              const parentTask = taskWithChildren.task.parentId ? tasks.find(t => t.id === taskWithChildren.task.parentId) || null : null
               
               return (
-                <div key={task.id} style={{ width: `${totalTimelineWidth}px`, minWidth: `${totalTimelineWidth}px` }}>
-                  {renderConnectionLines(task, parentTask)}
-                  {renderTaskBar(task, project)}
+                <div key={taskWithChildren.task.id} style={{ width: `${totalTimelineWidth}px`, minWidth: `${totalTimelineWidth}px` }}>
+                  {renderConnectionLines(taskWithChildren.task, parentTask)}
+                  {renderTaskBar(taskWithChildren, project)}
                 </div>
               )
             })}

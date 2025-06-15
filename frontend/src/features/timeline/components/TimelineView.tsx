@@ -1,5 +1,5 @@
-// システムプロンプト準拠：メインタイムラインビューコンポーネント（折りたたみ機能対応版）
-// 🔧 修正内容：折りたたみ関数4つのプロパティ受け取り・中継機能追加
+// システムプロンプト準拠：メインタイムラインビューコンポーネント（プロパティ受け渡し最適化版）
+// 🔧 修正内容：プロパティの効率的な受け渡し、不要な処理削除
 
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { TimelineControls } from './TimelineControls'
@@ -25,8 +25,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   onExpandAll,
   onCollapseAll
 }) => {
-  // 🔧 修正：ThemeProviderのテーマを使用
-  const { theme, setTheme } = useTheme()
+  const { theme } = useTheme()
   
   const {
     state,
@@ -42,7 +41,11 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   } = useTimeline(100, 'week')
 
   const today = new Date()
-  const taskRelationMap = useMemo(() => buildTaskRelationMap(tasks), [tasks])
+  
+  // 🔧 修正：タスク関係マップの効率的な計算
+  const taskRelationMap = useMemo(() => {
+    return buildTaskRelationMap(tasks)
+  }, [tasks])
 
   // フィット機能
   const handleFitToScreen = useCallback(() => {
@@ -78,39 +81,28 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     }
   }, [setScrollLeft])
 
-  // 🔧 修正：プロジェクト展開/折り畳み処理（プロパティ使用）
+  // 🔧 修正：プロパティのラッピング処理最適化
   const handleToggleProjectLocal = useCallback((projectId: string) => {
     logger.info('Toggling project', { projectId })
-    if (onToggleProject) {
-      onToggleProject(projectId)
-    }
+    onToggleProject?.(projectId)
   }, [onToggleProject])
 
-  // 🔧 修正：タスク展開/折り畳み処理（プロパティ使用）
   const handleToggleTaskLocal = useCallback((taskId: string) => {
     logger.info('Toggling task', { taskId })
-    if (onToggleTask) {
-      onToggleTask(taskId)
-    }
+    onToggleTask?.(taskId)
   }, [onToggleTask])
 
-  // 🔧 修正：全展開処理（プロパティ使用）
   const handleExpandAll = useCallback(() => {
     logger.info('Expanding all projects and tasks')
-    if (onExpandAll) {
-      onExpandAll()
-    }
+    onExpandAll?.()
   }, [onExpandAll])
 
-  // 🔧 修正：全折り畳み処理（プロパティ使用）
   const handleCollapseAll = useCallback(() => {
     logger.info('Collapsing all projects and tasks')
-    if (onCollapseAll) {
-      onCollapseAll()
-    }
+    onCollapseAll?.()
   }, [onCollapseAll])
 
-  // 🔧 修正：テーマクラス統一
+  // テーマクラス統一
   const getAppClasses = useCallback(() => {
     return theme === 'dark' 
       ? {
