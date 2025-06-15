@@ -1,5 +1,5 @@
-// システムプロンプト準拠：Timeline描画統合コンポーネント（フックネスト解消版）
-// 🔧 修正内容：renderTaskBar内のフック除去、シンプル化
+// システムプロンプト準拠：Timeline描画統合コンポーネント（モダンテック配色適用版）
+// 🔧 修正内容：モダンテック配色（期限超過・未開始色）を適用
 
 import React, { useMemo, useCallback } from 'react'
 import { 
@@ -41,55 +41,51 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
   const today = new Date()
   const dimensions = useMemo(() => calculateDynamicSizes(zoomLevel, viewUnit), [zoomLevel, viewUnit])
 
-  // 🔧 修正：子タスクマップを事前計算（フック規則準拠）
+  // 子タスクマップを事前計算（フック規則準拠）
   const taskChildrenMap = useMemo(() => buildTaskChildrenMap(tasks, taskRelationMap), [tasks, taskRelationMap])
 
-  // 🔧 修正：プロジェクト名動的位置計算
+  // プロジェクト名動的位置計算
   const getProjectNamePosition = useCallback((scrollLeft: number): number => {
     const visibleAreaWidth = typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.6, 800) : 800
     const nameWidth = 200
     return Math.max(8, Math.min(scrollLeft + 8, scrollLeft + visibleAreaWidth - nameWidth - 8))
   }, [])
 
-  // 🔧 修正：タイムライン全体幅の計算
+  // タイムライン全体幅の計算
   const getTotalTimelineWidth = useCallback((): number => {
     const cellCount = viewUnit === 'week' ? visibleDates.length * 7 : visibleDates.length
     return Math.max(cellCount * dimensions.cellWidth, typeof window !== 'undefined' ? window.innerWidth : 1200)
   }, [visibleDates.length, dimensions.cellWidth, viewUnit])
 
-  // タスクステータススタイル計算
-  const getTaskStatusStyle = useCallback((task: Task, projectColor: string) => {
+  // 🔧 修正：タスクステータススタイル計算（ダークモード最適化配色適用）
+  const getTaskStatusStyle = useCallback((task: Task) => {
     const status = calculateTimelineTaskStatus(task)
     const levelOpacity = Math.max(0.6, 1 - (task.level * 0.1))
     
     switch (status) {
       case 'completed':
         return {
-          backgroundColor: `rgba(16, 185, 129, ${levelOpacity})`,
-          borderColor: '#059669',
+          backgroundColor: `rgba(74, 222, 128, ${levelOpacity})`,   // 🟢 ダークモード緑
+          borderColor: '#4ade80',
           textColor: task.level > 1 ? 'text-gray-700 dark:text-gray-300' : 'text-white'
         }
       case 'in-progress':
-        const color = projectColor.replace('#', '')
-        const r = parseInt(color.substr(0, 2), 16)
-        const g = parseInt(color.substr(2, 2), 16)
-        const b = parseInt(color.substr(4, 2), 16)
         return {
-          backgroundColor: `rgba(${r}, ${g}, ${b}, ${levelOpacity})`,
-          borderColor: projectColor,
+          backgroundColor: `rgba(96, 165, 250, ${levelOpacity})`,   // 🔵 ダークモード青
+          borderColor: '#60a5fa',
           textColor: task.level > 1 ? 'text-gray-700 dark:text-gray-300' : 'text-white'
         }
       case 'overdue':
         return {
-          backgroundColor: `rgba(239, 68, 68, ${levelOpacity})`,
-          borderColor: '#dc2626',
+          backgroundColor: `rgba(248, 113, 113, ${levelOpacity})`,  // 🔴 ダークモード赤
+          borderColor: '#f87171',
           textColor: task.level > 1 ? 'text-gray-700 dark:text-gray-300' : 'text-white'
         }
-      default:
+      default: // 'not-started'
         return {
-          backgroundColor: `rgba(156, 163, 175, ${levelOpacity})`,
-          borderColor: '#9ca3af',
-          textColor: 'text-gray-600 dark:text-gray-400'
+          backgroundColor: `rgba(148, 163, 184, ${levelOpacity})`,  // 🔵 ダークモードグレー
+          borderColor: '#94a3b8',
+          textColor: task.level > 1 ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900'
         }
     }
   }, [])
@@ -154,20 +150,21 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     )
   }, [calculateIndent, dimensions])
 
-  // 🔧 修正：タスクバー描画（フックネスト解消）
+  // タスクバー描画（モダンテック配色適用済み）
   const renderTaskBar = useCallback((taskWithChildren: TaskWithChildren, project: Project) => {
     const { task, hasChildren, childrenCount } = taskWithChildren
     
     if (!isValidDate(task.startDate) || !isValidDate(task.dueDate)) return null
 
-    const statusStyle = getTaskStatusStyle(task, project.color)
+    // モダンテック配色を適用
+    const statusStyle = getTaskStatusStyle(task)
     const indent = calculateIndent(task.level)
     const startPos = getDatePosition(task.startDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
     const endPos = getDatePosition(task.dueDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
     const barWidth = Math.max(80, endPos - startPos + dimensions.cellWidth)
     const barHeight = Math.max(20, dimensions.taskBarHeight - (task.level * 2))
 
-    // 🔧 修正：シンプルなクリック処理（フックなし）
+    // シンプルなクリック処理（フックなし）
     const handleTaskClick = (e: React.MouseEvent) => {
       e.preventDefault()
       e.stopPropagation()
@@ -248,13 +245,13 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     )
   }, [getTaskStatusStyle, calculateIndent, getDatePosition, dimensions, timeRange, viewUnit, zoomLevel, theme, onToggleTask])
 
-  // 🔧 修正：プロジェクト表示用タスクフィルタリング（事前計算済み子タスク情報使用）
+  // プロジェクト表示用タスクフィルタリング（事前計算済み子タスク情報使用）
   const getProjectTasks = useCallback((projectId: string): TaskWithChildren[] => {
     try {
       const filtered = filterTasksForTimeline(tasks, projectId, true, taskRelationMap)
       const sorted = sortTasksHierarchically(filtered, taskRelationMap)
       
-      // 🔧 修正：折りたたみ状態を考慮したフィルタリング
+      // 折りたたみ状態を考慮したフィルタリング
       const visibleTasks = sorted.filter(task => {
         if (!isTaskVisibleInTimeline(task, tasks, taskRelationMap)) {
           return false
@@ -284,7 +281,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
         return true
       })
 
-      // 🔧 修正：TaskWithChildren形式に変換
+      // TaskWithChildren形式に変換
       return visibleTasks.map(task => ({
         task,
         hasChildren: taskChildrenMap[task.id]?.hasChildren || false,
@@ -296,7 +293,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     }
   }, [tasks, taskRelationMap, taskChildrenMap])
 
-  // 🔧 修正：タイムライン全体幅
+  // タイムライン全体幅
   const totalTimelineWidth = getTotalTimelineWidth()
 
   return (
@@ -348,7 +345,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
           <div key={project.id} className={`relative border-b-2 ${
             theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
           }`}>
-            {/* 🔧 修正：プロジェクトヘッダー（クリック処理追加） */}
+            {/* プロジェクトヘッダー（クリック処理追加） */}
             <div 
               className="flex items-center relative cursor-pointer transition-colors duration-200 hover:opacity-90 project-header-row"
               onClick={() => {
@@ -403,7 +400,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
               </div>
             </div>
             
-            {/* 🔧 修正：プロジェクト内タスク（折りたたみ対応） */}
+            {/* プロジェクト内タスク（折りたたみ対応） */}
             {!project.collapsed && projectTasksWithChildren.map(taskWithChildren => {
               const parentTask = taskWithChildren.task.parentId ? tasks.find(t => t.id === taskWithChildren.task.parentId) || null : null
               
