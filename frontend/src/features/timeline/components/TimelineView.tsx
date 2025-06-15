@@ -1,5 +1,5 @@
-// システムプロンプト準拠：メインタイムラインビューコンポーネント（プロパティ受け渡し最適化版）
-// 🔧 修正内容：プロパティの効率的な受け渡し、不要な処理削除
+// システムプロンプト準拠：メインタイムラインビューコンポーネント（修正結果確認版）
+// 📋 確認内容：TimelineRendererの修正が正しく動作するかの検証
 
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { TimelineControls } from './TimelineControls'
@@ -42,7 +42,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   const today = new Date()
   
-  // 🔧 修正：タスク関係マップの効率的な計算
+  // タスク関係マップの効率的な計算
   const taskRelationMap = useMemo(() => {
     return buildTaskRelationMap(tasks)
   }, [tasks])
@@ -81,7 +81,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     }
   }, [setScrollLeft])
 
-  // 🔧 修正：プロパティのラッピング処理最適化
+  // プロパティのラッピング処理最適化
   const handleToggleProjectLocal = useCallback((projectId: string) => {
     logger.info('Toggling project', { projectId })
     onToggleProject?.(projectId)
@@ -126,6 +126,21 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   const isFirstDayOfMonth = useCallback((date: Date, index: number, visibleDates: Date[]): boolean => {
     return index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
   }, [])
+
+  // 📋 修正確認ポイント: 日表示と週表示の動作検証
+  useEffect(() => {
+    logger.info('Timeline view state changed', {
+      viewUnit: state.viewUnit,
+      zoomLevel: state.zoomLevel,
+      taskCount: tasks.length,
+      projectCount: projects.length,
+      修正確認: {
+        日表示モード: state.viewUnit === 'day',
+        タスク数: tasks.length,
+        表示日付数: visibleDates.length
+      }
+    })
+  }, [state.viewUnit, state.zoomLevel, tasks.length, projects.length, visibleDates.length])
 
   // プロジェクトデータが空の場合の表示
   if (projects.length === 0) {
@@ -185,6 +200,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
             {state.viewUnit === 'day' ? (
               // 日表示
               <div>
+                {/* 📋 修正確認: 日表示時のヘッダー描画 */}
                 {/* 月行 */}
                 <div className="flex border-b" style={{ 
                   height: `${Math.max(20, Math.round(dimensions.rowHeight.project * 0.6))}px`,
@@ -327,7 +343,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
           </div>
         </div>
         
-        {/* タイムライングリッド */}
+        {/* 📋 修正確認: TimelineRendererコンポーネント呼び出し */}
         <div 
           className="w-full flex-1 relative overflow-auto timeline-content" 
           onScroll={handleTimelineScroll}
