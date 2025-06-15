@@ -1,5 +1,5 @@
 // システムプロンプト準拠：基盤ユーティリティ統合（完全版）
-// 🔧 修正内容：全ユーティリティ統合、Timeline関数統合
+// 🔧 修正内容：SimpleLoggerクラスにdebugメソッド追加（最小限修正）
 
 import React from 'react'
 import { format, parseISO, isValid } from 'date-fns'
@@ -15,15 +15,17 @@ const ERROR_MESSAGES = {
   TIMELINE_ERROR: 'タイムライン表示でエラーが発生しました',
 }
 
-// ===== ログ機能（簡素化：3レベルのみ） =====
+// 🔧 修正：ログレベル拡張（DEBUG追加）
 enum LogLevel {
   ERROR = 0,
   WARN = 1,
-  INFO = 2
+  INFO = 2,
+  DEBUG = 3  // 🔧 新規追加
 }
 
+// 🔧 修正：SimpleLogger拡張（debugメソッド追加）
 class SimpleLogger {
-  private level: LogLevel = LogLevel.INFO
+  private level: LogLevel = LogLevel.DEBUG  // 🔧 修正：開発環境では全ログ出力
 
   error(message: string, context?: any): void {
     if (this.level >= LogLevel.ERROR) {
@@ -42,11 +44,18 @@ class SimpleLogger {
       console.info(`[INFO] ${message}`, context)
     }
   }
+
+  // 🔧 新規追加：debugメソッド実装
+  debug(message: string, context?: any): void {
+    if (this.level >= LogLevel.DEBUG) {
+      console.debug(`[DEBUG] ${message}`, context)
+    }
+  }
 }
 
 export const logger = new SimpleLogger()
 
-// ===== エラーハンドリング（簡素化） =====
+// ===== エラーハンドリング（既存維持） =====
 export enum ErrorType {
   NETWORK_ERROR = 'NETWORK_ERROR',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
@@ -94,7 +103,7 @@ export const handleError = (error: unknown, userMessage?: string): void => {
   console.error('ユーザー向けエラー:', finalError.userMessage)
 }
 
-// ===== 日付ユーティリティ（統合・簡素化） =====
+// ===== 日付ユーティリティ（既存維持） =====
 export const formatDate = (date: Date | string | null | undefined): string => {
   try {
     if (!date) return '未設定'
@@ -132,7 +141,7 @@ export const isValidDate = (date: any): date is Date => {
   return date instanceof Date && isValid(date)
 }
 
-// ===== Timeline日付ユーティリティ（統合） =====
+// ===== Timeline日付ユーティリティ（既存維持） =====
 export const getMonthName = (date: Date): string => {
   const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
   return months[date.getMonth()]
@@ -177,7 +186,7 @@ export const getDatePosition = (
   }
 }
 
-// ===== レイアウト計算 =====
+// ===== レイアウト計算（既存維持） =====
 export const calculateScrollPosition = (
   targetDate: Date,
   startDate: Date,
@@ -223,7 +232,7 @@ export const isElementInViewport = (
   )
 }
 
-// ===== ローディングスピナー =====
+// ===== ローディングスピナー（既存維持） =====
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg'
   message?: string
@@ -247,7 +256,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   )
 }
 
-// ===== Timeline表示制御（統合） =====
+// ===== Timeline表示制御（既存維持） =====
 export const getDisplayText = (text: string, zoomLevel: number, maxLength?: number): string => {
   if (zoomLevel <= 30) return ''
   if (zoomLevel <= 50) return text.length > 5 ? text.substring(0, 3) + '…' : text
@@ -284,7 +293,7 @@ export const calculateDynamicSizes = (zoomLevel: number, viewUnit: 'day' | 'week
   }
 }
 
-// ===== Timeline追加ユーティリティ =====
+// ===== Timeline追加ユーティリティ（既存維持） =====
 
 /**
  * プロジェクト名動的位置計算
