@@ -1,5 +1,5 @@
 // システムプロンプト準拠：メインタイムラインビューコンポーネント（全プロジェクト対応版）
-// 🔧 修正内容：全プロジェクトデータの効率的な処理、プロジェクト選択非依存の処理フロー
+// 🔧 修正内容：ドラッグ機能の統合、onTaskUpdateプロパティの追加
 
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { TimelineControls } from './TimelineControls'
@@ -8,6 +8,7 @@ import { TimelineViewProps } from '../types'
 import { useTimeline } from '../hooks/useTimeline'
 import { buildTaskRelationMap } from '@tasklist/utils/task'
 import { useTheme } from '@core/components/ThemeProvider'
+import { Task } from '@core/types'
 import { 
   logger,
   getDateCellClass,
@@ -15,7 +16,12 @@ import {
   getWeekNumber
 } from '@core/utils'
 
-export const TimelineView: React.FC<TimelineViewProps> = ({
+// 🔧 修正：onTaskUpdateプロパティを含むインターフェース
+interface ExtendedTimelineViewProps extends TimelineViewProps {
+  onTaskUpdate?: (taskId: string, updates: Partial<Task>) => Promise<void>
+}
+
+export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   projects,
   tasks,
   onViewModeChange,
@@ -23,7 +29,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   onToggleProject,
   onToggleTask,
   onExpandAll,
-  onCollapseAll
+  onCollapseAll,
+  onTaskUpdate // 🆕 追加
 }) => {
   const { theme } = useTheme()
   
@@ -42,7 +49,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   const today = new Date()
   
-  // 🔧 修正：全プロジェクトのタスク関係マップを効率的に計算
   const taskRelationMap = useMemo(() => {
     logger.info('Building task relation map for all projects', {
       taskCount: tasks.length,
@@ -53,7 +59,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     return buildTaskRelationMap(tasks)
   }, [tasks, projects.length])
 
-  // 🔧 修正：全プロジェクトのタスク統計情報
   const projectTaskStats = useMemo(() => {
     const stats = projects.map(project => {
       const projectTasks = tasks.filter(task => task.projectId === project.id)
@@ -80,21 +85,18 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     return stats
   }, [projects, tasks])
 
-  // フィット機能
   const handleFitToScreen = useCallback(() => {
     if (timelineRef.current) {
       fitToScreen(timelineRef.current.clientWidth)
     }
   }, [fitToScreen])
 
-  // 今日スクロール機能のラッパー
   const handleScrollToToday = useCallback(() => {
     logger.info('Today scroll requested from timeline view (all projects)')
     const scrollPosition = scrollToToday()
     return scrollPosition
   }, [scrollToToday])
 
-  // 今日スクロール関数を上位コンポーネントに登録
   useEffect(() => {
     if (onScrollToToday) {
       logger.info('Registering scroll to today function with parent component (all projects mode)')
@@ -102,19 +104,16 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     }
   }, [onScrollToToday, handleScrollToToday])
 
-  // 統合スクロール処理
   const handleTimelineScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const newScrollLeft = e.currentTarget.scrollLeft
     setScrollLeft(newScrollLeft)
     
-    // 日付ヘッダーに同期
     const headerElement = document.querySelector('.timeline-date-header') as HTMLElement
     if (headerElement) {
       headerElement.scrollLeft = newScrollLeft
     }
   }, [setScrollLeft])
 
-  // 🔧 修正：プロパティのラッピング処理最適化（全プロジェクト対応）
   const handleToggleProjectLocal = useCallback((projectId: string) => {
     logger.info('Toggling project in all projects timeline', { 
       projectId,
@@ -149,7 +148,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     onCollapseAll?.()
   }, [onCollapseAll, projects.length, tasks.length])
 
-  // テーマクラス統一
   const getAppClasses = useCallback(() => {
     return theme === 'dark' 
       ? {
@@ -164,17 +162,14 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   const classes = getAppClasses()
 
-  // 週の開始日判定（月曜日）
   const isFirstDayOfWeek = useCallback((date: Date): boolean => {
     return date.getDay() === 1
   }, [])
 
-  // 月の最初の日判定
   const isFirstDayOfMonth = useCallback((date: Date, index: number, visibleDates: Date[]): boolean => {
     return index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
   }, [])
 
-  // 🔧 修正：Timeline view状態変更ログ（全プロジェクト情報追加）
   useEffect(() => {
     logger.info('Timeline view state changed (all projects mode)', {
       viewUnit: state.viewUnit,
@@ -193,7 +188,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     })
   }, [state.viewUnit, state.zoomLevel, tasks.length, projects.length, visibleDates.length, projectTaskStats])
 
-  // 🔧 修正：プロジェクトデータ検証（全プロジェクト表示前提）
   if (projects.length === 0) {
     return (
       <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
@@ -228,7 +222,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     )
   }
 
-  // 🔧 修正：タスクデータ検証（全プロジェクト表示対応）
   if (tasks.length === 0) {
     return (
       <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
@@ -279,7 +272,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   return (
     <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
-      {/* 統合コントロール */}
       <TimelineControls
         zoomLevel={state.zoomLevel}
         onZoomChange={setZoomLevel}
@@ -292,15 +284,11 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
         onViewModeChange={onViewModeChange}
       />
       
-      {/* スクロール可能コンテンツ */}
       <main className="flex-1 flex flex-col overflow-hidden w-full min-w-0" style={{ height: 'calc(100vh - 114px)' }}>
-        {/* 日付ヘッダー */}
         <div className={`${classes.dateHeader} border-b-2 overflow-hidden w-full`}>
           <div className="w-full overflow-x-hidden timeline-date-header">
             {state.viewUnit === 'day' ? (
-              // 日表示
               <div>
-                {/* 月行 */}
                 <div className="flex border-b" style={{ 
                   height: `${Math.max(20, Math.round(dimensions.rowHeight.project * 0.6))}px`,
                   minWidth: `${visibleDates.length * dimensions.cellWidth}px` 
@@ -359,7 +347,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                   })()}
                 </div>
                 
-                {/* 日行 */}
                 <div className="flex" style={{ 
                   height: `${Math.max(24, Math.round(dimensions.rowHeight.project * 0.8))}px`,
                   minWidth: `${visibleDates.length * dimensions.cellWidth}px` 
@@ -394,7 +381,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                 </div>
               </div>
             ) : (
-              // 週表示
               <div className="flex" style={{ 
                 height: `${Math.max(36, dimensions.rowHeight.project + 4)}px`,
                 minWidth: `${visibleDates.length * dimensions.cellWidth * 7}px` 
@@ -442,7 +428,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
           </div>
         </div>
         
-        {/* 🔧 修正：TimelineRendererコンポーネント呼び出し（全プロジェクト対応） */}
         <div 
           className="w-full flex-1 relative overflow-auto timeline-content" 
           onScroll={handleTimelineScroll}
@@ -452,6 +437,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
             scrollbarColor: theme === 'dark' ? '#6b7280 #1f2937' : '#9ca3af #ffffff'
           }}
         >
+          {/* 🔧 修正：TimelineRendererにonTaskUpdateを渡す */}
           <TimelineRenderer
             projects={projects}
             tasks={tasks}
@@ -464,6 +450,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
             scrollLeft={state.scrollLeft}
             onToggleProject={handleToggleProjectLocal}
             onToggleTask={handleToggleTaskLocal}
+            onTaskUpdate={onTaskUpdate} // 🆕 追加
           />
         </div>
       </main>

@@ -1,5 +1,5 @@
-// システムプロンプト準拠：Timeline統合ユーティリティ（全プロジェクト対応版）
-// 🔧 修正内容：プロジェクト横断フィルタリング機能追加、統計計算機能追加
+// システムプロンプト準拠：Timeline統合ユーティリティ（ドラッグ機能対応版）
+// 🔧 修正内容：ドラッグ関連エクスポートの追加
 
 import { Task, Project } from '@core/types'
 import { TaskRelationMap, TaskChildrenMap } from '../types'
@@ -12,6 +12,9 @@ export const ZOOM_CONFIG = {
   default: 100,
   step: 10
 } as const
+
+// 🆕 追加：ドラッグ関連のエクスポート
+export * from './dragHelpers'
 
 // ===== 子タスクマップ構築関数 =====
 export const buildTaskChildrenMap = (tasks: Task[], relationMap: TaskRelationMap): TaskChildrenMap => {
@@ -118,7 +121,7 @@ export const getWeekBackground = (date: Date, startDate: Date, theme: string): s
     (theme === 'dark' ? 'bg-gray-800/60' : 'bg-white/60')
 }
 
-// 🔧 新規追加：全プロジェクト統計計算
+// 全プロジェクト統計計算
 export interface ProjectTimelineStats {
   projectId: string
   projectName: string
@@ -151,13 +154,11 @@ export const calculateAllProjectsStats = (
       const completedTasks = projectTasks.filter(task => task.completed).length
       const activeTasks = projectTasks.filter(task => !task.completed).length
       
-      // 期限超過タスクの計算
       const today = new Date()
       const overdueTasks = projectTasks.filter(task => 
         !task.completed && task.dueDate && new Date(task.dueDate) < today
       ).length
 
-      // 日付範囲の計算
       const validStartDates = projectTasks
         .map(task => task.startDate)
         .filter(date => date && date instanceof Date)
@@ -168,7 +169,6 @@ export const calculateAllProjectsStats = (
         .filter(date => date && date instanceof Date)
         .sort((a, b) => a.getTime() - b.getTime())
 
-      // 平均階層レベル
       const totalLevels = projectTasks.reduce((sum, task) => sum + (task.level || 0), 0)
       const averageTaskLevel = projectTasks.length > 0 ? 
         Math.round((totalLevels / projectTasks.length) * 100) / 100 : 0
@@ -197,7 +197,6 @@ export const calculateAllProjectsStats = (
       return projectStat
     })
 
-    // 全体統計のログ
     const totalStats = {
       totalProjects: stats.length,
       totalTasks: stats.reduce((sum, stat) => sum + stat.totalTasks, 0),
@@ -227,7 +226,7 @@ export const calculateAllProjectsStats = (
   }
 }
 
-// 🔧 新規追加：プロジェクト横断タイムライン範囲計算
+// プロジェクト横断タイムライン範囲計算
 export const calculateCrossProjectTimeRange = (
   tasks: Task[],
   viewUnit: 'day' | 'week'
@@ -259,14 +258,12 @@ export const calculateCrossProjectTimeRange = (
       }
     }
 
-    // 全体の日付範囲
     const allStartDates = validTasks.map(task => task.startDate).sort((a, b) => a.getTime() - b.getTime())
     const allDueDates = validTasks.map(task => task.dueDate).sort((a, b) => a.getTime() - b.getTime())
 
     const globalStartDate = allStartDates[0]
     const globalEndDate = allDueDates[allDueDates.length - 1]
 
-    // プロジェクト別の日付範囲
     const projectDateRanges: { [projectId: string]: { start: Date; end: Date } } = {}
     
     const projectIds = [...new Set(validTasks.map(task => task.projectId))]
@@ -316,7 +313,7 @@ export const calculateCrossProjectTimeRange = (
   }
 }
 
-// 🔧 新規追加：プロジェクト重複タスク検出
+// プロジェクト重複タスク検出
 export const detectCrossProjectTaskConflicts = (
   tasks: Task[]
 ): {
@@ -352,24 +349,19 @@ export const detectCrossProjectTaskConflicts = (
       severity: 'low' | 'medium' | 'high'
     }> = []
 
-    // タスク間の競合チェック
     for (let i = 0; i < validTasks.length; i++) {
       for (let j = i + 1; j < validTasks.length; j++) {
         const task1 = validTasks[i]
         const task2 = validTasks[j]
 
-        // 異なるプロジェクトのタスクのみチェック
         if (task1.projectId === task2.projectId) continue
 
-        // 日付重複チェック
         const task1Start = task1.startDate.getTime()
         const task1End = task1.dueDate.getTime()
         const task2Start = task2.startDate.getTime()
         const task2End = task2.dueDate.getTime()
 
         const hasDateOverlap = !(task1End < task2Start || task2End < task1Start)
-
-        // 同一担当者チェック
         const sameAssignee = task1.assignee === task2.assignee
 
         if (hasDateOverlap && sameAssignee) {
@@ -390,7 +382,6 @@ export const detectCrossProjectTaskConflicts = (
       }
     }
 
-    // 競合サマリーの計算
     const conflictSummary = {
       totalConflicts: conflicts.length,
       byProject: {} as { [projectId: string]: number },
@@ -401,7 +392,6 @@ export const detectCrossProjectTaskConflicts = (
       }
     }
 
-    // プロジェクト別競合数計算
     conflicts.forEach(conflict => {
       const project1 = conflict.task1.projectId
       const project2 = conflict.task2.projectId
@@ -438,7 +428,7 @@ export const detectCrossProjectTaskConflicts = (
   }
 }
 
-// 🔧 新規追加：タイムライン表示最適化計算
+// タイムライン表示最適化計算
 export const optimizeTimelineDisplay = (
   projects: Project[],
   tasks: Task[],
@@ -460,15 +450,12 @@ export const optimizeTimelineDisplay = (
     const totalTasks = tasks.filter(task => !task._isDraft).length
     const avgTasksPerProject = totalProjects > 0 ? totalTasks / totalProjects : 0
 
-    // 推奨セル幅計算
-    const baseCellWidth = Math.max(20, Math.min(50, viewportWidth / 52)) // 年間52週を基準
+    const baseCellWidth = Math.max(20, Math.min(50, viewportWidth / 52))
     const recommendedCellWidth = Math.round(baseCellWidth * (zoomLevel / 100))
 
-    // 推奨行高計算
     const baseRowHeight = totalTasks > 100 ? 32 : totalTasks > 50 ? 40 : 48
     const recommendedRowHeight = Math.round(baseRowHeight * (zoomLevel / 100))
 
-    // 表示推奨設定
     const visibilityRecommendations = {
       showProjectNames: totalProjects <= 20,
       showTaskDetails: totalTasks <= 200 && zoomLevel >= 75,
@@ -476,7 +463,6 @@ export const optimizeTimelineDisplay = (
       useCompactMode: totalTasks > 150 || totalProjects > 10
     }
 
-    // パフォーマンススコア計算（0-100）
     let performanceScore = 100
     if (totalTasks > 500) performanceScore -= 30
     else if (totalTasks > 200) performanceScore -= 15
