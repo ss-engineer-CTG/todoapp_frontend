@@ -1,8 +1,8 @@
-// システムプロンプト準拠：Timeline描画統合コンポーネント（タスクバー表示改善版）
+// システムプロンプト準拠：Timeline描画統合コンポーネント（改善版）
 // 🔧 修正内容：
-// 1. 折り畳みバッジを左揃えに変更
-// 2. 子タスク・孫タスクのタスク名を外部表示
-// 3. 接続線の階層別色分け強化
+// 1. 階層レベル表示の完全削除（YAGNI原則適用）
+// 2. 接続線配色の薄いグレー統一（KISS原則適用）
+// 3. 接続線視認性の向上（最小限の調整）
 
 import React, { useMemo, useCallback } from 'react'
 import { 
@@ -98,39 +98,19 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     return level * Math.max(20, Math.round(32 * dimensions.zoomRatio))
   }, [dimensions.zoomRatio])
 
-  // 🔧 修正3: 接続線の階層別色分け強化
+  // 🔧 修正2: 接続線配色統一（KISS原則適用）
   const getConnectionLineColor = useCallback((task: Task): { color: string; opacity: number; style: string } => {
     const baseOpacity = Math.max(0.7, dimensions.zoomRatio)
     
-    switch (task.level) {
-      case 1: // 親子関係（第1階層）
-        return {
-          color: 'rgba(59, 130, 246, 1)', // 濃い青
-          opacity: baseOpacity * 0.9,
-          style: 'solid'
-        }
-      case 2: // 子孫関係（第2階層）
-        return {
-          color: 'rgba(34, 197, 94, 1)', // 濃い緑
-          opacity: baseOpacity * 0.8,
-          style: 'dashed'
-        }
-      case 3: // 曾孫関係（第3階層）
-        return {
-          color: 'rgba(245, 158, 11, 1)', // 濃いオレンジ
-          opacity: baseOpacity * 0.7,
-          style: 'dotted'
-        }
-      default: // より深い階層
-        return {
-          color: 'rgba(139, 92, 246, 1)', // 紫
-          opacity: baseOpacity * 0.6,
-          style: 'dotted'
-        }
+    // 🎯 薄いグレー統一配色（階層別色分け削除）
+    return {
+      color: 'rgba(156, 163, 175, 0.8)', // 薄いグレー統一
+      opacity: baseOpacity,
+      style: 'solid' // スタイルも統一
     }
   }, [dimensions.zoomRatio])
 
-  // 🔧 統合修正：接続線描画（階層別色分け対応）
+  // 🔧 修正3: 接続線描画（視認性向上・レベル表示削除）
   const renderConnectionLines = useCallback((task: Task, parentTask: Task | null) => {
     if (!parentTask || task.level === 0 || dimensions.zoomRatio < 0.3) return null
     if (!isValidDate(task.startDate) || !isValidDate(parentTask.startDate)) return null
@@ -146,58 +126,32 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
       const parentConnectionX = parentTaskStartPos - connectionOffset
       const childConnectionX = childTaskStartPos - connectionOffset
       
-      // 🔧 修正3: 階層別色分け適用
+      // 🔧 修正: 統一色スタイル適用（視認性向上）
       const connectionStyle = getConnectionLineColor(task)
-      const lineColor = connectionStyle.color.replace('1)', `${connectionStyle.opacity})`)
-      const baseLineWidth = Math.max(2, Math.round(3 * dimensions.zoomRatio))
-      
-      // 階層レベル別線の太さ調整
-      const levelLineWidth = task.level === 1 ? baseLineWidth : Math.max(1, baseLineWidth - 1)
+      const lineColor = connectionStyle.color
+      const baseLineWidth = Math.max(2, Math.round(4 * dimensions.zoomRatio)) // 🎯 線を太くして視認性向上
       
       // 垂直位置の中央揃え
       const taskBarHeight = Math.max(20, dimensions.taskBarHeight - (task.level * 2))
       const taskBarCenterY = (dimensions.rowHeight.task - taskBarHeight) / 2 + (taskBarHeight / 2)
-      
-      // 🔧 修正3: スタイルパターンの生成
-      const getDashedPattern = (style: string, color: string) => {
-        switch (style) {
-          case 'dashed':
-            return `repeating-linear-gradient(to right, ${color} 0px, ${color} 6px, transparent 6px, transparent 12px)`
-          case 'dotted':
-            return `repeating-linear-gradient(to right, ${color} 0px, ${color} 3px, transparent 3px, transparent 9px)`
-          default:
-            return 'none'
-        }
-      }
-
-      const getVerticalDashedPattern = (style: string, color: string) => {
-        switch (style) {
-          case 'dashed':
-            return `repeating-linear-gradient(to bottom, ${color} 0px, ${color} 4px, transparent 4px, transparent 8px)`
-          case 'dotted':
-            return `repeating-linear-gradient(to bottom, ${color} 0px, ${color} 2px, transparent 2px, transparent 6px)`
-          default:
-            return 'none'
-        }
-      }
 
       return (
         <div className="absolute pointer-events-none">
-          {/* 垂直線（親タスクから下へ）- 階層別色分け対応 */}
+          {/* 垂直線（親タスクから下へ）- 統一色適用 */}
           <div
             className="absolute"
             style={{
               left: `${parentConnectionX}px`,
               top: `-${Math.round(dimensions.rowHeight.task * 0.4)}px`,
-              width: `${levelLineWidth}px`,
+              width: `${baseLineWidth}px`,
               height: `${Math.round(dimensions.rowHeight.task * 0.9)}px`,
-              backgroundColor: connectionStyle.style === 'solid' ? lineColor : 'transparent',
-              backgroundImage: getVerticalDashedPattern(connectionStyle.style, lineColor),
+              backgroundColor: lineColor,
+              borderRadius: '1px', // 🎯 角を丸くして見た目向上
               zIndex: 1
             }}
           />
           
-          {/* 水平線（親から子への横線）- 階層別色分け対応 */}
+          {/* 水平線（親から子への横線）- 統一色適用 */}
           <div
             className="absolute"
             style={{
@@ -205,51 +159,34 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
               top: `${taskBarCenterY}px`,
               transform: 'translateY(-50%)',
               width: `${Math.abs(childConnectionX - parentConnectionX) + Math.round(connectionOffset * 0.8)}px`,
-              height: `${levelLineWidth}px`,
-              backgroundColor: connectionStyle.style === 'solid' ? lineColor : 'transparent',
-              backgroundImage: getDashedPattern(connectionStyle.style, lineColor),
+              height: `${baseLineWidth}px`,
+              backgroundColor: lineColor,
+              borderRadius: '1px', // 🎯 角を丸くして見た目向上
               zIndex: 1
             }}
           />
           
-          {/* 接続点（子タスク位置のマーカー）- 階層別色分け対応 */}
+          {/* 接続点（子タスク位置のマーカー）- 統一色適用・視認性向上 */}
           <div
             className="absolute rounded-full border-2"
             style={{
-              left: `${childConnectionX - Math.round(5 * dimensions.zoomRatio)}px`,
+              left: `${childConnectionX - Math.round(6 * dimensions.zoomRatio)}px`, // 🎯 少し大きく
               top: `${taskBarCenterY}px`,
               transform: 'translateY(-50%)',
-              width: `${Math.max(8, Math.round(10 * dimensions.zoomRatio))}px`,
-              height: `${Math.max(8, Math.round(10 * dimensions.zoomRatio))}px`,
+              width: `${Math.max(10, Math.round(12 * dimensions.zoomRatio))}px`, // 🎯 接続点を大きく
+              height: `${Math.max(10, Math.round(12 * dimensions.zoomRatio))}px`,
               backgroundColor: lineColor,
               borderColor: theme === 'dark' ? '#374151' : '#ffffff',
-              borderWidth: `${Math.max(1, Math.round(2 * dimensions.zoomRatio))}px`,
+              borderWidth: `${Math.max(2, Math.round(3 * dimensions.zoomRatio))}px`, // 🎯 境界線を太く
               boxShadow: theme === 'dark' ? 
-                '0 1px 3px rgba(0, 0, 0, 0.4)' : 
-                '0 1px 3px rgba(0, 0, 0, 0.2)',
+                '0 2px 4px rgba(0, 0, 0, 0.6)' : 
+                '0 2px 4px rgba(0, 0, 0, 0.3)', // 🎯 影を強くして視認性向上
               zIndex: 2
             }}
           />
           
-          {/* 階層レベル表示（デバッグ・理解支援用） */}
-          {zoomLevel > 80 && task.level > 1 && (
-            <div
-              className="absolute text-xs font-bold text-center pointer-events-none"
-              style={{
-                left: `${childConnectionX - 15}px`,
-                top: `${taskBarCenterY + 15}px`,
-                width: '30px',
-                color: lineColor,
-                fontSize: `${Math.max(8, dimensions.fontSize.small - 2)}px`,
-                textShadow: theme === 'dark' ? 
-                  '1px 1px 2px rgba(0, 0, 0, 0.8)' : 
-                  '1px 1px 2px rgba(255, 255, 255, 0.8)',
-                zIndex: 3
-              }}
-            >
-              L{task.level}
-            </div>
-          )}
+          {/* 🔧 修正1: 階層レベル表示削除（YAGNI原則適用） */}
+          {/* 削除済み: 階層レベル表示（デバッグ・理解支援用） */}
         </div>
       )
     } catch (error) {
@@ -262,7 +199,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     }
   }, [dimensions, getDatePosition, timeRange, viewUnit, zoomLevel, theme, getConnectionLineColor])
 
-  // 🔧 修正2: 外部タスク名表示の計算
+  // 🔧 修正1: 外部タスク名表示の計算（階層レベル表示削除）
   const calculateExternalNamePosition = useCallback((task: Task, taskStartPos: number, barWidth: number) => {
     const nameMargin = 12 // タスクバーからの距離
     const nameLeft = taskStartPos + barWidth + nameMargin
@@ -276,7 +213,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     }
   }, [dimensions.fontSize])
 
-  // タスクバー描画（大幅修正版）
+  // タスクバー描画（階層レベル表示削除版）
   const renderTaskBar = useCallback((taskWithChildren: TaskWithChildren, project: Project) => {
     const { task, hasChildren, childrenCount } = taskWithChildren
     
@@ -289,7 +226,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     const barWidth = Math.max(80, endPos - startPos + dimensions.cellWidth)
     const barHeight = Math.max(20, dimensions.taskBarHeight - (task.level * 2))
 
-    // 🔧 修正2: 外部タスク名表示用の計算
+    // 🔧 修正1: 外部タスク名表示用の計算（階層レベル表示なし）
     const isExternalNameDisplay = task.level > 0 // 子タスク・孫タスク
     const externalNameStyle = isExternalNameDisplay ? calculateExternalNamePosition(task, startPos, barWidth) : null
 
@@ -344,7 +281,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
             task.name
           }
         >
-          {/* 🔧 修正1: 左側アイコン群（折り畳みバッジを左揃えに移動） */}
+          {/* 左側アイコン群（折り畳みバッジを左揃えに配置） */}
           <div className="px-3 flex items-center flex-shrink-0 space-x-2">
             {/* ステータスアイコン */}
             <div className="flex items-center space-x-1">
@@ -353,7 +290,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
                 <AlertTriangle size={Math.max(10, 14)} />}
             </div>
             
-            {/* 🔧 修正1: 折り畳みバッジを左側に配置 */}
+            {/* 折り畳みバッジを左側に配置 */}
             {hasChildren && dimensions.zoomRatio > 0.5 && (
               <div className="bg-white/30 rounded-full px-2 py-1 flex items-center space-x-1">
                 {!task.collapsed ? 
@@ -367,7 +304,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
             )}
           </div>
           
-          {/* 🔧 修正2: タスク名表示（条件付き） */}
+          {/* タスク名表示（条件付き） */}
           {!isExternalNameDisplay && (
             <div 
               className="px-2 font-semibold truncate flex-1"
@@ -378,7 +315,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
           )}
         </div>
 
-        {/* 🔧 修正2: 外部タスク名表示（子タスク・孫タスク用） */}
+        {/* 🔧 修正1: 外部タスク名表示（子タスク・孫タスク用・階層レベル表示削除） */}
         {isExternalNameDisplay && externalNameStyle && (
           <div
             className={`absolute font-semibold pointer-events-none ${
@@ -406,13 +343,8 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
             <div className="truncate">
               {getDisplayText(task.name, zoomLevel, Math.max(15, 25 - task.level * 3))}
             </div>
-            {/* 階層レベル表示 */}
-            <div 
-              className="text-xs opacity-60 mt-1"
-              style={{ fontSize: `${Math.max(8, externalNameStyle.fontSize - 2)}px` }}
-            >
-              Level {task.level}
-            </div>
+            {/* 🔧 修正1: 階層レベル表示削除（YAGNI原則適用） */}
+            {/* 削除済み: 階層レベル表示 */}
           </div>
         )}
       </div>
