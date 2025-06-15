@@ -1,5 +1,5 @@
-// システムプロンプト準拠：メインアプリロジック統合・軽量化版（タイムライン折りたたみ修正版）
-// 🔧 修正内容：TimelineViewに折りたたみ関数4つを追加渡し
+// システムプロンプト準拠：メインアプリロジック統合・軽量化版（タイムライン全プロジェクト対応版）
+// 🔧 修正内容：ビューモード別タスクロード制御により、タイムラインで全プロジェクトのタスクを表示
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { AreaType, Task, AppViewMode, Project } from '@core/types'
@@ -52,25 +52,25 @@ const TodoApp: React.FC = () => {
   const [isAddingProject, setIsAddingProject] = useState<boolean>(false)
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
   
-  // ビューモード管理（型安全性を向上）
+  // 🔧 修正：ビューモード管理（型安全性を向上）
   const [viewMode, setViewMode] = useState<AppViewMode>('tasklist' as AppViewMode)
   
   // タイムライン用今日スクロール状態管理
   const [timelineScrollToToday, setTimelineScrollToToday] = useState<(() => void) | null>(null)
 
-  // 🔧 修正：プロジェクト・タスク状態管理（折りたたみ対応）
+  // プロジェクト・タスク状態管理（折りたたみ対応）
   const [managedProjects, setManagedProjects] = useState<Project[]>([])
   const [managedTasks, setManagedTasks] = useState<Task[]>([])
 
   const currentProjects = projects.data || []
   const currentTasks = tasks.data || []
 
-  // 🔧 修正：プロジェクト状態の同期
+  // プロジェクト状態の同期
   useEffect(() => {
     setManagedProjects(currentProjects.map(project => ({ ...project })))
   }, [currentProjects])
 
-  // 🔧 修正：タスク状態の同期
+  // タスク状態の同期
   useEffect(() => {
     setManagedTasks(currentTasks.map(task => ({ ...task })))
   }, [currentTasks])
@@ -84,13 +84,28 @@ const TodoApp: React.FC = () => {
 
   const taskRelationMap = buildTaskRelationMap(allTasksWithDrafts)
 
-  // フィルタリング・ソート済みタスク
+  // 🔧 修正：ビューモードに応じたタスクフィルタリング
   const filteredTasks = (() => {
     try {
-      const filtered = filterTasks(allTasksWithDrafts, selectedProjectId, showCompleted, taskRelationMap)
-      return sortTasksHierarchically(filtered, taskRelationMap)
+      if (viewMode === 'timeline') {
+        // タイムラインビュー：全プロジェクトのタスクを表示（フィルタリングなし）
+        logger.info('Timeline view: using all tasks', { 
+          totalTasks: allTasksWithDrafts.length,
+          viewMode 
+        })
+        return sortTasksHierarchically(allTasksWithDrafts, taskRelationMap)
+      } else {
+        // タスクリストビュー：選択されたプロジェクトのタスクのみ表示
+        const filtered = filterTasks(allTasksWithDrafts, selectedProjectId, showCompleted, taskRelationMap)
+        logger.info('Task list view: using filtered tasks', { 
+          selectedProjectId,
+          filteredTasks: filtered.length,
+          viewMode 
+        })
+        return sortTasksHierarchically(filtered, taskRelationMap)
+      }
     } catch (error) {
-      logger.error('Task filtering and sorting failed', { error })
+      logger.error('Task filtering and sorting failed', { error, viewMode })
       return managedTasks.filter((task: Task) => task.projectId === selectedProjectId)
     }
   })()
@@ -102,12 +117,23 @@ const TodoApp: React.FC = () => {
     updateTask,
     deleteTask,
     loadTasks: async () => {
-      const result = await loadTasks(selectedProjectId)
-      return result
+      // 🔧 修正：ビューモードに応じたタスクロード
+      if (viewMode === 'timeline') {
+        logger.info('Loading all tasks for timeline view')
+        return await loadTasks() // 引数なし = 全タスク
+      } else {
+        logger.info('Loading project tasks for list view', { selectedProjectId })
+        return await loadTasks(selectedProjectId)
+      }
     },
     batchUpdateTasks: async (operation: any, taskIds: string[]) => {
       const result = await batchUpdateTasks(operation, taskIds)
-      await loadTasks(selectedProjectId)
+      // 🔧 修正：ビューモードに応じたリロード
+      if (viewMode === 'timeline') {
+        await loadTasks() // 全タスクリロード
+      } else {
+        await loadTasks(selectedProjectId) // 選択プロジェクトのみリロード
+      }
       return result
     }
   }
@@ -129,7 +155,7 @@ const TodoApp: React.FC = () => {
     apiActions: taskApiActions
   })
 
-  // 🔧 修正：プロジェクト折りたたみ処理
+  // プロジェクト折りたたみ処理
   const handleToggleProject = useCallback(async (projectId: string) => {
     try {
       const project = managedProjects.find(p => p.id === projectId)
@@ -159,7 +185,7 @@ const TodoApp: React.FC = () => {
     }
   }, [managedProjects, updateProject, currentProjects])
 
-  // 🔧 修正：タスク折りたたみ処理
+  // タスク折りたたみ処理
   const handleToggleTask = useCallback(async (taskId: string) => {
     try {
       const task = managedTasks.find(t => t.id === taskId)
@@ -198,7 +224,7 @@ const TodoApp: React.FC = () => {
     }
   }, [managedTasks, updateTask, currentTasks])
 
-  // 🔧 修正：全展開処理
+  // 全展開処理
   const handleExpandAll = useCallback(async () => {
     try {
       logger.info('Expanding all projects and tasks')
@@ -227,7 +253,7 @@ const TodoApp: React.FC = () => {
     }
   }, [managedProjects, managedTasks, updateProject, updateTask])
 
-  // 🔧 修正：全折りたたみ処理
+  // 全折りたたみ処理
   const handleCollapseAll = useCallback(async () => {
     try {
       logger.info('Collapsing all projects and tasks')
@@ -256,17 +282,25 @@ const TodoApp: React.FC = () => {
     }
   }, [managedProjects, managedTasks, updateProject, updateTask])
 
-  // ビューモード切り替え（型安全性を向上）
-  const handleViewModeChange = useCallback((newMode: AppViewMode) => {
+  // 🔧 修正：ビューモード切り替え（タスクロード制御付き）
+  const handleViewModeChange = useCallback(async (newMode: AppViewMode) => {
     logger.info('View mode changing', { from: viewMode, to: newMode })
     setViewMode(newMode)
     
     if (newMode === 'timeline') {
       setActiveArea('timeline')
+      // タイムラインビュー：全プロジェクトのタスクをロード
+      logger.info('Loading all tasks for timeline view')
+      await loadTasks()
     } else if (newMode === 'tasklist') {
       setActiveArea('tasks')
+      // タスクリストビュー：選択されたプロジェクトのタスクをロード
+      if (selectedProjectId) {
+        logger.info('Loading project tasks for list view', { selectedProjectId })
+        await loadTasks(selectedProjectId)
+      }
     }
-  }, [viewMode])
+  }, [viewMode, loadTasks, selectedProjectId])
 
   // タイムライン用今日スクロール処理
   const handleTimelineScrollToToday = useCallback(() => {
@@ -332,9 +366,15 @@ const TodoApp: React.FC = () => {
         clearSelection()
         setIsMultiSelectMode(false)
       }
-      await loadTasks(selectedProjectId)
+      
+      // 🔧 修正：ビューモードに応じたリロード
+      if (viewMode === 'timeline') {
+        await loadTasks() // 全タスクリロード
+      } else {
+        await loadTasks(selectedProjectId) // 選択プロジェクトのみリロード
+      }
     }
-  }, [deleteTaskOperation, selection, setSelectedTaskId, clearSelection, setIsMultiSelectMode, loadTasks, selectedProjectId])
+  }, [deleteTaskOperation, selection, setSelectedTaskId, clearSelection, setIsMultiSelectMode, loadTasks, selectedProjectId, viewMode])
 
   // タスクコピー
   const handleCopyTask = useCallback((taskId: string) => {
@@ -352,9 +392,14 @@ const TodoApp: React.FC = () => {
 
     const success = await pasteTasks(targetParentId, targetLevel)
     if (success) {
-      await loadTasks(selectedProjectId)
+      // 🔧 修正：ビューモードに応じたリロード
+      if (viewMode === 'timeline') {
+        await loadTasks() // 全タスクリロード
+      } else {
+        await loadTasks(selectedProjectId) // 選択プロジェクトのみリロード
+      }
     }
-  }, [selection.selectedId, allTasksWithDrafts, pasteTasks, loadTasks, selectedProjectId])
+  }, [selection.selectedId, allTasksWithDrafts, pasteTasks, loadTasks, selectedProjectId, viewMode])
 
   // タスク完了状態切り替え
   const handleToggleTaskCompletion = useCallback(async (taskId: string) => {
@@ -364,9 +409,14 @@ const TodoApp: React.FC = () => {
       selection.selectedIds
     )
     if (success) {
-      await loadTasks(selectedProjectId)
+      // 🔧 修正：ビューモードに応じたリロード
+      if (viewMode === 'timeline') {
+        await loadTasks() // 全タスクリロード
+      } else {
+        await loadTasks(selectedProjectId) // 選択プロジェクトのみリロード
+      }
     }
-  }, [toggleTaskCompletion, selection, loadTasks, selectedProjectId])
+  }, [toggleTaskCompletion, selection, loadTasks, selectedProjectId, viewMode])
 
   // タスク折りたたみ切り替え（管理状態経由）
   const handleToggleTaskCollapse = useCallback(async (taskId: string) => {
@@ -435,7 +485,13 @@ const TodoApp: React.FC = () => {
 
       if (isDraftTask(task)) {
         savedTask = await saveDraft(taskId, updates)
-        await loadTasks(selectedProjectId)
+        
+        // 🔧 修正：ビューモードに応じたリロード
+        if (viewMode === 'timeline') {
+          await loadTasks() // 全タスクリロード
+        } else {
+          await loadTasks(selectedProjectId) // 選択プロジェクトのみリロード
+        }
         
         if (savedTask) {
           logger.info('Setting focus to newly created task', { 
@@ -457,7 +513,14 @@ const TodoApp: React.FC = () => {
         return savedTask
       } else {
         await updateTask(taskId, updates)
-        await loadTasks(selectedProjectId)
+        
+        // 🔧 修正：ビューモードに応じたリロード
+        if (viewMode === 'timeline') {
+          await loadTasks() // 全タスクリロード
+        } else {
+          await loadTasks(selectedProjectId) // 選択プロジェクトのみリロード
+        }
+        
         return task
       }
     } catch (error) {
@@ -469,7 +532,8 @@ const TodoApp: React.FC = () => {
     saveDraft, 
     updateTask, 
     loadTasks, 
-    selectedProjectId, 
+    selectedProjectId,
+    viewMode,
     setPendingFocusTaskId,
     setSelectedTaskId, 
     setActiveArea,
@@ -484,6 +548,7 @@ const TodoApp: React.FC = () => {
         if (projectsData.length > 0) {
           const firstProject = projectsData[0]
           setSelectedProjectId(firstProject.id)
+          // 初期化時はタスクリストビューなので選択されたプロジェクトのタスクをロード
           await loadTasks(firstProject.id)
         }
         setIsInitialized(true)
@@ -496,12 +561,25 @@ const TodoApp: React.FC = () => {
     initializeApp()
   }, [loadProjects, loadTasks])
 
-  // プロジェクト切り替え時
+  // 🔧 修正：プロジェクト切り替え時（ビューモード考慮）
   useEffect(() => {
     if (selectedProjectId && isInitialized) {
-      loadTasks(selectedProjectId)
+      // タスクリストビューの場合のみ、選択されたプロジェクトのタスクをロード
+      if (viewMode === 'tasklist') {
+        logger.info('Project changed in list view, loading project tasks', { 
+          selectedProjectId, 
+          viewMode 
+        })
+        loadTasks(selectedProjectId)
+      } else {
+        logger.info('Project changed in timeline view, keeping all tasks loaded', { 
+          selectedProjectId, 
+          viewMode 
+        })
+        // タイムラインビューでは全タスクを保持（リロード不要）
+      }
     }
-  }, [selectedProjectId, isInitialized, loadTasks])
+  }, [selectedProjectId, isInitialized, loadTasks, viewMode])
 
   // イベントハンドラー
   const handleProjectSelect = useCallback((projectId: string) => {
@@ -510,8 +588,13 @@ const TodoApp: React.FC = () => {
     clearSelection()
     setActiveArea("projects")
     setIsDetailPanelVisible(false)
-    setAllTasksWithDrafts(tasks.data || [])
-  }, [setSelectedTaskId, clearSelection, setActiveArea, setIsDetailPanelVisible, tasks.data])
+    
+    // 🔧 修正：タスクリストビューの場合のみ即座にタスクを更新
+    if (viewMode === 'tasklist') {
+      setAllTasksWithDrafts(tasks.data || [])
+    }
+    // タイムラインビューの場合は全タスクを保持
+  }, [setSelectedTaskId, clearSelection, setActiveArea, setIsDetailPanelVisible, tasks.data, viewMode])
 
   const handleTaskSelectWrapper = useCallback((taskId: string, event?: React.MouseEvent) => {
     handleSelect(taskId, filteredTasks, event)

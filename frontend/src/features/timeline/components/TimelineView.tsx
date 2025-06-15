@@ -1,5 +1,5 @@
-// システムプロンプト準拠：メインタイムラインビューコンポーネント（修正結果確認版）
-// 📋 確認内容：TimelineRendererの修正が正しく動作するかの検証
+// システムプロンプト準拠：メインタイムラインビューコンポーネント（全プロジェクト対応版）
+// 🔧 修正内容：全プロジェクトデータの効率的な処理、プロジェクト選択非依存の処理フロー
 
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { TimelineControls } from './TimelineControls'
@@ -42,10 +42,43 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   const today = new Date()
   
-  // タスク関係マップの効率的な計算
+  // 🔧 修正：全プロジェクトのタスク関係マップを効率的に計算
   const taskRelationMap = useMemo(() => {
+    logger.info('Building task relation map for all projects', {
+      taskCount: tasks.length,
+      projectCount: projects.length,
+      viewType: 'timeline_all_projects'
+    })
+    
     return buildTaskRelationMap(tasks)
-  }, [tasks])
+  }, [tasks, projects.length])
+
+  // 🔧 修正：全プロジェクトのタスク統計情報
+  const projectTaskStats = useMemo(() => {
+    const stats = projects.map(project => {
+      const projectTasks = tasks.filter(task => task.projectId === project.id)
+      const completedTasks = projectTasks.filter(task => task.completed).length
+      const activeTasks = projectTasks.filter(task => !task.completed).length
+      
+      return {
+        projectId: project.id,
+        projectName: project.name,
+        totalTasks: projectTasks.length,
+        completedTasks,
+        activeTasks,
+        completionRate: projectTasks.length > 0 ? Math.round((completedTasks / projectTasks.length) * 100) : 0
+      }
+    })
+    
+    logger.info('Timeline project statistics calculated', {
+      projectCount: stats.length,
+      totalTasksAcrossProjects: stats.reduce((sum, stat) => sum + stat.totalTasks, 0),
+      averageCompletionRate: stats.length > 0 ? 
+        Math.round(stats.reduce((sum, stat) => sum + stat.completionRate, 0) / stats.length) : 0
+    })
+    
+    return stats
+  }, [projects, tasks])
 
   // フィット機能
   const handleFitToScreen = useCallback(() => {
@@ -56,7 +89,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   // 今日スクロール機能のラッパー
   const handleScrollToToday = useCallback(() => {
-    logger.info('Today scroll requested from timeline view')
+    logger.info('Today scroll requested from timeline view (all projects)')
     const scrollPosition = scrollToToday()
     return scrollPosition
   }, [scrollToToday])
@@ -64,7 +97,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   // 今日スクロール関数を上位コンポーネントに登録
   useEffect(() => {
     if (onScrollToToday) {
-      logger.info('Registering scroll to today function with parent component')
+      logger.info('Registering scroll to today function with parent component (all projects mode)')
       onScrollToToday(handleScrollToToday)
     }
   }, [onScrollToToday, handleScrollToToday])
@@ -81,26 +114,40 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     }
   }, [setScrollLeft])
 
-  // プロパティのラッピング処理最適化
+  // 🔧 修正：プロパティのラッピング処理最適化（全プロジェクト対応）
   const handleToggleProjectLocal = useCallback((projectId: string) => {
-    logger.info('Toggling project', { projectId })
+    logger.info('Toggling project in all projects timeline', { 
+      projectId,
+      totalProjects: projects.length
+    })
     onToggleProject?.(projectId)
-  }, [onToggleProject])
+  }, [onToggleProject, projects.length])
 
   const handleToggleTaskLocal = useCallback((taskId: string) => {
-    logger.info('Toggling task', { taskId })
+    const task = tasks.find(t => t.id === taskId)
+    logger.info('Toggling task in all projects timeline', { 
+      taskId,
+      taskProject: task?.projectId,
+      totalTasks: tasks.length
+    })
     onToggleTask?.(taskId)
-  }, [onToggleTask])
+  }, [onToggleTask, tasks])
 
   const handleExpandAll = useCallback(() => {
-    logger.info('Expanding all projects and tasks')
+    logger.info('Expanding all projects and tasks in timeline', {
+      projectCount: projects.length,
+      taskCount: tasks.length
+    })
     onExpandAll?.()
-  }, [onExpandAll])
+  }, [onExpandAll, projects.length, tasks.length])
 
   const handleCollapseAll = useCallback(() => {
-    logger.info('Collapsing all projects and tasks')
+    logger.info('Collapsing all projects and tasks in timeline', {
+      projectCount: projects.length,
+      taskCount: tasks.length
+    })
     onCollapseAll?.()
-  }, [onCollapseAll])
+  }, [onCollapseAll, projects.length, tasks.length])
 
   // テーマクラス統一
   const getAppClasses = useCallback(() => {
@@ -127,22 +174,26 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     return index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
   }, [])
 
-  // 📋 修正確認ポイント: 日表示と週表示の動作検証
+  // 🔧 修正：Timeline view状態変更ログ（全プロジェクト情報追加）
   useEffect(() => {
-    logger.info('Timeline view state changed', {
+    logger.info('Timeline view state changed (all projects mode)', {
       viewUnit: state.viewUnit,
       zoomLevel: state.zoomLevel,
       taskCount: tasks.length,
       projectCount: projects.length,
-      修正確認: {
-        日表示モード: state.viewUnit === 'day',
-        タスク数: tasks.length,
-        表示日付数: visibleDates.length
-      }
+      visibleDatesCount: visibleDates.length,
+      projectStats: projectTaskStats.reduce((summary, stat) => {
+        summary[stat.projectId] = {
+          name: stat.projectName,
+          tasks: stat.totalTasks,
+          completion: `${stat.completionRate}%`
+        }
+        return summary
+      }, {} as { [key: string]: { name: string; tasks: number; completion: string } })
     })
-  }, [state.viewUnit, state.zoomLevel, tasks.length, projects.length, visibleDates.length])
+  }, [state.viewUnit, state.zoomLevel, tasks.length, projects.length, visibleDates.length, projectTaskStats])
 
-  // プロジェクトデータが空の場合の表示
+  // 🔧 修正：プロジェクトデータ検証（全プロジェクト表示前提）
   if (projects.length === 0) {
     return (
       <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
@@ -165,6 +216,55 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
             <p className="text-muted-foreground mb-6">
               リストビューでプロジェクトを作成してからタイムラインビューをお使いください
             </p>
+            <button
+              onClick={() => onViewModeChange?.('tasklist')}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              リストビューに戻る
+            </button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // 🔧 修正：タスクデータ検証（全プロジェクト表示対応）
+  if (tasks.length === 0) {
+    return (
+      <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
+        <TimelineControls
+          zoomLevel={state.zoomLevel}
+          onZoomChange={setZoomLevel}
+          viewUnit={state.viewUnit}
+          onViewUnitChange={setViewUnit}
+          onTodayClick={handleScrollToToday}
+          onFitToScreen={handleFitToScreen}
+          onExpandAll={handleExpandAll}
+          onCollapseAll={handleCollapseAll}
+          onViewModeChange={onViewModeChange}
+        />
+        
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-6xl mb-4">📋</div>
+            <h2 className="text-2xl font-bold mb-4">タスクがありません</h2>
+            <p className="text-muted-foreground mb-6">
+              リストビューでタスクを作成してからタイムラインビューで確認できます
+            </p>
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg mb-6">
+              <h3 className="font-semibold mb-2">プロジェクト一覧:</h3>
+              <ul className="text-left space-y-1">
+                {projects.map(project => (
+                  <li key={project.id} className="flex items-center">
+                    <div 
+                      className="w-3 h-3 rounded-full mr-2"
+                      style={{ backgroundColor: project.color }}
+                    />
+                    {project.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
             <button
               onClick={() => onViewModeChange?.('tasklist')}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
@@ -200,7 +300,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
             {state.viewUnit === 'day' ? (
               // 日表示
               <div>
-                {/* 📋 修正確認: 日表示時のヘッダー描画 */}
                 {/* 月行 */}
                 <div className="flex border-b" style={{ 
                   height: `${Math.max(20, Math.round(dimensions.rowHeight.project * 0.6))}px`,
@@ -343,7 +442,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
           </div>
         </div>
         
-        {/* 📋 修正確認: TimelineRendererコンポーネント呼び出し */}
+        {/* 🔧 修正：TimelineRendererコンポーネント呼び出し（全プロジェクト対応） */}
         <div 
           className="w-full flex-1 relative overflow-auto timeline-content" 
           onScroll={handleTimelineScroll}

@@ -1,8 +1,5 @@
-// システムプロンプト準拠：Timeline描画統合コンポーネント（3問題統合修正版）
-// 🔧 修正内容：
-// 1. タスクバー1日早い表示問題 → renderTaskBar内の位置計算補正
-// 2. 子孫接続線の点線化 → renderConnectionLines内のスタイル分岐
-// 3. 親タスク星マーカー → renderConnectionLines内にマーカー要素追加
+// システムプロンプト準拠：Timeline描画統合コンポーネント（全プロジェクト対応版）
+// 🔧 修正内容：全プロジェクト表示対応、プロジェクト横断フィルタリング最適化
 
 import React, { useMemo, useCallback } from 'react'
 import { 
@@ -14,7 +11,7 @@ import { TimelineRendererProps, TaskWithChildren } from '../types'
 import { 
   calculateTimelineTaskStatus,
   isTaskVisibleInTimeline,
-  filterTasksForTimeline,
+  filterTasksForAllProjects,
   sortTasksHierarchically
 } from '@tasklist/utils/task'
 import { 
@@ -44,8 +41,14 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
   const today = new Date()
   const dimensions = useMemo(() => calculateDynamicSizes(zoomLevel, viewUnit), [zoomLevel, viewUnit])
 
-  // 子タスクマップを事前計算（フック規則準拠）
-  const taskChildrenMap = useMemo(() => buildTaskChildrenMap(tasks, taskRelationMap), [tasks, taskRelationMap])
+  // 🔧 修正：全プロジェクト対応のタスクマップ事前計算
+  const taskChildrenMap = useMemo(() => {
+    logger.info('Building task children map for all projects', {
+      totalTasks: tasks.length,
+      totalProjects: projects.length
+    })
+    return buildTaskChildrenMap(tasks, taskRelationMap)
+  }, [tasks, taskRelationMap, projects.length])
 
   // プロジェクト名動的位置計算
   const getProjectNamePosition = useCallback((scrollLeft: number): number => {
@@ -98,7 +101,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     return level * Math.max(20, Math.round(32 * dimensions.zoomRatio))
   }, [dimensions.zoomRatio])
 
-  // 🔧 修正2: 接続線スタイル計算（階層別スタイル分岐）
+  // 接続線スタイル計算（階層別スタイル分岐）
   const getConnectionLineStyle = useCallback((task: Task): { 
     color: string; 
     opacity: number; 
@@ -108,7 +111,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     const baseOpacity = Math.max(0.7, dimensions.zoomRatio)
     const baseWidth = Math.max(2, Math.round(4 * dimensions.zoomRatio))
     
-    // 🎯 階層別スタイル分岐（KISS原則適用）
+    // 階層別スタイル分岐（KISS原則適用）
     if (task.level <= 1) {
       // 親→子（レベル0→1）: 実線
       return {
@@ -128,7 +131,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     }
   }, [dimensions.zoomRatio])
 
-  // 🔧 修正3: 接続線描画（スタイル分岐 + 星マーカー追加）
+  // 接続線描画（スタイル分岐 + 星マーカー追加）
   const renderConnectionLines = useCallback((task: Task, parentTask: Task | null) => {
     if (!parentTask || task.level === 0 || dimensions.zoomRatio < 0.3) return null
     if (!isValidDate(task.startDate) || !isValidDate(parentTask.startDate)) return null
@@ -144,7 +147,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
       const parentConnectionX = parentTaskStartPos - connectionOffset
       const childConnectionX = childTaskStartPos - connectionOffset
       
-      // 🔧 修正: 階層別スタイル適用
+      // 階層別スタイル適用
       const connectionStyle = getConnectionLineStyle(task)
       const lineColor = connectionStyle.color
       const lineWidth = connectionStyle.width
@@ -156,7 +159,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
 
       return (
         <div className="absolute pointer-events-none">
-          {/* 🔧 修正3: 星マーカー（親タスクの接続開始点） */}
+          {/* 星マーカー（親タスクの接続開始点） */}
           <div
             className="absolute z-10 flex items-center justify-center"
             style={{
@@ -257,7 +260,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     }
   }, [dimensions.fontSize])
 
-  // 🔧 修正1: タスクバー描画（日付位置補正）
+  // タスクバー描画（日付位置補正）
   const renderTaskBar = useCallback((taskWithChildren: TaskWithChildren, project: Project) => {
     const { task, hasChildren, childrenCount } = taskWithChildren
     
@@ -266,7 +269,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     const statusStyle = getTaskStatusStyle(task)
     const indent = calculateIndent(task.level)
     
-    // 🔧 修正1: 日表示時の位置補正（1日早い表示問題の解決）
+    // 日表示時の位置補正（1日早い表示問題の解決）
     let startPos = getDatePosition(task.startDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
     let endPos = getDatePosition(task.dueDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
     
@@ -422,10 +425,20 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     calculateExternalNamePosition
   ])
 
-  // プロジェクト表示用タスクフィルタリング（事前計算済み子タスク情報使用）
+  // 🔧 修正：全プロジェクト対応のタスクフィルタリング
   const getProjectTasks = useCallback((projectId: string): TaskWithChildren[] => {
     try {
-      const filtered = filterTasksForTimeline(tasks, projectId, true, taskRelationMap)
+      // 🔧 修正：全プロジェクトのタスクから対象プロジェクトのタスクを抽出
+      const projectTasks = tasks.filter(task => task.projectId === projectId)
+      
+      logger.info('Filtering tasks for project in all-projects mode', {
+        projectId,
+        totalTasks: tasks.length,
+        projectTasks: projectTasks.length
+      })
+      
+      // 全プロジェクトのタスクを対象にフィルタリング（折りたたみ状態を考慮）
+      const filtered = filterTasksForAllProjects(projectTasks, true, taskRelationMap)
       const sorted = sortTasksHierarchically(filtered, taskRelationMap)
       
       const visibleTasks = sorted.filter(task => {
@@ -457,11 +470,20 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
         return true
       })
 
-      return visibleTasks.map(task => ({
+      const result = visibleTasks.map(task => ({
         task,
         hasChildren: taskChildrenMap[task.id]?.hasChildren || false,
         childrenCount: taskChildrenMap[task.id]?.childrenCount || 0
       }))
+
+      logger.info('Project tasks processed for timeline', {
+        projectId,
+        inputTasks: projectTasks.length,
+        filteredTasks: filtered.length,
+        visibleTasks: result.length
+      })
+
+      return result
     } catch (error) {
       logger.error('Project tasks filtering failed', { projectId, error })
       return []
@@ -512,7 +534,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
         )}
       </div>
 
-      {/* プロジェクト・タスク表示 */}
+      {/* 🔧 修正：全プロジェクト・タスク表示 */}
       {projects.map(project => {
         const projectTasksWithChildren = getProjectTasks(project.id)
         
@@ -524,10 +546,11 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
             <div 
               className="flex items-center relative cursor-pointer transition-colors duration-200 hover:opacity-90 project-header-row"
               onClick={() => {
-                logger.info('Project header clicked', { 
+                logger.info('Project header clicked in all-projects mode', { 
                   projectId: project.id, 
                   projectName: project.name,
-                  currentCollapsed: project.collapsed
+                  currentCollapsed: project.collapsed,
+                  taskCount: projectTasksWithChildren.length
                 })
                 if (onToggleProject) {
                   onToggleProject(project.id)
@@ -540,7 +563,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
                 width: `${totalTimelineWidth}px`,
                 minWidth: `${totalTimelineWidth}px`
               }}
-              title={`${project.name} - クリックで${project.collapsed ? '展開' : '折りたたみ'}`}
+              title={`${project.name} (${projectTasksWithChildren.length}タスク) - クリックで${project.collapsed ? '展開' : '折りたたみ'}`}
             >
               {/* 動的プロジェクト名 */}
               <div 

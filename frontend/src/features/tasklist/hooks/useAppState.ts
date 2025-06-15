@@ -1,5 +1,5 @@
 // システムプロンプト準拠：アプリ状態管理統合（useApi + useMultiSelect + useScrollToTask）
-// 修正内容：フォーカス管理機能追加、データ検証処理の微調整（期限順ソート対応）
+// 🔧 修正内容：全タスクロード機能の明確化、ビューモード対応ログ追加
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Task, Project, BatchOperation } from '@core/types'
@@ -34,7 +34,7 @@ export const useAppState = () => {
     isMultiSelectMode: false
   })
 
-  // 修正：フォーカス管理状態を追加
+  // フォーカス管理状態を追加
   const [pendingFocusTaskId, setPendingFocusTaskId] = useState<string | null>(null)
 
   // スクロール管理
@@ -49,7 +49,7 @@ export const useAppState = () => {
     }
   }, [])
 
-  // 修正：フォーカス管理機能を追加
+  // フォーカス管理機能を追加
   const focusTaskById = useCallback((taskId: string) => {
     try {
       const taskElement = taskRefs.current[taskId]
@@ -79,7 +79,7 @@ export const useAppState = () => {
     }
   }, [])
 
-  // 修正：ペンディングフォーカスの自動実行
+  // ペンディングフォーカスの自動実行
   useEffect(() => {
     if (pendingFocusTaskId && taskRefs.current[pendingFocusTaskId]) {
       logger.info('Executing pending focus', { taskId: pendingFocusTaskId })
@@ -129,7 +129,7 @@ export const useAppState = () => {
           return false
         }
         
-        // 修正：期限順ソート対応のため日付検証を強化
+        // 期限順ソート対応のため日付検証を強化
         if (!isValidDate(task.startDate)) {
           logger.warn('Invalid start date, setting to current date', { taskId: task.id, startDate: task.startDate })
           task.startDate = new Date()
@@ -140,7 +140,7 @@ export const useAppState = () => {
           task.dueDate = new Date()
         }
 
-        // 新規追加：期限日が開始日より前の場合の警告
+        // 期限日が開始日より前の場合の警告
         if (task.startDate && task.dueDate && task.startDate > task.dueDate) {
           logger.warn('Due date is before start date', { 
             taskId: task.id, 
@@ -214,18 +214,31 @@ export const useAppState = () => {
     }
   }, [])
 
-  // タスク操作
+  // 🔧 修正：タスク操作（全タスクロード機能の明確化）
   const loadTasks = useCallback(async (projectId?: string) => {
     setTasks(prev => ({ ...prev, loading: true, error: null }))
     try {
+      // 🔧 修正：ログでロード方式を明確化
+      if (projectId) {
+        logger.info('Loading tasks for specific project', { 
+          projectId,
+          loadType: 'project_specific'
+        })
+      } else {
+        logger.info('Loading all tasks across all projects', { 
+          loadType: 'all_projects'
+        })
+      }
+      
       const rawTasks = await apiService.getTasks(projectId)
       const validTasks = validateTaskData(rawTasks)
       
-      // 修正：期限順ソート適用確認ログ
+      // 🔧 修正：ロード結果のログ強化
       logger.info('Tasks loaded and validated', {
-        projectId,
+        projectId: projectId || 'all_projects',
         rawCount: rawTasks.length,
         validCount: validTasks.length,
+        loadType: projectId ? 'project_specific' : 'all_projects',
         sortMethod: 'backend_due_date_frontend_hierarchy'
       })
       
@@ -234,6 +247,14 @@ export const useAppState = () => {
     } catch (error) {
       const errorMessage = 'タスクの読み込みに失敗しました'
       setTasks(prev => ({ ...prev, loading: false, error: errorMessage }))
+      
+      // 🔧 修正：エラーログにロード方式情報を追加
+      logger.error('Task loading failed', {
+        projectId: projectId || 'all_projects',
+        loadType: projectId ? 'project_specific' : 'all_projects',
+        error
+      })
+      
       handleError(error, errorMessage)
       throw error
     }
@@ -430,7 +451,7 @@ export const useAppState = () => {
     // スクロール
     setTaskRef,
     
-    // 修正：フォーカス管理機能を追加
+    // フォーカス管理機能を追加
     focusTaskById,
     setPendingFocusTaskId
   }

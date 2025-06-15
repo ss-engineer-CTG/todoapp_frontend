@@ -1,5 +1,5 @@
-// システムプロンプト準拠：タスク関連完全統合（buildTaskChildrenMap関数追加版）
-// 🔧 修正内容：Timeline用ヘルパー関数追加
+// システムプロンプト準拠：タスク関連完全統合（プロジェクト横断フィルタリング対応版）
+// 🔧 修正内容：タイムライン用の複数プロジェクト横断フィルタリング機能追加
 
 import { Task } from '@core/types'
 import { TaskRelationMap } from '@tasklist/types'
@@ -49,7 +49,7 @@ export const buildTaskRelationMap = (tasks: Task[]): TaskRelationMap => {
   return { childrenMap, parentMap }
 }
 
-// 🔧 新規追加：Timeline用子タスクマップ構築
+// Timeline用子タスクマップ構築
 export const buildTaskChildrenMap = (tasks: Task[], relationMap: TaskRelationMap) => {
   const childrenMap: { [taskId: string]: { hasChildren: boolean; childrenCount: number } } = {}
   
@@ -210,32 +210,130 @@ export const filterTasks = (
   })
 }
 
-// ===== Timeline用ヘルパー関数（既存維持） =====
-
-/**
- * Timeline用タスクフィルタリング
- */
-export const filterTasksForTimeline = (
+// 🔧 新規追加：プロジェクト横断フィルタリング（タイムライン専用）
+export const filterTasksForAllProjects = (
   tasks: Task[],
-  projectId: string,
   showCompleted: boolean,
   relationMap: TaskRelationMap
 ): Task[] => {
   try {
-    const basicFiltered = filterTasks(tasks, projectId, showCompleted, relationMap)
-    
-    // Timeline固有のフィルタ条件
-    return basicFiltered.filter(task => {
-      // 無効な日付のタスクを除外（Timeline表示に必須）
-      if (!task.startDate || !task.dueDate) return false
-      
+    logger.info('Filtering tasks for all projects (timeline view)', {
+      totalTasks: tasks.length,
+      showCompleted
+    })
+
+    const filtered = tasks.filter((task: Task) => {
+      // 基本検証
+      if (!task.id || !task.projectId) {
+        logger.debug('Task missing required fields', { taskId: task.id, projectId: task.projectId })
+        return false
+      }
+
+      // 草稿タスクを除外
+      if (isDraftTask(task)) {
+        logger.debug('Excluding draft task', { taskId: task.id })
+        return false
+      }
+
+      // 完了タスクの表示制御
+      if (!showCompleted && task.completed) {
+        logger.debug('Excluding completed task', { taskId: task.id, completed: task.completed })
+        return false
+      }
+
+      // タイムライン表示に必要な日付チェック
+      if (!task.startDate || !task.dueDate) {
+        logger.debug('Excluding task with invalid dates', { 
+          taskId: task.id, 
+          startDate: task.startDate, 
+          dueDate: task.dueDate 
+        })
+        return false
+      }
+
+      // 親タスクの折りたたみ状態チェック（階層的）
+      if (task.parentId) {
+        let currentParentId: string | null = task.parentId
+        
+        while (currentParentId) {
+          const currentParent = tasks.find((t: Task) => t.id === currentParentId)
+          if (!currentParent) {
+            logger.debug('Parent task not found', { 
+              taskId: task.id, 
+              missingParentId: currentParentId 
+            })
+            break
+          }
+          
+          if (currentParent.collapsed) {
+            logger.debug('Task hidden due to collapsed parent', {
+              taskId: task.id,
+              taskName: task.name,
+              parentId: currentParentId,
+              parentName: currentParent.name
+            })
+            return false
+          }
+          
+          currentParentId = relationMap.parentMap[currentParentId] || null
+        }
+      }
+
       return true
     })
+
+    // プロジェクト別の統計ログ
+    const projectStats = filtered.reduce((stats, task) => {
+      const projectId = task.projectId
+      if (!stats[projectId]) {
+        stats[projectId] = { total: 0, completed: 0, inProgress: 0 }
+      }
+      stats[projectId].total++
+      if (task.completed) {
+        stats[projectId].completed++
+      } else {
+        stats[projectId].inProgress++
+      }
+      return stats
+    }, {} as { [projectId: string]: { total: number; completed: number; inProgress: number } })
+
+    logger.info('All projects filtering completed', {
+      inputTasks: tasks.length,
+      outputTasks: filtered.length,
+      projectStats,
+      filterType: 'all_projects_timeline'
+    })
+
+    return filtered
   } catch (error) {
-    logger.error('Timeline task filtering failed', { projectId, error })
+    logger.error('All projects filtering failed', { error })
     return []
   }
 }
+
+// 🔧 修正：Timeline用フィルタリング関数（全プロジェクト対応）
+export const filterTasksForTimeline = (
+  tasks: Task[],
+  projectId: string | null,
+  showCompleted: boolean,
+  relationMap: TaskRelationMap
+): Task[] => {
+  try {
+    // プロジェクトIDがnullまたは空文字の場合は全プロジェクトを対象とする
+    if (!projectId || projectId === '') {
+      logger.info('Timeline filtering: all projects mode')
+      return filterTasksForAllProjects(tasks, showCompleted, relationMap)
+    } else {
+      logger.info('Timeline filtering: specific project mode', { projectId })
+      return filterTasks(tasks, projectId, showCompleted, relationMap)
+    }
+  } catch (error) {
+    logger.error('Timeline filtering failed', { projectId, error })
+    return []
+  }
+}
+
+// ===== Timeline用ヘルパー関数（既存維持） =====
 
 /**
  * タスクの階層深度計算
@@ -379,6 +477,41 @@ export const getVisibleChildTasks = (
   } catch (error) {
     logger.error('Get visible child tasks failed', { parentTaskId, error })
     return []
+  }
+}
+
+// 🔧 新規追加：プロジェクト横断タスク数カウント
+export const countVisibleTasksAcrossProjects = (
+  allTasks: Task[],
+  relationMap: TaskRelationMap,
+  showCompleted: boolean = true
+): { [projectId: string]: number } => {
+  try {
+    const projectTaskCounts: { [projectId: string]: number } = {}
+    
+    // 全プロジェクトのタスクをフィルタリング
+    const visibleTasks = filterTasksForAllProjects(allTasks, showCompleted, relationMap)
+    
+    // プロジェクト別にカウント
+    visibleTasks.forEach(task => {
+      const projectId = task.projectId
+      if (!projectTaskCounts[projectId]) {
+        projectTaskCounts[projectId] = 0
+      }
+      projectTaskCounts[projectId]++
+    })
+    
+    logger.info('Cross-project task count completed', {
+      projectCount: Object.keys(projectTaskCounts).length,
+      totalVisibleTasks: visibleTasks.length,
+      projectTaskCounts
+    })
+    
+    return projectTaskCounts
+    
+  } catch (error) {
+    logger.error('Cross-project task count failed', { error })
+    return {}
   }
 }
 
