@@ -1,12 +1,19 @@
-// システムプロンプト準拠：Timeline統合フック（軽量化版）
-// 🔧 修正内容：他のフック統合、不要機能削除
+// システムプロンプト準拠：Timeline統合フック（テーマ除去版）
+// 🔧 修正内容：独自テーマ状態の完全除去・シンプル化
 
 import { useState, useCallback, useMemo, useRef } from 'react'
 import { ZOOM_CONFIG } from '../utils'
-import { TimelineState, DynamicSizes, TimeRange } from '../types'
+import { DynamicSizes, TimeRange } from '../types'
 import { calculateDynamicSizes, getDatePosition } from '@core/utils'
 import { calculateTimeRange, generateVisibleDates } from '../utils'
 import { logger } from '@core/utils'
+
+// 🔧 修正：テーマ関連の状態を除去
+interface TimelineState {
+  zoomLevel: number
+  viewUnit: 'day' | 'week'
+  scrollLeft: number
+}
 
 interface UseTimelineReturn {
   // 状態
@@ -21,8 +28,6 @@ interface UseTimelineReturn {
   setZoomLevel: (level: number) => void
   setViewUnit: (unit: 'day' | 'week') => void
   setScrollLeft: (left: number) => void
-  setTheme: (theme: 'light' | 'dark') => void
-  toggleTheme: () => void
   
   // ズーム制御
   zoomIn: () => void
@@ -39,16 +44,14 @@ interface UseTimelineReturn {
 
 export const useTimeline = (
   initialZoomLevel = ZOOM_CONFIG.default,
-  initialViewUnit: 'day' | 'week' = 'week',
-  initialTheme: 'light' | 'dark' = 'light'
+  initialViewUnit: 'day' | 'week' = 'week'
 ): UseTimelineReturn => {
 
-  // 基本状態
+  // 🔧 修正：テーマ状態を除去したシンプルな状態管理
   const [state, setState] = useState<TimelineState>({
     zoomLevel: Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max, initialZoomLevel)),
     viewUnit: initialViewUnit,
-    scrollLeft: 0,
-    theme: initialTheme
+    scrollLeft: 0
   })
 
   // DOM参照
@@ -89,19 +92,6 @@ export const useTimeline = (
   // スクロール位置設定
   const setScrollLeft = useCallback((left: number) => {
     setState(prev => ({ ...prev, scrollLeft: Math.max(0, left) }))
-  }, [])
-
-  // テーマ設定
-  const setTheme = useCallback((theme: 'light' | 'dark') => {
-    setState(prev => ({ ...prev, theme }))
-  }, [])
-
-  // テーマ切り替え
-  const toggleTheme = useCallback(() => {
-    setState(prev => ({ 
-      ...prev, 
-      theme: prev.theme === 'light' ? 'dark' : 'light' 
-    }))
   }, [])
 
   // ズームイン
@@ -200,8 +190,6 @@ export const useTimeline = (
     setZoomLevel,
     setViewUnit,
     setScrollLeft,
-    setTheme,
-    toggleTheme,
     zoomIn,
     zoomOut,
     resetZoom,

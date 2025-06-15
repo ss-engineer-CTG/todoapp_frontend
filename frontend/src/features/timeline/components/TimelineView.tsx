@@ -1,5 +1,5 @@
-// システムプロンプト準拠：メインタイムラインビューコンポーネント（修正版）
-// 🔧 修正内容：未使用インポート削除・適切なインポートパス設定
+// システムプロンプト準拠：メインタイムラインビューコンポーネント（テーマ統合版）
+// 🔧 修正内容：独自テーマ状態除去・ThemeProvider統合
 
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { TimelineControls } from './TimelineControls'
@@ -7,6 +7,7 @@ import { TimelineRenderer } from './TimelineRenderer'
 import { TimelineViewProps } from '../types'
 import { useTimeline } from '../hooks/useTimeline'
 import { buildTaskRelationMap } from '@tasklist/utils/task'
+import { useTheme } from '@core/components/ThemeProvider'
 import { 
   logger,
   getDateCellClass,
@@ -20,6 +21,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   onViewModeChange,
   onScrollToToday
 }) => {
+  // 🔧 修正：ThemeProviderのテーマを使用
+  const { theme, setTheme } = useTheme()
+  
   const {
     state,
     dimensions,
@@ -28,11 +32,10 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     setZoomLevel,
     setViewUnit,
     setScrollLeft,
-    toggleTheme,
     fitToScreen,
     scrollToToday,
     timelineRef
-  } = useTimeline(100, 'week', 'light')
+  } = useTimeline(100, 'week')
 
   const today = new Date()
   const taskRelationMap = useMemo(() => buildTaskRelationMap(tasks), [tasks])
@@ -95,9 +98,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     // 実装は親コンポーネントで管理
   }, [])
 
-  // テーマクラス
+  // 🔧 修正：テーマクラス統一
   const getAppClasses = useCallback(() => {
-    return state.theme === 'dark' 
+    return theme === 'dark' 
       ? {
           app: "bg-gray-950 text-gray-50",
           dateHeader: "bg-gray-900 border-gray-600 text-white"
@@ -106,7 +109,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
           app: "bg-gray-50 text-gray-900",
           dateHeader: "bg-white border-gray-300 text-gray-900"
         }
-  }, [state.theme])
+  }, [theme])
 
   const classes = getAppClasses()
 
@@ -129,8 +132,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
           onZoomChange={setZoomLevel}
           viewUnit={state.viewUnit}
           onViewUnitChange={setViewUnit}
-          theme={state.theme}
-          onThemeToggle={toggleTheme}
           onTodayClick={handleScrollToToday}
           onFitToScreen={handleFitToScreen}
           onExpandAll={handleExpandAll}
@@ -165,8 +166,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
         onZoomChange={setZoomLevel}
         viewUnit={state.viewUnit}
         onViewUnitChange={setViewUnit}
-        theme={state.theme}
-        onThemeToggle={toggleTheme}
         onTodayClick={handleScrollToToday}
         onFitToScreen={handleFitToScreen}
         onExpandAll={handleExpandAll}
@@ -228,9 +227,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                           width: `${monthGroup.width}px`,
                           minWidth: `${monthGroup.width}px`,
                           borderRightWidth: '3px',
-                          borderRightColor: state.theme === 'dark' ? '#6366f1' : '#4f46e5',
+                          borderRightColor: theme === 'dark' ? '#6366f1' : '#4f46e5',
                           fontSize: `${dimensions.fontSize.base}px`,
-                          backgroundColor: state.theme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(79, 70, 229, 0.05)'
+                          backgroundColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(79, 70, 229, 0.05)'
                         }}
                       >
                         <div className="text-indigo-700 dark:text-indigo-300 font-bold">
@@ -254,12 +253,12 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                     return (
                       <div 
                         key={date.getTime()} 
-                        className={`text-center font-semibold py-1 border-r ${classes.dateHeader} ${getDateCellClass(date, today, state.theme)} flex items-center justify-center`}
+                        className={`text-center font-semibold py-1 border-r ${classes.dateHeader} ${getDateCellClass(date, today, theme)} flex items-center justify-center`}
                         style={{ 
                           width: `${dimensions.cellWidth}px`,
                           minWidth: `${dimensions.cellWidth}px`,
                           borderRightWidth: isLastDateOfMonth ? '3px' : isFirstWeek ? '2px' : '1px',
-                          borderRightColor: isLastDateOfMonth ? (state.theme === 'dark' ? '#6366f1' : '#4f46e5') : isFirstWeek ? (state.theme === 'dark' ? '#6b7280' : '#9ca3af') : (state.theme === 'dark' ? '#4b5563' : '#d1d5db'),
+                          borderRightColor: isLastDateOfMonth ? (theme === 'dark' ? '#6366f1' : '#4f46e5') : isFirstWeek ? (theme === 'dark' ? '#6b7280' : '#9ca3af') : (theme === 'dark' ? '#4b5563' : '#d1d5db'),
                           fontSize: `${dimensions.fontSize.small}px`
                         }}
                       >
@@ -298,9 +297,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                         width: `${dimensions.cellWidth * 7}px`,
                         minWidth: `${dimensions.cellWidth * 7}px`,
                         borderRightWidth: isLastWeekOfMonth ? '4px' : '2px',
-                        borderRightColor: isLastWeekOfMonth ? (state.theme === 'dark' ? '#6366f1' : '#4f46e5') : (state.theme === 'dark' ? '#6b7280' : '#9ca3af'),
+                        borderRightColor: isLastWeekOfMonth ? (theme === 'dark' ? '#6366f1' : '#4f46e5') : (theme === 'dark' ? '#6b7280' : '#9ca3af'),
                         borderLeftWidth: isFirstMonth ? '4px' : '0px',
-                        borderLeftColor: isFirstMonth ? (state.theme === 'dark' ? '#6366f1' : '#4f46e5') : undefined,
+                        borderLeftColor: isFirstMonth ? (theme === 'dark' ? '#6366f1' : '#4f46e5') : undefined,
                       }}
                     >
                       <div className="font-bold text-gray-900 dark:text-white" style={{ fontSize: `${dimensions.fontSize.base}px` }}>
@@ -326,12 +325,12 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
         
         {/* タイムライングリッド */}
         <div 
-          className="w-full flex-1 relative overflow-auto" 
+          className="w-full flex-1 relative overflow-auto timeline-content" 
           onScroll={handleTimelineScroll}
           ref={timelineRef}
           style={{
             scrollbarWidth: 'thin',
-            scrollbarColor: state.theme === 'dark' ? '#6b7280 #1f2937' : '#9ca3af #ffffff'
+            scrollbarColor: theme === 'dark' ? '#6b7280 #1f2937' : '#9ca3af #ffffff'
           }}
         >
           <TimelineRenderer
@@ -340,7 +339,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
             taskRelationMap={taskRelationMap}
             zoomLevel={state.zoomLevel}
             viewUnit={state.viewUnit}
-            theme={state.theme}
+            theme={theme}
             timeRange={timeRange}
             visibleDates={visibleDates}
             scrollLeft={state.scrollLeft}

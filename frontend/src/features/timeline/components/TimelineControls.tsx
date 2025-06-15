@@ -1,5 +1,5 @@
-// システムプロンプト準拠：タイムライン統合コントロール（軽量化版）
-// 🔧 修正内容：軽量化に合わせた設定値調整、不要機能削除
+// システムプロンプト準拠：タイムライン統合コントロール（テーマ統合版）
+// 🔧 修正内容：独自テーマ状態除去・ThemeProvider統合
 
 import React from 'react'
 import {
@@ -7,6 +7,7 @@ import {
   Sun, Moon, Minimize2, ArrowLeft
 } from 'lucide-react'
 import { TimelineControlsProps } from '../types'
+import { useTheme } from '@core/components/ThemeProvider'
 import { ZOOM_CONFIG } from '../utils'
 
 export const TimelineControls: React.FC<TimelineControlsProps> = ({
@@ -14,14 +15,15 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
   onZoomChange,
   viewUnit,
   onViewUnitChange,
-  theme,
-  onThemeToggle,
   onTodayClick,
   onFitToScreen,
   onExpandAll,
   onCollapseAll,
   onViewModeChange
 }) => {
+  // 🔧 修正：ThemeProviderのテーマを使用
+  const { theme, setTheme } = useTheme()
+
   const handleZoom = (newLevel: number) => {
     const clampedLevel = Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max, newLevel))
     onZoomChange(clampedLevel)
@@ -35,6 +37,11 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
     if (onViewModeChange) {
       onViewModeChange('tasklist')
     }
+  }
+
+  // 🔧 修正：テーマ切り替え関数
+  const handleThemeToggle = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark')
   }
 
   // テーマに基づくクラス
@@ -101,7 +108,7 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
           {/* テーマ切替 */}
           <button 
             className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
-            onClick={onThemeToggle}
+            onClick={handleThemeToggle}
             aria-label={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}

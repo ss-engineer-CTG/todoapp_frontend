@@ -1,8 +1,8 @@
-// システムプロンプト準拠：メインアプリロジック統合・軽量化版（修正版）
-// 🔧 修正内容：型安全性向上・Timeline統合ロジック最適化
+// システムプロンプト準拠：メインアプリロジック統合・軽量化版（折りたたみ修正版）
+// 🔧 修正内容：折りたたみ状態管理の修正・プロジェクト/タスク状態の同期
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { AreaType, Task, AppViewMode } from '@core/types'
+import { AreaType, Task, AppViewMode, Project } from '@core/types'
 import { 
   ProjectPanel, 
   TaskPanel, 
@@ -58,15 +58,29 @@ const TodoApp: React.FC = () => {
   // タイムライン用今日スクロール状態管理
   const [timelineScrollToToday, setTimelineScrollToToday] = useState<(() => void) | null>(null)
 
+  // 🔧 修正：プロジェクト・タスク状態管理（折りたたみ対応）
+  const [managedProjects, setManagedProjects] = useState<Project[]>([])
+  const [managedTasks, setManagedTasks] = useState<Task[]>([])
+
   const currentProjects = projects.data || []
   const currentTasks = tasks.data || []
+
+  // 🔧 修正：プロジェクト状態の同期
+  useEffect(() => {
+    setManagedProjects(currentProjects.map(project => ({ ...project })))
+  }, [currentProjects])
+
+  // 🔧 修正：タスク状態の同期
+  useEffect(() => {
+    setManagedTasks(currentTasks.map(task => ({ ...task })))
+  }, [currentTasks])
 
   // 草稿タスク込みの全タスク管理
   const [allTasksWithDrafts, setAllTasksWithDrafts] = useState<Task[]>([])
 
   useEffect(() => {
-    setAllTasksWithDrafts(currentTasks)
-  }, [currentTasks])
+    setAllTasksWithDrafts(managedTasks)
+  }, [managedTasks])
 
   const taskRelationMap = buildTaskRelationMap(allTasksWithDrafts)
 
@@ -77,7 +91,7 @@ const TodoApp: React.FC = () => {
       return sortTasksHierarchically(filtered, taskRelationMap)
     } catch (error) {
       logger.error('Task filtering and sorting failed', { error })
-      return currentTasks.filter((task: Task) => task.projectId === selectedProjectId)
+      return managedTasks.filter((task: Task) => task.projectId === selectedProjectId)
     }
   })()
 
@@ -114,6 +128,133 @@ const TodoApp: React.FC = () => {
     selectedProjectId,
     apiActions: taskApiActions
   })
+
+  // 🔧 修正：プロジェクト折りたたみ処理
+  const handleToggleProject = useCallback(async (projectId: string) => {
+    try {
+      const project = managedProjects.find(p => p.id === projectId)
+      if (!project) return
+
+      const updatedProject = { ...project, collapsed: !project.collapsed }
+      
+      // ローカル状態を即座に更新
+      setManagedProjects(prev => 
+        prev.map(p => p.id === projectId ? updatedProject : p)
+      )
+
+      // サーバーに保存
+      await updateProject(projectId, { collapsed: updatedProject.collapsed })
+      
+      logger.info('Project toggle completed', { 
+        projectId, 
+        collapsed: updatedProject.collapsed 
+      })
+    } catch (error) {
+      logger.error('Project toggle failed', { projectId, error })
+      
+      // エラー時は元の状態に戻す
+      setManagedProjects(prev => 
+        prev.map(p => p.id === projectId ? currentProjects.find(cp => cp.id === projectId) || p : p)
+      )
+    }
+  }, [managedProjects, updateProject, currentProjects])
+
+  // 🔧 修正：タスク折りたたみ処理
+  const handleToggleTask = useCallback(async (taskId: string) => {
+    try {
+      const task = managedTasks.find(t => t.id === taskId)
+      if (!task || isDraftTask(task)) return
+
+      const updatedTask = { ...task, collapsed: !task.collapsed }
+      
+      // ローカル状態を即座に更新
+      setManagedTasks(prev => 
+        prev.map(t => t.id === taskId ? updatedTask : t)
+      )
+      setAllTasksWithDrafts(prev => 
+        prev.map(t => t.id === taskId ? updatedTask : t)
+      )
+
+      // サーバーに保存
+      await updateTask(taskId, { collapsed: updatedTask.collapsed })
+      
+      logger.info('Task toggle completed', { 
+        taskId, 
+        collapsed: updatedTask.collapsed 
+      })
+    } catch (error) {
+      logger.error('Task toggle failed', { taskId, error })
+      
+      // エラー時は元の状態に戻す
+      const originalTask = currentTasks.find(ct => ct.id === taskId)
+      if (originalTask) {
+        setManagedTasks(prev => 
+          prev.map(t => t.id === taskId ? originalTask : t)
+        )
+        setAllTasksWithDrafts(prev => 
+          prev.map(t => t.id === taskId ? originalTask : t)
+        )
+      }
+    }
+  }, [managedTasks, updateTask, currentTasks])
+
+  // 🔧 修正：全展開処理
+  const handleExpandAll = useCallback(async () => {
+    try {
+      logger.info('Expanding all projects and tasks')
+      
+      // プロジェクトを全て展開
+      const updatedProjects = managedProjects.map(project => ({ ...project, collapsed: false }))
+      setManagedProjects(updatedProjects)
+      
+      // タスクを全て展開
+      const updatedTasks = managedTasks.map(task => ({ ...task, collapsed: false }))
+      setManagedTasks(updatedTasks)
+      setAllTasksWithDrafts(updatedTasks)
+
+      // サーバーに保存（並列実行）
+      await Promise.all([
+        ...managedProjects.map(project => 
+          updateProject(project.id, { collapsed: false })
+        ),
+        ...managedTasks.filter(task => !isDraftTask(task)).map(task => 
+          updateTask(task.id, { collapsed: false })
+        )
+      ])
+      
+    } catch (error) {
+      logger.error('Expand all failed', { error })
+    }
+  }, [managedProjects, managedTasks, updateProject, updateTask])
+
+  // 🔧 修正：全折りたたみ処理
+  const handleCollapseAll = useCallback(async () => {
+    try {
+      logger.info('Collapsing all projects and tasks')
+      
+      // プロジェクトを全て折りたたみ
+      const updatedProjects = managedProjects.map(project => ({ ...project, collapsed: true }))
+      setManagedProjects(updatedProjects)
+      
+      // タスクを全て折りたたみ
+      const updatedTasks = managedTasks.map(task => ({ ...task, collapsed: true }))
+      setManagedTasks(updatedTasks)
+      setAllTasksWithDrafts(updatedTasks)
+
+      // サーバーに保存（並列実行）
+      await Promise.all([
+        ...managedProjects.map(project => 
+          updateProject(project.id, { collapsed: true })
+        ),
+        ...managedTasks.filter(task => !isDraftTask(task)).map(task => 
+          updateTask(task.id, { collapsed: true })
+        )
+      ])
+      
+    } catch (error) {
+      logger.error('Collapse all failed', { error })
+    }
+  }, [managedProjects, managedTasks, updateProject, updateTask])
 
   // ビューモード切り替え（型安全性を向上）
   const handleViewModeChange = useCallback((newMode: AppViewMode) => {
@@ -227,19 +368,16 @@ const TodoApp: React.FC = () => {
     }
   }, [toggleTaskCompletion, selection, loadTasks, selectedProjectId])
 
-  // タスク折りたたみ切り替え
+  // タスク折りたたみ切り替え（管理状態経由）
   const handleToggleTaskCollapse = useCallback(async (taskId: string) => {
-    const success = await toggleTaskCollapse(taskId)
-    if (success) {
-      await loadTasks(selectedProjectId)
-    }
-  }, [toggleTaskCollapse, loadTasks, selectedProjectId])
+    await handleToggleTask(taskId)
+  }, [handleToggleTask])
 
   // キーボード処理
   const extendedKeyboardProps = {
     ...useKeyboard({
       tasks: allTasksWithDrafts,
-      projects: currentProjects,
+      projects: managedProjects,
       selectedProjectId,
       setSelectedProjectId,
       selectedTaskId: selection.selectedId,
@@ -424,16 +562,20 @@ const TodoApp: React.FC = () => {
       {/* メインコンテンツ */}
       {viewMode === 'timeline' ? (
         <TimelineView
-          projects={currentProjects}
+          projects={managedProjects}
           tasks={allTasksWithDrafts}
           onViewModeChange={handleViewModeChange}
           onScrollToToday={setTimelineScrollToToday}
+          onToggleProject={handleToggleProject}
+          onToggleTask={handleToggleTask}
+          onExpandAll={handleExpandAll}
+          onCollapseAll={handleCollapseAll}
         />
       ) : (
         // タスクリストビュー（既存）
         <>
           <ProjectPanel
-            projects={currentProjects}
+            projects={managedProjects}
             onProjectsUpdate={() => {}}
             selectedProjectId={selectedProjectId}
             onProjectSelect={handleProjectSelect}
@@ -480,7 +622,7 @@ const TodoApp: React.FC = () => {
             <DetailPanel
               selectedTask={selectedTask}
               onTaskSave={handleSaveTask}
-              projects={currentProjects}
+              projects={managedProjects}
               activeArea={activeArea}
               setActiveArea={setActiveArea}
               isVisible={isDetailPanelVisible}

@@ -1,5 +1,5 @@
-// システムプロンプト準拠：Timeline描画統合コンポーネント（修正版）
-// 🔧 修正内容：インポートパス修正・型安全性向上・未使用インポート削除
+// システムプロンプト準拠：Timeline描画統合コンポーネント（描画修正版）
+// 🔧 修正内容：プロジェクト行幅計算修正・描画範囲問題解決・テーマ統合
 
 import React, { useMemo, useCallback } from 'react'
 import { 
@@ -56,12 +56,18 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
   const today = new Date()
   const dimensions = useMemo(() => calculateDynamicSizes(zoomLevel, viewUnit), [zoomLevel, viewUnit])
 
-  // プロジェクト名動的位置計算
+  // 🔧 修正：プロジェクト名動的位置計算（画面サイズ対応）
   const getProjectNamePosition = useCallback((scrollLeft: number): number => {
-    const visibleAreaWidth = 800
+    const visibleAreaWidth = typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.6, 800) : 800
     const nameWidth = 200
     return Math.max(8, Math.min(scrollLeft + 8, scrollLeft + visibleAreaWidth - nameWidth - 8))
   }, [])
+
+  // 🔧 修正：タイムライン全体幅の計算
+  const getTotalTimelineWidth = useCallback((): number => {
+    const cellCount = viewUnit === 'week' ? visibleDates.length * 7 : visibleDates.length
+    return Math.max(cellCount * dimensions.cellWidth, typeof window !== 'undefined' ? window.innerWidth : 1200)
+  }, [visibleDates.length, dimensions.cellWidth, viewUnit])
 
   // タスクステータススタイル計算
   const getTaskStatusStyle = useCallback((task: Task, projectColor: string) => {
@@ -244,10 +250,13 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     }
   }, [tasks, taskRelationMap])
 
+  // 🔧 修正：タイムライン全体幅
+  const totalTimelineWidth = getTotalTimelineWidth()
+
   return (
-    <div className="relative">
+    <div className="relative timeline-renderer-container" style={{ minWidth: `${totalTimelineWidth}px` }}>
       {/* グリッド背景 */}
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0 pointer-events-none" style={{ width: `${totalTimelineWidth}px` }}>
         {viewUnit === 'week' ? (
           visibleDates.map((weekStart, index) => (
             <div
@@ -293,14 +302,16 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
           <div key={project.id} className={`relative border-b-2 ${
             theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
           }`}>
-            {/* プロジェクトヘッダー */}
+            {/* 🔧 修正：プロジェクトヘッダー（幅の問題解決） */}
             <div 
-              className="flex items-center relative cursor-pointer transition-colors duration-200 hover:opacity-90"
+              className="flex items-center relative cursor-pointer transition-colors duration-200 hover:opacity-90 project-header-row"
               onClick={() => onToggleProject(project.id)}
               style={{ 
                 height: `${dimensions.rowHeight.project}px`,
                 backgroundColor: `${project.color}${theme === 'dark' ? '60' : '50'}`,
-                borderLeft: `6px solid ${project.color}`
+                borderLeft: `6px solid ${project.color}`,
+                width: `${totalTimelineWidth}px`,
+                minWidth: `${totalTimelineWidth}px`
               }}
             >
               {/* 動的プロジェクト名 */}
@@ -336,7 +347,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
               const parentTask = task.parentId ? tasks.find(t => t.id === task.parentId) || null : null
               
               return (
-                <div key={task.id}>
+                <div key={task.id} style={{ width: `${totalTimelineWidth}px`, minWidth: `${totalTimelineWidth}px` }}>
                   {renderConnectionLines(task, parentTask)}
                   {renderTaskBar(task, project)}
                 </div>

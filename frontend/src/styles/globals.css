@@ -189,22 +189,45 @@ body {
   background-color: hsl(0 63% 31% / 0.2); /* red-950 equivalent with transparency */
 }
 
-/* ===== Timeline統合スタイル ===== */
+/* ===== Timeline統合スタイル（修正版） ===== */
 
-/* Timeline日付ヘッダー */
+/* 🔧 修正：Timeline描画コンテナの幅問題解決 */
+.timeline-renderer-container {
+  position: relative;
+  overflow: visible;
+}
+
+/* 🔧 修正：プロジェクトヘッダー行の幅確保 */
+.project-header-row {
+  position: relative;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+/* 🔧 修正：Timeline日付ヘッダーのスクロール同期 */
 .timeline-date-header {
   overflow-x: hidden !important;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  position: relative;
 }
 
 .timeline-date-header::-webkit-scrollbar {
   display: none;
 }
 
+/* 🔧 修正：Timelineコンテンツエリアの幅管理 */
+.timeline-content {
+  position: relative;
+  min-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
 /* Timelineタスクバー */
 .timeline-task-bar {
   transition: all 0.2s ease-in-out;
+  box-sizing: border-box;
 }
 
 .timeline-task-bar:hover {
@@ -312,6 +335,15 @@ html.dark {
     width: 6px;
     height: 6px;
   }
+  
+  /* 🔧 修正：モバイルでのTimeline表示最適化 */
+  .timeline-renderer-container {
+    min-width: 100vw;
+  }
+  
+  .project-header-row {
+    min-width: 100vw;
+  }
 }
 
 @media (min-width: 769px) {
@@ -404,3 +436,80 @@ html.dark {
 .timeline-indent-3 { padding-left: 6rem; }
 .timeline-indent-4 { padding-left: 8rem; }
 .timeline-indent-5 { padding-left: 10rem; }
+
+/* 🔧 新規追加：Timeline幅管理の強化 */
+.timeline-full-width {
+  width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
+}
+
+.timeline-project-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.timeline-project-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* 🔧 新規追加：折りたたみアニメーション */
+.timeline-collapse-enter {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transform: scaleY(0);
+  transform-origin: top;
+}
+
+.timeline-collapse-enter-active {
+  opacity: 1;
+  max-height: 1000px;
+  transform: scaleY(1);
+  transition: all 0.3s ease-in-out;
+}
+
+.timeline-collapse-exit {
+  opacity: 1;
+  max-height: 1000px;
+  transform: scaleY(1);
+}
+
+.timeline-collapse-exit-active {
+  opacity: 0;
+  max-height: 0;
+  transform: scaleY(0);
+  transition: all 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+/* 🔧 新規追加：テーマ切り替えスムーズ化 */
+.timeline-theme-transition {
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+/* 🔧 新規追加：プロジェクト名の位置固定強化 */
+.timeline-project-name-sticky {
+  position: sticky;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.timeline-project-name-sticky::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: inherit;
+  opacity: 0.9;
+  z-index: -1;
+}
