@@ -1,5 +1,5 @@
-// システムプロンプト準拠：メインタイムラインビューコンポーネント（テーマ統合版）
-// 🔧 修正内容：独自テーマ状態除去・ThemeProvider統合
+// システムプロンプト準拠：メインタイムラインビューコンポーネント（折りたたみ機能対応版）
+// 🔧 修正内容：折りたたみ関数4つのプロパティ受け取り・中継機能追加
 
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { TimelineControls } from './TimelineControls'
@@ -19,7 +19,11 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   projects,
   tasks,
   onViewModeChange,
-  onScrollToToday
+  onScrollToToday,
+  onToggleProject,
+  onToggleTask,
+  onExpandAll,
+  onCollapseAll
 }) => {
   // 🔧 修正：ThemeProviderのテーマを使用
   const { theme, setTheme } = useTheme()
@@ -74,29 +78,37 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     }
   }, [setScrollLeft])
 
-  // プロジェクト展開/折り畳み
-  const handleToggleProject = useCallback((projectId: string) => {
+  // 🔧 修正：プロジェクト展開/折り畳み処理（プロパティ使用）
+  const handleToggleProjectLocal = useCallback((projectId: string) => {
     logger.info('Toggling project', { projectId })
-    // 実装は親コンポーネントで管理
-  }, [])
+    if (onToggleProject) {
+      onToggleProject(projectId)
+    }
+  }, [onToggleProject])
 
-  // タスク展開/折り畳み
-  const handleToggleTask = useCallback((taskId: string) => {
+  // 🔧 修正：タスク展開/折り畳み処理（プロパティ使用）
+  const handleToggleTaskLocal = useCallback((taskId: string) => {
     logger.info('Toggling task', { taskId })
-    // 実装は親コンポーネントで管理
-  }, [])
+    if (onToggleTask) {
+      onToggleTask(taskId)
+    }
+  }, [onToggleTask])
 
-  // 全展開
+  // 🔧 修正：全展開処理（プロパティ使用）
   const handleExpandAll = useCallback(() => {
     logger.info('Expanding all projects and tasks')
-    // 実装は親コンポーネントで管理
-  }, [])
+    if (onExpandAll) {
+      onExpandAll()
+    }
+  }, [onExpandAll])
 
-  // 全折り畳み
+  // 🔧 修正：全折り畳み処理（プロパティ使用）
   const handleCollapseAll = useCallback(() => {
     logger.info('Collapsing all projects and tasks')
-    // 実装は親コンポーネントで管理
-  }, [])
+    if (onCollapseAll) {
+      onCollapseAll()
+    }
+  }, [onCollapseAll])
 
   // 🔧 修正：テーマクラス統一
   const getAppClasses = useCallback(() => {
@@ -343,8 +355,8 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
             timeRange={timeRange}
             visibleDates={visibleDates}
             scrollLeft={state.scrollLeft}
-            onToggleProject={handleToggleProject}
-            onToggleTask={handleToggleTask}
+            onToggleProject={handleToggleProjectLocal}
+            onToggleTask={handleToggleTaskLocal}
           />
         </div>
       </main>

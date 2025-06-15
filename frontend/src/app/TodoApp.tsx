@@ -1,5 +1,5 @@
-// システムプロンプト準拠：メインアプリロジック統合・軽量化版（折りたたみ修正版）
-// 🔧 修正内容：折りたたみ状態管理の修正・プロジェクト/タスク状態の同期
+// システムプロンプト準拠：メインアプリロジック統合・軽量化版（タイムライン折りたたみ修正版）
+// 🔧 修正内容：TimelineViewに折りたたみ関数4つを追加渡し
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { AreaType, Task, AppViewMode, Project } from '@core/types'

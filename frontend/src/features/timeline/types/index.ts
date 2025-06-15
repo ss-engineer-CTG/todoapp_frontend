@@ -1,5 +1,5 @@
-// システムプロンプト準拠：Timeline型定義統一（修正版）
-// 🔧 修正内容：未使用インポート削除・必要最小限の型のみ保持
+// システムプロンプト準拠：Timeline型定義統一（折りたたみ機能対応版）
+// 🔧 修正内容：折りたたみ関数4つの型定義追加
 
 import { Task, Project, AppViewMode } from '@core/types'
 
@@ -33,15 +33,19 @@ export interface TimelineState {
   theme: 'light' | 'dark'
 }
 
-// TimelineViewProps
+// 🔧 修正：TimelineViewProps - 折りたたみ関数4つを追加
 export interface TimelineViewProps {
   projects: Project[]
   tasks: Task[]
   onViewModeChange?: (mode: AppViewMode) => void
   onScrollToToday?: (scrollFunction: () => void) => void
+  onToggleProject?: (projectId: string) => void
+  onToggleTask?: (taskId: string) => void
+  onExpandAll?: () => void
+  onCollapseAll?: () => void
 }
 
-// TimelineControlsProps
+// 🔧 修正：TimelineControlsProps - 折りたたみ関数4つを追加
 export interface TimelineControlsProps {
   zoomLevel: number
   onZoomChange: (level: number) => void
@@ -54,4 +58,19 @@ export interface TimelineControlsProps {
   onExpandAll: () => void
   onCollapseAll: () => void
   onViewModeChange?: (mode: AppViewMode) => void
+}
+
+// 🆕 新規追加：TimelineRendererProps - 折りたたみ関数2つを追加
+export interface TimelineRendererProps {
+  projects: Project[]
+  tasks: Task[]
+  taskRelationMap: any
+  zoomLevel: number
+  viewUnit: TimelineViewUnit
+  theme: 'light' | 'dark'
+  timeRange: TimeRange
+  visibleDates: Date[]
+  scrollLeft: number
+  onToggleProject?: (projectId: string) => void
+  onToggleTask?: (taskId: string) => void
 }

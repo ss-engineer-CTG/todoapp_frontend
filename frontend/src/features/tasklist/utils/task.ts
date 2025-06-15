@@ -1,5 +1,5 @@
-// システムプロンプト準拠：タスク関連完全統合（Timeline用関数追加版）
-// 🔧 修正内容：既存機能保持 + Timeline用ヘルパー関数追加
+// システムプロンプト準拠：タスク関連完全統合（Timeline折りたたみ対応強化版）
+// 🔧 修正内容：isTaskVisibleInTimeline関数の折りたたみ対応強化
 
 import { Task } from '@core/types'
 import { TaskRelationMap } from '@tasklist/types'
@@ -195,7 +195,7 @@ export const filterTasks = (
   })
 }
 
-// 🆕 ===== Timeline用ヘルパー関数（新規追加） =====
+// ===== Timeline用ヘルパー関数（既存維持） =====
 
 /**
  * Timeline用タスクフィルタリング
@@ -266,7 +266,7 @@ export const calculateTimelineTaskStatus = (task: Task): 'completed' | 'in-progr
 }
 
 /**
- * タスクの表示可否判定（Timeline用）
+ * 🔧 修正：タスクの表示可否判定（Timeline用・折りたたみ完全対応）
  */
 export const isTaskVisibleInTimeline = (
   task: Task,
@@ -274,21 +274,116 @@ export const isTaskVisibleInTimeline = (
   relationMap: TaskRelationMap
 ): boolean => {
   try {
-    if (!task.parentId) return true
+    // 基本チェック：草稿タスクは非表示
+    if (isDraftTask(task)) {
+      return false
+    }
     
+    // 🔧 修正：親タスクが存在しない場合は表示
+    if (!task.parentId) {
+      return true
+    }
+    
+    // 🔧 修正：親タスクの折りたたみ状態を階層的にチェック
     let currentParentId: string | null = task.parentId
     
     while (currentParentId) {
       const parentTask = allTasks.find(t => t.id === currentParentId)
-      if (!parentTask) break
       
-      if (parentTask.collapsed) return false
+      // 親タスクが見つからない場合はエラーログを出すが表示はする
+      if (!parentTask) {
+        logger.warn('Parent task not found', { 
+          taskId: task.id, 
+          taskName: task.name,
+          missingParentId: currentParentId 
+        })
+        break
+      }
+      
+      // 🆕 新規追加：親タスクが折りたたまれている場合は非表示
+      if (parentTask.collapsed) {
+        logger.debug('Task hidden due to collapsed parent', {
+          taskId: task.id,
+          taskName: task.name,
+          parentId: currentParentId,
+          parentName: parentTask.name,
+          parentCollapsed: parentTask.collapsed
+        })
+        return false
+      }
+      
+      // 次の親へ移動
       currentParentId = relationMap.parentMap[currentParentId] || null
     }
     
+    // 🔧 修正：すべての親タスクが展開されている場合は表示
     return true
+    
   } catch (error) {
-    logger.error('Task visibility check failed', { taskId: task.id, error })
+    logger.error('Task visibility check failed', { 
+      taskId: task.id, 
+      taskName: task.name,
+      error 
+    })
+    // エラー時はデフォルトで表示（安全側に倒す）
     return true
+  }
+}
+
+// 🆕 新規追加：Timeline用子タスク取得（折りたたみ対応）
+export const getVisibleChildTasks = (
+  parentTaskId: string,
+  allTasks: Task[],
+  relationMap: TaskRelationMap
+): Task[] => {
+  try {
+    const parentTask = allTasks.find(t => t.id === parentTaskId)
+    
+    // 親タスクが折りたたまれている場合は空配列を返す
+    if (!parentTask || parentTask.collapsed) {
+      return []
+    }
+    
+    const childrenIds = relationMap.childrenMap[parentTaskId] || []
+    const childTasks = childrenIds
+      .map(childId => allTasks.find(t => t.id === childId))
+      .filter((child): child is Task => child !== undefined)
+    
+    // 再帰的に子タスクの子タスクも取得（展開されている場合のみ）
+    const allVisibleChildren: Task[] = [...childTasks]
+    
+    childTasks.forEach(child => {
+      if (!child.collapsed) {
+        const grandChildren = getVisibleChildTasks(child.id, allTasks, relationMap)
+        allVisibleChildren.push(...grandChildren)
+      }
+    })
+    
+    return allVisibleChildren
+    
+  } catch (error) {
+    logger.error('Get visible child tasks failed', { parentTaskId, error })
+    return []
+  }
+}
+
+// 🆕 新規追加：Timeline用タスク数カウント（折りたたみ対応）
+export const countVisibleTasksInProject = (
+  projectId: string,
+  allTasks: Task[],
+  relationMap: TaskRelationMap
+): number => {
+  try {
+    const projectTasks = allTasks.filter(task => 
+      task.projectId === projectId && !isDraftTask(task)
+    )
+    
+    return projectTasks.filter(task => 
+      isTaskVisibleInTimeline(task, allTasks, relationMap)
+    ).length
+    
+  } catch (error) {
+    logger.error('Count visible tasks failed', { projectId, error })
+    return 0
   }
 }

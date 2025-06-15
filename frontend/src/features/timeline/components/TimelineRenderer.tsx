@@ -1,5 +1,5 @@
-// システムプロンプト準拠：Timeline描画統合コンポーネント（描画修正版）
-// 🔧 修正内容：プロジェクト行幅計算修正・描画範囲問題解決・テーマ統合
+// システムプロンプト準拠：Timeline描画統合コンポーネント（折りたたみ機能完全対応版）
+// 🔧 修正内容：子タスク表示制御ロジック追加・タスククリック処理強化
 
 import React, { useMemo, useCallback } from 'react'
 import { 
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Task, Project } from '@core/types'
 import { TaskRelationMap } from '@tasklist/types'
+import { TimelineRendererProps } from '../types'
 import { 
   calculateTimelineTaskStatus,
   isTaskVisibleInTimeline,
@@ -21,23 +22,6 @@ import {
   isWeekend,
   logger
 } from '@core/utils'
-
-interface TimelineRendererProps {
-  projects: Project[]
-  tasks: Task[]
-  taskRelationMap: TaskRelationMap
-  zoomLevel: number
-  viewUnit: 'day' | 'week'
-  theme: 'light' | 'dark'
-  timeRange: {
-    startDate: Date
-    endDate: Date
-  }
-  visibleDates: Date[]
-  scrollLeft: number
-  onToggleProject: (projectId: string) => void
-  onToggleTask: (taskId: string) => void
-}
 
 export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
   projects,
@@ -166,7 +150,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     )
   }, [calculateIndent, dimensions])
 
-  // タスクバー描画
+  // 🔧 修正：タスクバー描画（クリック処理強化）
   const renderTaskBar = useCallback((task: Task, project: Project) => {
     if (!isValidDate(task.startDate) || !isValidDate(task.dueDate)) return null
 
@@ -177,7 +161,28 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     const barWidth = Math.max(80, endPos - startPos + dimensions.cellWidth)
     const barHeight = Math.max(20, dimensions.taskBarHeight - (task.level * 2))
     
-    const hasChildren = (taskRelationMap.childrenMap[task.id] || []).length > 0
+    // 🔧 修正：子タスク存在チェック強化
+    const hasChildren = useMemo(() => {
+      const childrenIds = taskRelationMap.childrenMap[task.id] || []
+      return childrenIds.length > 0
+    }, [taskRelationMap, task.id])
+
+    // 🔧 修正：タスククリック処理
+    const handleTaskClick = useCallback((e: React.MouseEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      
+      logger.info('Task bar clicked', { 
+        taskId: task.id, 
+        taskName: task.name,
+        hasChildren,
+        currentCollapsed: task.collapsed
+      })
+      
+      if (hasChildren && onToggleTask) {
+        onToggleTask(task.id)
+      }
+    }, [task.id, task.name, task.collapsed, hasChildren, onToggleTask])
 
     return (
       <div
@@ -192,7 +197,9 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
       >
         {/* タスクバー */}
         <div
-          className="absolute rounded-lg shadow-lg flex items-center transition-all duration-200 hover:shadow-xl cursor-pointer"
+          className={`absolute rounded-lg shadow-lg flex items-center transition-all duration-200 hover:shadow-xl ${
+            hasChildren ? 'cursor-pointer hover:scale-[1.02]' : 'cursor-default'
+          }`}
           style={{ 
             left: `${startPos}px`,
             width: `${barWidth}px`,
@@ -206,7 +213,11 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
             borderColor: statusStyle.borderColor,
             zIndex: 2
           }}
-          onClick={() => hasChildren && onToggleTask(task.id)}
+          onClick={handleTaskClick}
+          title={hasChildren ? 
+            `${task.name} (${taskRelationMap.childrenMap[task.id]?.length || 0}個の子タスク - クリックで${task.collapsed ? '展開' : '折りたたみ'})` :
+            task.name
+          }
         >
           <div className="px-3 flex items-center flex-shrink-0">
             {task.completed && <Check size={Math.max(10, 14)} className="mr-2" />}
@@ -237,13 +248,44 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
     )
   }, [getTaskStatusStyle, calculateIndent, getDatePosition, taskRelationMap, dimensions, timeRange, viewUnit, zoomLevel, theme, onToggleTask])
 
-  // プロジェクト表示用タスクフィルタリング
+  // 🔧 修正：プロジェクト表示用タスクフィルタリング（折りたたみ対応）
   const getProjectTasks = useCallback((projectId: string): Task[] => {
     try {
       const filtered = filterTasksForTimeline(tasks, projectId, true, taskRelationMap)
       const sorted = sortTasksHierarchically(filtered, taskRelationMap)
       
-      return sorted.filter(task => isTaskVisibleInTimeline(task, tasks, taskRelationMap))
+      // 🔧 修正：折りたたみ状態を考慮したフィルタリング
+      return sorted.filter(task => {
+        // 基本的な表示可否チェック
+        if (!isTaskVisibleInTimeline(task, tasks, taskRelationMap)) {
+          return false
+        }
+        
+        // 🆕 新規追加：親タスクが折りたたまれている場合は非表示
+        if (task.parentId) {
+          let currentParentId: string | null = task.parentId
+          
+          while (currentParentId) {
+            const parentTask = tasks.find(t => t.id === currentParentId)
+            if (!parentTask) break
+            
+            // 親タスクが折りたたまれている場合は非表示
+            if (parentTask.collapsed) {
+              logger.debug('Task hidden due to collapsed parent', {
+                taskId: task.id,
+                taskName: task.name,
+                parentId: currentParentId,
+                parentName: parentTask.name
+              })
+              return false
+            }
+            
+            currentParentId = taskRelationMap.parentMap[currentParentId] || null
+          }
+        }
+        
+        return true
+      })
     } catch (error) {
       logger.error('Project tasks filtering failed', { projectId, error })
       return []
@@ -302,10 +344,19 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
           <div key={project.id} className={`relative border-b-2 ${
             theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
           }`}>
-            {/* 🔧 修正：プロジェクトヘッダー（幅の問題解決） */}
+            {/* 🔧 修正：プロジェクトヘッダー（クリック処理追加） */}
             <div 
               className="flex items-center relative cursor-pointer transition-colors duration-200 hover:opacity-90 project-header-row"
-              onClick={() => onToggleProject(project.id)}
+              onClick={() => {
+                logger.info('Project header clicked', { 
+                  projectId: project.id, 
+                  projectName: project.name,
+                  currentCollapsed: project.collapsed
+                })
+                if (onToggleProject) {
+                  onToggleProject(project.id)
+                }
+              }}
               style={{ 
                 height: `${dimensions.rowHeight.project}px`,
                 backgroundColor: `${project.color}${theme === 'dark' ? '60' : '50'}`,
@@ -313,6 +364,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
                 width: `${totalTimelineWidth}px`,
                 minWidth: `${totalTimelineWidth}px`
               }}
+              title={`${project.name} - クリックで${project.collapsed ? '展開' : '折りたたみ'}`}
             >
               {/* 動的プロジェクト名 */}
               <div 
@@ -338,11 +390,16 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
                   <div className="font-bold truncate" style={{ fontSize: `${dimensions.fontSize.base}px` }}>
                     {getDisplayText(project.name, zoomLevel, 20)}
                   </div>
+                  {projectTasks.length > 0 && (
+                    <div className="text-xs bg-white/20 px-2 py-1 rounded-full">
+                      {projectTasks.length}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
             
-            {/* プロジェクト内タスク */}
+            {/* 🔧 修正：プロジェクト内タスク（折りたたみ対応） */}
             {!project.collapsed && projectTasks.map(task => {
               const parentTask = task.parentId ? tasks.find(t => t.id === task.parentId) || null : null
               
