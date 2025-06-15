@@ -1,5 +1,5 @@
-// システムプロンプト準拠：メインアプリロジック統合・軽量化版
-// 🔧 修正内容：Timeline統合ロジック大幅簡素化、重複削除
+// システムプロンプト準拠：メインアプリロジック統合・軽量化版（修正版）
+// 🔧 修正内容：型安全性向上・Timeline統合ロジック最適化
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { AreaType, Task, AppViewMode } from '@core/types'
@@ -52,8 +52,8 @@ const TodoApp: React.FC = () => {
   const [isAddingProject, setIsAddingProject] = useState<boolean>(false)
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
   
-  // ビューモード管理
-  const [viewMode, setViewMode] = useState<AppViewMode>('tasklist')
+  // ビューモード管理（型安全性を向上）
+  const [viewMode, setViewMode] = useState<AppViewMode>('tasklist' as AppViewMode)
   
   // タイムライン用今日スクロール状態管理
   const [timelineScrollToToday, setTimelineScrollToToday] = useState<(() => void) | null>(null)
@@ -115,14 +115,14 @@ const TodoApp: React.FC = () => {
     apiActions: taskApiActions
   })
 
-  // ビューモード切り替え
+  // ビューモード切り替え（型安全性を向上）
   const handleViewModeChange = useCallback((newMode: AppViewMode) => {
     logger.info('View mode changing', { from: viewMode, to: newMode })
     setViewMode(newMode)
     
     if (newMode === 'timeline') {
       setActiveArea('timeline')
-    } else {
+    } else if (newMode === 'tasklist') {
       setActiveArea('tasks')
     }
   }, [viewMode])

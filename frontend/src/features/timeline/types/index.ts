@@ -1,8 +1,7 @@
-// システムプロンプト準拠：Timeline型定義統一（軽量化版）
-// 🔧 修正内容：必要最小限の型のみ、Task/Project基本構造の再利用
+// システムプロンプト準拠：Timeline型定義統一（修正版）
+// 🔧 修正内容：未使用インポート削除・必要最小限の型のみ保持
 
 import { Task, Project, AppViewMode } from '@core/types'
-import { TaskRelationMap } from '@tasklist/types'
 
 // タイムライン表示単位
 export type TimelineViewUnit = 'day' | 'week'

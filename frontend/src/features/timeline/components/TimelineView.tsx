@@ -1,5 +1,5 @@
-// システムプロンプト準拠：メインタイムラインビューコンポーネント（軽量化版）
-// 🔧 修正内容：他コンポーネント統合、不要機能削除
+// システムプロンプト準拠：メインタイムラインビューコンポーネント（修正版）
+// 🔧 修正内容：未使用インポート削除・適切なインポートパス設定
 
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { TimelineControls } from './TimelineControls'
@@ -7,18 +7,12 @@ import { TimelineRenderer } from './TimelineRenderer'
 import { TimelineViewProps } from '../types'
 import { useTimeline } from '../hooks/useTimeline'
 import { buildTaskRelationMap } from '@tasklist/utils/task'
-import { logger } from '@core/utils'
-import {
-  getDatePosition,
-  getDisplayText,
+import { 
+  logger,
   getDateCellClass,
-  getWeekBackground,
-  isFirstDayOfMonth,
-  isFirstDayOfWeek,
   getMonthName,
   getWeekNumber
 } from '@core/utils'
-import { calculateTimeRange, generateVisibleDates } from '../utils'
 
 export const TimelineView: React.FC<TimelineViewProps> = ({
   projects,
@@ -115,6 +109,16 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   }, [state.theme])
 
   const classes = getAppClasses()
+
+  // 週の開始日判定（月曜日）
+  const isFirstDayOfWeek = useCallback((date: Date): boolean => {
+    return date.getDay() === 1
+  }, [])
+
+  // 月の最初の日判定
+  const isFirstDayOfMonth = useCallback((date: Date, index: number, visibleDates: Date[]): boolean => {
+    return index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
+  }, [])
 
   // プロジェクトデータが空の場合の表示
   if (projects.length === 0) {
@@ -282,7 +286,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                   const weekEnd = new Date(date)
                   weekEnd.setDate(weekEnd.getDate() + 6)
                   
-                  const isFirstMonth = index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
+                  const isFirstMonth = isFirstDayOfMonth(date, index, visibleDates)
                   const nextWeek = index < visibleDates.length - 1 ? visibleDates[index + 1] : null
                   const isLastWeekOfMonth = nextWeek ? date.getMonth() !== nextWeek.getMonth() : index === visibleDates.length - 1
                   

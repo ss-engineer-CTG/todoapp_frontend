@@ -1,8 +1,5 @@
-// システムプロンプト準拠：Timeline統合ユーティリティ（軽量化版）
-// 🔧 修正内容：全ユーティリティ統合、不要機能削除
-
-import { format, parseISO, isValid } from 'date-fns'
-import { ja } from 'date-fns/locale'
+// システムプロンプト準拠：Timeline統合ユーティリティ（修正版）
+// 🔧 修正内容：未使用インポート削除・軽量化
 
 // ===== 基本設定 =====
 export const ZOOM_CONFIG = {

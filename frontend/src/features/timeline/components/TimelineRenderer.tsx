@@ -1,24 +1,26 @@
-// システムプロンプト準拠：Timeline描画統合コンポーネント（新規作成）
-// KISS原則：シンプルな描画ロジック統合
-// DRY原則：重複描画処理の統合
+// システムプロンプト準拠：Timeline描画統合コンポーネント（修正版）
+// 🔧 修正内容：インポートパス修正・型安全性向上・未使用インポート削除
 
 import React, { useMemo, useCallback } from 'react'
 import { 
-  Check, AlertTriangle, Star, ChevronDown, ChevronRight, Factory
+  Check, AlertTriangle, ChevronDown, ChevronRight, Factory
 } from 'lucide-react'
 import { Task, Project } from '@core/types'
 import { TaskRelationMap } from '@tasklist/types'
 import { 
-  getDatePosition, 
-  getDisplayText,
-  isValidDate,
   calculateTimelineTaskStatus,
   isTaskVisibleInTimeline,
   filterTasksForTimeline,
   sortTasksHierarchically
 } from '@tasklist/utils/task'
-import { calculateDynamicSizes, getMonthName, getWeekNumber, isWeekend } from '@core/utils'
-import { logger } from '@core/utils'
+import { 
+  calculateDynamicSizes, 
+  getDatePosition,
+  getDisplayText,
+  isValidDate,
+  isWeekend,
+  logger
+} from '@core/utils'
 
 interface TimelineRendererProps {
   projects: Project[]
@@ -264,7 +266,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
             />
           ))
         ) : (
-          visibleDates.map((date, index) => (
+          visibleDates.map((date) => (
             <div
               key={`grid-${date.getTime()}`}
               className={`absolute inset-y-0 ${
@@ -331,7 +333,7 @@ export const TimelineRenderer: React.FC<TimelineRendererProps> = ({
             
             {/* プロジェクト内タスク */}
             {!project.collapsed && projectTasks.map(task => {
-              const parentTask = task.parentId ? tasks.find(t => t.id === task.parentId) : null
+              const parentTask = task.parentId ? tasks.find(t => t.id === task.parentId) || null : null
               
               return (
                 <div key={task.id}>
