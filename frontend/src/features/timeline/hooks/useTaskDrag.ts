@@ -1,9 +1,10 @@
-// システムプロンプト準拠：タスクドラッグ操作管理フック
-// 🎯 目的：ドラッグ状態の一元管理、既存APIとの連携
+// システムプロンプト準拠：タスクドラッグ操作管理フック（制限設定対応版）
+// 🔧 修正内容：設定ベース制限検証の対応、警告メッセージ処理を追加
 
 import { useState, useCallback, useRef } from 'react'
 import { Task } from '@core/types'
 import { logger } from '@core/utils/core'
+import { APP_CONFIG } from '@core/config'
 import { 
   calculateDateFromPosition, 
   calculateDaysDifference, 
@@ -56,10 +57,15 @@ export const useTaskDrag = ({
     try {
       event.preventDefault()
       
-      logger.info('Task drag started', { 
+      // 🔧 追加：制限設定状態をログ出力
+      logger.info('Task drag started with current restrictions', { 
         taskId: task.id, 
         taskName: task.name,
-        mouseX: event.clientX
+        mouseX: event.clientX,
+        restrictions: {
+          preventPastDates: APP_CONFIG.DRAG_RESTRICTIONS.PREVENT_PAST_DATES,
+          enforceDateOrder: APP_CONFIG.DRAG_RESTRICTIONS.ENFORCE_DATE_ORDER
+        }
       })
 
       const startX = event.clientX
@@ -106,7 +112,7 @@ export const useTaskDrag = ({
       const snappedStartDate = snapDateToGrid(newStartDate, viewUnit)
       const snappedDueDate = snapDateToGrid(newDueDate, viewUnit)
       
-      // 妥当性チェック
+      // 🔧 修正：設定ベース妥当性チェック（警告メッセージ対応）
       const validation = validateDateChange(
         dragState.originalTask.startDate,
         dragState.originalTask.dueDate,
@@ -121,10 +127,26 @@ export const useTaskDrag = ({
           previewStartDate: snappedStartDate,
           previewDueDate: snappedDueDate
         }))
+        
+        // 🔧 追加：警告メッセージがある場合はログ出力
+        if (validation.warningMessage) {
+          logger.warn('Drag operation has warnings', { 
+            taskId: dragState.originalTask.id,
+            warningMessage: validation.warningMessage,
+            restrictions: {
+              preventPastDates: APP_CONFIG.DRAG_RESTRICTIONS.PREVENT_PAST_DATES,
+              enforceDateOrder: APP_CONFIG.DRAG_RESTRICTIONS.ENFORCE_DATE_ORDER
+            }
+          })
+        }
       } else {
         logger.warn('Invalid date change during drag', { 
           taskId: dragState.originalTask.id,
-          error: validation.errorMessage 
+          errorMessage: validation.errorMessage,
+          restrictions: {
+            preventPastDates: APP_CONFIG.DRAG_RESTRICTIONS.PREVENT_PAST_DATES,
+            enforceDateOrder: APP_CONFIG.DRAG_RESTRICTIONS.ENFORCE_DATE_ORDER
+          }
         })
       }
       
@@ -138,13 +160,48 @@ export const useTaskDrag = ({
     if (!dragState.isDragging || !dragState.originalTask) return
 
     try {
-      logger.info('Task drag ended', { 
+      // 🔧 追加：最終的な制限チェックと警告表示
+      const finalValidation = dragState.previewStartDate && dragState.previewDueDate ? 
+        validateDateChange(
+          dragState.originalTask.startDate,
+          dragState.originalTask.dueDate,
+          dragState.previewStartDate,
+          dragState.previewDueDate
+        ) : { isValid: false }
+
+      logger.info('Task drag ended with validation', { 
         taskId: dragState.originalTask.id,
         originalStartDate: dragState.originalTask.startDate,
         newStartDate: dragState.previewStartDate,
         originalDueDate: dragState.originalTask.dueDate,
-        newDueDate: dragState.previewDueDate
+        newDueDate: dragState.previewDueDate,
+        validation: {
+          isValid: finalValidation.isValid,
+          hasError: !!finalValidation.errorMessage,
+          hasWarning: !!finalValidation.warningMessage,
+          errorMessage: finalValidation.errorMessage,
+          warningMessage: finalValidation.warningMessage
+        },
+        restrictions: {
+          preventPastDates: APP_CONFIG.DRAG_RESTRICTIONS.PREVENT_PAST_DATES,
+          enforceDateOrder: APP_CONFIG.DRAG_RESTRICTIONS.ENFORCE_DATE_ORDER
+        }
       })
+
+      // 🔧 修正：エラーがある場合は更新を中止
+      if (!finalValidation.isValid) {
+        logger.warn('Task update cancelled due to validation error', { 
+          taskId: dragState.originalTask.id,
+          errorMessage: finalValidation.errorMessage
+        })
+        
+        // エラーメッセージをコンソールに表示（UIトーストは将来の拡張で追加可能）
+        if (finalValidation.errorMessage) {
+          console.warn(`ドラッグ操作エラー: ${finalValidation.errorMessage}`)
+        }
+        
+        return
+      }
 
       // 日付が実際に変更された場合のみ更新
       const hasStartDateChanged = dragState.previewStartDate && 
@@ -164,6 +221,11 @@ export const useTaskDrag = ({
           updatedStartDate: dragState.previewStartDate,
           updatedDueDate: dragState.previewDueDate
         })
+        
+        // 🔧 追加：警告メッセージがある場合はユーザーに通知
+        if (finalValidation.warningMessage) {
+          console.info(`ドラッグ操作警告: ${finalValidation.warningMessage}`)
+        }
       } else {
         logger.info('No date changes detected, skipping update', { 
           taskId: dragState.originalTask.id 
@@ -195,7 +257,13 @@ export const useTaskDrag = ({
 
   // ドラッグキャンセル
   const handleDragCancel = useCallback(() => {
-    logger.info('Task drag cancelled')
+    logger.info('Task drag cancelled', {
+      taskId: dragState.originalTask?.id,
+      restrictions: {
+        preventPastDates: APP_CONFIG.DRAG_RESTRICTIONS.PREVENT_PAST_DATES,
+        enforceDateOrder: APP_CONFIG.DRAG_RESTRICTIONS.ENFORCE_DATE_ORDER
+      }
+    })
     
     setDragState({
       isDragging: false,
@@ -209,7 +277,7 @@ export const useTaskDrag = ({
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
     dragPreventDefault.current = false
-  }, [])
+  }, [dragState.originalTask?.id])
 
   return {
     dragState,

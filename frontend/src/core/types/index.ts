@@ -1,5 +1,5 @@
-// システムプロンプト準拠: 共通型定義（軽量化版）
-// 🔧 修正内容：Timeline関連型統合、不要型削除
+// システムプロンプト準拠: 共通型定義（ドラッグ制限型追加版）
+// 🔧 修正内容：DragRestrictions型定義を追加、既存型は完全保持
 
 // UI関連型
 export type AreaType = "projects" | "tasks" | "details" | "timeline"
@@ -43,6 +43,12 @@ export interface ProjectColor {
 export interface KeyboardShortcut {
   key: string
   description: string
+}
+
+// 🆕 追加：ドラッグ制限設定型
+export interface DragRestrictions {
+  PREVENT_PAST_DATES: boolean
+  ENFORCE_DATE_ORDER: boolean
 }
 
 // フォーカス管理型

@@ -1,5 +1,5 @@
-// システムプロンプト準拠：統一設定管理（軽量化版）
-// 🔧 修正内容：全設定の一元化、不要設定削除
+// システムプロンプト準拠：統一設定管理（ドラッグ制限設定追加版）
+// 🔧 修正内容：DRAG_RESTRICTIONS設定を追加、既存設定は完全保持
 
 // 基本型定義
 export interface ProjectColor {
@@ -10,6 +10,12 @@ export interface ProjectColor {
 export interface KeyboardShortcut {
   key: string
   description: string
+}
+
+// 🆕 追加：ドラッグ制限設定型
+export interface DragRestrictions {
+  PREVENT_PAST_DATES: boolean
+  ENFORCE_DATE_ORDER: boolean
 }
 
 // パス管理統一
@@ -54,7 +60,12 @@ export const APP_CONFIG = {
       SYNC_THRESHOLD: 5,
       DEBOUNCE_MS: 16
     }
-  }
+  },
+  // 🆕 追加：ドラッグ制限設定
+  DRAG_RESTRICTIONS: {
+    PREVENT_PAST_DATES: false,     // false = 過去日移動を許可
+    ENFORCE_DATE_ORDER: false      // false = 開始日＞期限日を許可
+  } as DragRestrictions
 } as const
 
 // プロジェクトカラー
