@@ -16,7 +16,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.config import config
 from core.logger import setup_logging, get_logger
 from core.database import init_database
-from core.middleware import add_middleware
 from api.router import api_router
 
 # システムプロンプト準拠：統一ログ機能
@@ -62,9 +61,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# 共通ミドルウェア追加
-add_middleware(app)
 
 # APIルーター統合
 app.include_router(api_router, prefix="/api")

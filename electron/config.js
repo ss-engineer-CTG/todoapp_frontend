@@ -1,6 +1,6 @@
 /**
  * Electron設定管理モジュール
- * システムプロンプト準拠：DRY原則による設定一元化、ハードコード禁止
+ * システムプロンプト準拠：DRY原則による設定一元化、環境判定対応
  */
 
 const path = require('path')
@@ -19,6 +19,13 @@ const APP_CONFIG = {
   PORTS: {
     FRONTEND: 3000,
     BACKEND: 8000
+  },
+
+  // 開発環境設定（システムプロンプト準拠：KISS原則）
+  DEV: {
+    USE_EXTERNAL_BACKEND: true,  // 開発環境では外部バックエンドを使用
+    AUTO_OPEN_DEV_TOOLS: true,
+    FOCUS_ON_SHOW: true
   },
 
   // パス設定
@@ -47,12 +54,14 @@ const APP_CONFIG = {
     SHOW_DURATION: 2000 // 最小表示時間（ミリ秒）
   },
 
-  // バックエンド設定
+  // バックエンド設定（環境別）
   BACKEND: {
     STARTUP_TIMEOUT: 30000, // 30秒
     HEALTH_CHECK_INTERVAL: 1000, // 1秒間隔
     MAX_RETRIES: 30,
-    HEALTH_ENDPOINT: '/api/health'
+    HEALTH_ENDPOINT: '/api/health',
+    // システムプロンプト準拠：YAGNI原則による環境判定
+    START_INTERNAL_PROCESS: !isDev  // 開発環境では内部プロセスを起動しない
   },
 
   // セキュリティ設定
@@ -61,12 +70,6 @@ const APP_CONFIG = {
     CONTEXT_ISOLATION: true,
     ENABLE_REMOTE_MODULE: false,
     WEB_SECURITY: true
-  },
-
-  // 開発環境設定
-  DEV: {
-    AUTO_OPEN_DEV_TOOLS: true,
-    FOCUS_ON_SHOW: true
   }
 }
 
@@ -94,7 +97,7 @@ const PathHelper = {
   },
 
   /**
-   * バックエンドスクリプトのパス取得
+   * バックエンドスクリプトのパス取得（環境別）
    */
   getBackendScriptPath: () => {
     return isDev 
@@ -103,7 +106,7 @@ const PathHelper = {
   },
 
   /**
-   * バックエンド作業ディレクトリのパス取得
+   * バックエンド作業ディレクトリのパス取得（環境別）
    */
   getBackendWorkingDir: () => {
     return isDev 
@@ -121,7 +124,7 @@ const PathHelper = {
   }
 }
 
-// URL設定
+// URL設定（環境判定対応）
 const URL_CONFIG = {
   FRONTEND: PathHelper.getFrontendUrl(),
   BACKEND_BASE: `http://localhost:${APP_CONFIG.PORTS.BACKEND}`,

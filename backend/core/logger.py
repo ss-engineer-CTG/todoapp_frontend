@@ -1,15 +1,17 @@
 """
 統一ログ管理モジュール
-システムプロンプト準拠：適切なログレベル、統一フォーマット、デバッグ機能強化
+システムプロンプト準拠：KISS原則、YAGNI原則、必要最小限の機能のみ
 """
 import logging
 import sys
 from pathlib import Path
-from typing import Optional, Any, Dict
-from datetime import datetime
+from typing import Optional
 
 def setup_logging(level: str = "INFO", log_file: Optional[Path] = None) -> None:
-    """ログ設定の初期化"""
+    """
+    ログ設定の初期化
+    システムプロンプト準拠：シンプルで必要最小限の設定
+    """
     log_level = getattr(logging, level.upper(), logging.INFO)
     
     # フォーマッター設定
@@ -40,28 +42,8 @@ def setup_logging(level: str = "INFO", log_file: Optional[Path] = None) -> None:
         root_logger.addHandler(file_handler)
 
 def get_logger(name: str) -> logging.Logger:
-    """ロガーインスタンス取得"""
+    """
+    ロガーインスタンス取得
+    システムプロンプト準拠：シンプルなロガー提供
+    """
     return logging.getLogger(name)
-
-def log_api_operation(
-    logger: logging.Logger,
-    method: str,
-    endpoint: str,
-    success: bool,
-    duration_ms: Optional[float] = None,
-    context: Optional[Dict[str, Any]] = None
-) -> None:
-    """API操作のログ出力"""
-    log_context = {
-        'method': method,
-        'endpoint': endpoint,
-        'success': success,
-        'duration_ms': duration_ms,
-        'timestamp': datetime.now().isoformat(),
-        **(context or {})
-    }
-    
-    if success:
-        logger.info(f"API operation completed: {method} {endpoint}")
-    else:
-        logger.error(f"API operation failed: {method} {endpoint}")

@@ -1,13 +1,12 @@
 """
 タスク関連APIルート
-システムプロンプト準拠：KISS原則、統一例外処理
+システムプロンプト準拠：KISS原則、シンプルな標準ロギング
 """
-from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from core.database import DatabaseManager
-from core.logger import get_logger, log_api_operation
+from core.logger import get_logger
 from ..services.task_service import TaskService
 from ..schemas.task import TaskCreate, TaskUpdate, TaskResponse, BatchTaskOperation
 
@@ -24,17 +23,14 @@ async def get_tasks(
     service: TaskService = Depends(get_task_service)
 ):
     """タスク一覧取得"""
-    start_time = datetime.now()
     try:
         tasks = service.get_tasks(projectId)
-        
-        # API操作ログ
-        duration = (datetime.now() - start_time).total_seconds() * 1000
-        log_api_operation(logger, "GET", "/tasks", True, duration)
-        
+        if projectId:
+            logger.info(f"Tasks retrieved successfully for project: {projectId}")
+        else:
+            logger.info("All tasks retrieved successfully")
         return tasks
     except Exception as e:
-        log_api_operation(logger, "GET", "/tasks", False)
         logger.error(f"Failed to get tasks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -44,7 +40,6 @@ async def create_task(
     service: TaskService = Depends(get_task_service)
 ):
     """タスク作成"""
-    start_time = datetime.now()
     try:
         # 日付フィールドの明示的な変換
         task_dict = task.dict()
@@ -56,14 +51,9 @@ async def create_task(
             task_dict['completion_date'] = task_dict['completion_date'].isoformat()
         
         created_task = service.create_task(task_dict)
-        
-        # API操作ログ
-        duration = (datetime.now() - start_time).total_seconds() * 1000
-        log_api_operation(logger, "POST", "/tasks", True, duration)
-        
+        logger.info(f"Task created successfully: {created_task.id}")
         return created_task
     except Exception as e:
-        log_api_operation(logger, "POST", "/tasks", False)
         logger.error(f"Failed to create task: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -73,17 +63,11 @@ async def get_task(
     service: TaskService = Depends(get_task_service)
 ):
     """タスク詳細取得"""
-    start_time = datetime.now()
     try:
         task = service.get_task_by_id(task_id)
-        
-        # API操作ログ
-        duration = (datetime.now() - start_time).total_seconds() * 1000
-        log_api_operation(logger, "GET", f"/tasks/{task_id}", True, duration)
-        
+        logger.info(f"Task retrieved successfully: {task_id}")
         return task
     except Exception as e:
-        log_api_operation(logger, "GET", f"/tasks/{task_id}", False)
         logger.error(f"Failed to get task {task_id}: {e}")
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -94,7 +78,6 @@ async def update_task(
     service: TaskService = Depends(get_task_service)
 ):
     """タスク更新"""
-    start_time = datetime.now()
     try:
         # 日付フィールドの明示的な変換
         task_dict = task.dict(exclude_unset=True)
@@ -103,14 +86,9 @@ async def update_task(
                 task_dict[date_field] = task_dict[date_field].isoformat()
         
         updated_task = service.update_task(task_id, task_dict)
-        
-        # API操作ログ
-        duration = (datetime.now() - start_time).total_seconds() * 1000
-        log_api_operation(logger, "PUT", f"/tasks/{task_id}", True, duration)
-        
+        logger.info(f"Task updated successfully: {task_id}")
         return updated_task
     except Exception as e:
-        log_api_operation(logger, "PUT", f"/tasks/{task_id}", False)
         logger.error(f"Failed to update task {task_id}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -120,17 +98,11 @@ async def delete_task(
     service: TaskService = Depends(get_task_service)
 ):
     """タスク削除"""
-    start_time = datetime.now()
     try:
         service.delete_task(task_id)
-        
-        # API操作ログ
-        duration = (datetime.now() - start_time).total_seconds() * 1000
-        log_api_operation(logger, "DELETE", f"/tasks/{task_id}", True, duration)
-        
+        logger.info(f"Task deleted successfully: {task_id}")
         return {"message": "Task deleted successfully"}
     except Exception as e:
-        log_api_operation(logger, "DELETE", f"/tasks/{task_id}", False)
         logger.error(f"Failed to delete task {task_id}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -140,24 +112,20 @@ async def batch_update_tasks(
     service: TaskService = Depends(get_task_service)
 ):
     """タスク一括操作"""
-    start_time = datetime.now()
     try:
         result = service.batch_update_tasks(operation.operation, operation.task_ids)
         
-        # API操作ログ
-        duration = (datetime.now() - start_time).total_seconds() * 1000
-        log_api_operation(logger, "POST", "/tasks/batch", result['success'], duration)
-        
         if result['success']:
+            logger.info(f"Batch operation '{operation.operation}' completed successfully for {len(operation.task_ids)} tasks")
             return {
                 "message": f"Batch operation '{operation.operation}' completed successfully",
                 "affected_count": result['affected_count'],
                 "task_ids": operation.task_ids
             }
         else:
+            logger.error(f"Batch operation '{operation.operation}' failed: {result.get('error', 'Unknown error')}")
             raise HTTPException(status_code=400, detail=result.get('error', 'Batch operation failed'))
             
     except Exception as e:
-        log_api_operation(logger, "POST", "/tasks/batch", False)
         logger.error(f"Failed to execute batch operation '{operation.operation}': {e}")
         raise HTTPException(status_code=400, detail=str(e))

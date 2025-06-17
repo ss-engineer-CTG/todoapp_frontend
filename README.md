@@ -1,104 +1,13 @@
 # 階層型ToDoリストアプリケーション
 
-プロジェクトベースの階層的なタスク管理を提供するデスクトップアプリケーションです。React + Vite（フロントエンド）、Python + FastAPI + SQLite（バックエンド）、Electron（デスクトップアプリ）で構築されています。
+モダンで直感的な階層型タスク管理アプリケーション。Electron、React、Python（FastAPI）を使用して構築されたクロスプラットフォーム対応のデスクトップアプリです。
 
-![アプリケーションスクリーンショット](docs/images/screenshot.png)
-
-## ✨ 特徴
-
-- **🌳 階層的タスク管理**: 親タスクの下に子タスクを無制限に作成可能
-- **📁 プロジェクト管理**: タスクをプロジェクト単位で整理・カラーコーディング
-- **⌨️ キーボードショートカット**: 効率的な操作のための豊富なショートカット
-- **🔄 複数選択**: 複数タスクの一括操作に対応
-- **🌙 ダークモード**: ライト/ダークテーマの自動切り替え
-- **🇯🇵 日本語対応**: 完全な日本語インターフェース
-- **💾 ローカルデータ**: SQLiteによる高速でプライベートなデータ管理
-- **📱 レスポンシブUI**: 様々な画面サイズに対応した3パネルレイアウト
-
-## 🚀 クイックスタート
-
-### 前提条件
-
-以下のソフトウェアがインストールされている必要があります：
-
-- [Node.js](https://nodejs.org/) (v16.0.0以上)
-- [Python](https://www.python.org/) (v3.8以上)
-- [Git](https://git-scm.com/)
-
-### インストール
-
-1. **リポジトリのクローン**
-   ```bash
-   git clone https://github.com/your-username/hierarchical-todo-app.git
-   cd hierarchical-todo-app
-   ```
-
-2. **依存関係のインストール**
-   ```bash
-   # ルートの依存関係
-   npm install
-   
-   # フロントエンドの依存関係
-   cd frontend
-   npm install
-   cd ..
-   
-   # バックエンドの依存関係
-   cd backend
-   pip install -r requirements.txt
-   cd ..
-   ```
-
-3. **開発サーバーの起動**
-   ```bash
-   npm run dev
-   ```
-
-   または、個別に起動する場合：
-   ```bash
-   # ターミナル1: バックエンド
-   npm run dev:backend
-   
-   # ターミナル2: フロントエンド
-   npm run dev:frontend
-   
-   # ターミナル3: Electron
-   npm run dev:electron
-   ```
-
-## 📁 プロジェクト構造
-
-```
-todo-app/
-├── 📂 frontend/                    # React + Vite フロントエンド
-│   ├── 📂 src/
-│   │   ├── 📂 components/          # UIコンポーネント
-│   │   ├── 📂 hooks/               # カスタムフック
-│   │   ├── 📂 utils/               # ユーティリティ関数
-│   │   ├── 📂 styles/              # スタイルシート
-│   │   ├── 📄 types.ts             # TypeScript型定義
-│   │   └── 📄 TodoApp.tsx          # メインアプリコンポーネント
-│   ├── 📄 package.json
-│   ├── 📄 vite.config.js
-│   └── 📄 tsconfig.json
-├── 📂 backend/                     # Python + FastAPI バックエンド
-│   ├── 📄 app.py                   # メインAPIアプリケーション
-│   ├── 📄 schema.sql               # データベーススキーマ
-│   └── 📄 requirements.txt         # Python依存関係
-├── 📂 electron/                    # Electron メインプロセス
-│   ├── 📄 main.js                  # メインプロセス
-│   └── 📄 preload.js               # プリロードスクリプト
-├── 📂 dist/                        # ビルド出力（自動生成）
-├── 📄 package.json                 # プロジェクト設定
-└── 📄 README.md                    # このファイル
-```
-
-## 🎯 主要機能
+## ✨ 主な機能
 
 ### プロジェクト管理
-- ✅ プロジェクトの作成・編集・削除
-- 🎨 8色のカラーパレットからプロジェクトカラーを選択
-- 📊 プロジェクト単位でのタスク表示とフィルタリング
+- 📁 プロジェクトの作成・編集・削除
+- 🎨 プロジェクト別の色分け管理
+- 📊 プロジェクト進捗の可視化
 - 📁 プロジェクトの折りたたみ表示
 
 ### タスク管理
@@ -135,6 +44,29 @@ todo-app/
 
 ## 🛠️ 開発
 
+### 前提条件
+
+- **Node.js**: バージョン16.0.0以上
+- **npm**: バージョン8.0.0以上
+- **Python**: バージョン3.8以上
+- **pip**: Python package manager
+
+### セットアップ
+
+```bash
+# リポジトリをクローン
+git clone https://github.com/your-username/hierarchical-todo-app.git
+cd hierarchical-todo-app
+
+# 依存関係をインストール
+npm install
+
+# バックエンドの依存関係をインストール
+cd backend
+pip install -r requirements.txt
+cd ..
+```
+
 ### 開発環境での起動
 
 ```bash
@@ -150,6 +82,9 @@ npm run dev:electron    # Electron デスクトップアプリ
 ### API エンドポイント
 
 バックエンドAPI（http://localhost:8000）：
+
+#### ヘルスチェック
+- `GET /api/health` - アプリケーション状態確認
 
 #### プロジェクト関連
 - `GET /api/projects` - プロジェクト一覧取得
@@ -168,7 +103,6 @@ npm run dev:electron    # Electron デスクトップアプリ
 - `POST /api/tasks/batch` - 一括操作
 
 #### その他
-- `GET /api/health` - ヘルスチェック
 - `GET /docs` - API ドキュメント（Swagger UI）
 
 ### テスト
@@ -211,6 +145,7 @@ npm run package
 
 ```bash
 npm run clean           # ビルド成果物を削除
+npm run clean:all       # node_modulesも含めて削除
 ```
 
 ## 🗂️ データ管理
@@ -241,18 +176,29 @@ cp backup/todo_backup_YYYYMMDD.db backend/todo.db
 
 ### よくある問題と解決方法
 
-#### 1. ポート競合エラー
+#### 1. アプリケーションが起動しない
 
-**問題**: `Error: listen EADDRINUSE: address already in use :::3000`
+**問題**: `npm run dev`実行後、Electronアプリが起動しない
+
+**確認方法**:
+```bash
+# ポートの使用状況を確認
+lsof -ti:3000  # フロントエンド
+lsof -ti:8000  # バックエンド
+
+# プロセスの確認
+ps aux | grep node
+ps aux | grep python
+```
 
 **解決方法**:
 ```bash
-# 使用中のプロセスを確認
-lsof -ti:3000
-lsof -ti:8000
+# 使用中のプロセスを停止
+kill -9 $(lsof -ti:3000)
+kill -9 $(lsof -ti:8000)
 
-# プロセスを停止
-kill -9 <PID>
+# 再度起動
+npm run dev
 ```
 
 #### 2. Python依存関係エラー
@@ -262,6 +208,14 @@ kill -9 <PID>
 **解決方法**:
 ```bash
 cd backend
+
+# 仮想環境の作成（推奨）
+python -m venv venv
+source venv/bin/activate  # Mac/Linux
+# または
+venv\Scripts\activate  # Windows
+
+# 依存関係をインストール
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
@@ -273,9 +227,13 @@ pip install -r requirements.txt
 **解決方法**:
 ```bash
 # node_modules を削除して再インストール
-rm -rf node_modules frontend/node_modules
+npm run clean:node_modules
 npm install
-cd frontend && npm install
+
+# フロントエンドの依存関係も再インストール
+cd frontend
+npm install
+cd ..
 ```
 
 #### 4. データベース接続エラー
@@ -289,9 +247,30 @@ pkill -f "python app.py"
 
 # データベースファイルの権限確認
 ls -la backend/todo.db
+
+# 必要に応じてデータベースを再作成
+rm backend/todo.db
+npm run dev:backend  # データベースが自動作成される
 ```
 
-#### 5. Electron起動エラー
+#### 5. ポート競合エラー
+
+**問題**: `Error: listen EADDRINUSE: address already in use`
+
+**解決方法**:
+```bash
+# Mac/Linux
+lsof -ti:3000 | xargs kill -9
+lsof -ti:8000 | xargs kill -9
+
+# Windows
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+netstat -ano | findstr :8000
+taskkill /PID <PID> /F
+```
+
+#### 6. Electron起動エラー
 
 **問題**: `Error: Electron failed to install correctly`
 
@@ -300,6 +279,51 @@ ls -la backend/todo.db
 # Electronを再インストール
 npm uninstall electron
 npm install electron --save-dev
+
+# 完全なクリーンインストール（上記で解決しない場合）
+npm run clean:all
+npm install
+```
+
+### 詳細診断
+
+```bash
+# システム情報確認
+node --version
+npm --version
+python --version
+pip --version
+
+# 起動ログの確認
+npm run dev 2>&1 | tee debug.log
+
+# ディスク容量確認
+df -h
+
+# メモリ使用状況確認
+free -h  # Linux
+top      # Mac/Linux
+```
+
+### パフォーマンス最適化
+
+#### メモリ使用量の改善
+
+```bash
+# Node.jsのメモリ制限を増加
+export NODE_OPTIONS="--max-old-space-size=4096"
+npm run dev
+```
+
+#### 起動速度の改善
+
+```bash
+# キャッシュのクリア
+npm cache clean --force
+rm -rf node_modules/.cache
+
+# 並列処理の最適化
+# package.jsonでconcurrentlyが並列実行を管理
 ```
 
 ## 🤝 コントリビューション

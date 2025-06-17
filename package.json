@@ -1,7 +1,7 @@
 {
   "name": "todo-app",
   "version": "1.0.0",
-  "description": "階層型ToDoリストアプリケーション - Electron統合改善版",
+  "description": "階層型ToDoリストアプリケーション",
   "main": "electron/main.js",
   "homepage": ".",
   "author": {
@@ -24,7 +24,7 @@
     "productivity"
   ],
   "scripts": {
-    "dev": "concurrently --kill-others \"npm run dev:frontend\" \"npm run dev:backend\" \"wait-on http://localhost:3000 http://localhost:8000/api/health --timeout 60000 && npm run dev:electron\"",
+    "dev": "concurrently --kill-others \"npm run dev:frontend\" \"npm run dev:backend\" \"wait-on tcp:3000 tcp:8000 --timeout 60000 && npm run dev:electron\"",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && python app.py",
     "dev:electron": "cross-env NODE_ENV=development electron .",
@@ -52,35 +52,24 @@
     "prepack": "npm run build",
     "electron": "electron .",
     "electron:dev": "cross-env NODE_ENV=development electron .",
-    "electron:prod": "cross-env NODE_ENV=production electron .",
-    "check:python": "python --version && echo 'Python environment check passed'",
-    "check:deps": "npm run check:python && echo 'Dependency check completed'",
-    "setup": "npm install && npm run install:frontend && npm run install:backend && echo 'Setup completed successfully'"
-  },
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
+    "electron:prod": "cross-env NODE_ENV=production electron ."
   },
   "devDependencies": {
     "electron": "^27.0.0",
     "electron-builder": "^24.6.4",
     "concurrently": "^8.2.2",
     "wait-on": "^7.0.1",
-    "rimraf": "^5.0.5",
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "rimraf": "^5.0.5"
   },
   "dependencies": {
     "electron-store": "^8.1.0"
-  },
-  "optionalDependencies": {
-    "electron-builder-squirrel-windows": "^24.6.4"
   },
   "build": {
     "appId": "com.todoapp.hierarchical",
     "productName": "階層型ToDoリスト",
     "directories": {
-      "output": "dist",
-      "buildResources": "electron/assets"
+      "output": "dist"
     },
     "files": [
       "electron/**/*",
@@ -90,10 +79,8 @@
       "!backend/*.pyc",
       "!backend/venv",
       "!backend/.env",
-      "!backend/.pytest_cache",
-      "!backend/tests",
-      "!**/*.log",
-      "!**/*.map"
+      "!backend/todo.db",
+      "!backend/logs"
     ],
     "extraResources": [
       {
@@ -105,8 +92,8 @@
           "!*.pyc",
           "!venv",
           "!.env",
-          "!.pytest_cache",
-          "!tests"
+          "!todo.db",
+          "!logs"
         ]
       }
     ],
@@ -117,23 +104,14 @@
         {
           "target": "dmg",
           "arch": ["x64", "arm64"]
-        },
-        {
-          "target": "zip",
-          "arch": ["x64", "arm64"]
         }
-      ],
-      "darkModeSupport": true
+      ]
     },
     "win": {
       "icon": "electron/assets/icon.ico",
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
-        },
-        {
-          "target": "portable",
           "arch": ["x64"]
         }
       ]
@@ -145,10 +123,6 @@
         {
           "target": "AppImage",
           "arch": ["x64"]
-        },
-        {
-          "target": "deb",
-          "arch": ["x64"]
         }
       ]
     },
@@ -156,34 +130,11 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "階層型ToDoリスト",
-      "include": "electron/build/installer.nsh"
-    },
-    "dmg": {
-      "title": "階層型ToDoリスト ${version}",
-      "background": "electron/assets/dmg-background.png",
-      "iconSize": 80,
-      "contents": [
-        {
-          "x": 410,
-          "y": 150,
-          "type": "link",
-          "path": "/Applications"
-        },
-        {
-          "x": 130,
-          "y": 150,
-          "type": "file"
-        }
-      ]
-    },
-    "appx": {
-      "backgroundColor": "transparent",
-      "displayName": "階層型ToDoリスト"
+      "createStartMenuShortcut": true
     }
   },
-  "electronBuilder": {
-    "builderCacheDir": ".cache/electron-builder"
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
   }
 }
