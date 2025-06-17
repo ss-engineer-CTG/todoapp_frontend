@@ -1,33 +1,28 @@
-// システムプロンプト準拠：タスクドラッグ操作管理フック（制限設定対応版）
-// 🔧 修正内容：設定ベース制限検証の対応、警告メッセージ処理を追加
+// システムプロンプト準拠：タスクドラッグ操作管理フック（リサイズモード対応版）
+// 🔧 修正内容：既存のドラッグ機能を活用しつつ、リサイズモードを追加
 
 import { useState, useCallback, useRef } from 'react'
 import { Task } from '@core/types'
+import { DragState, DragMode, UseTaskDragProps } from '../types'
 import { logger } from '@core/utils/core'
-import { APP_CONFIG } from '@core/config'
 import { 
   calculateDateFromPosition, 
   calculateDaysDifference, 
-  validateDateChange,
-  snapDateToGrid
+  validateResize,
+  snapDateToGrid,
+  calculateStartDateResize,
+  calculateEndDateResize
 } from '../utils/dragHelpers'
 
-// ドラッグ状態の型定義
-interface DragState {
-  isDragging: boolean
-  dragStartX: number
-  dragCurrentX: number
-  originalTask: Task | null
-  previewStartDate: Date | null
-  previewDueDate: Date | null
-}
-
-interface UseTaskDragProps {
-  timelineStartDate: Date
-  cellWidth: number
-  viewUnit: 'day' | 'week'
-  scrollLeft: number
-  onTaskUpdate: (taskId: string, updates: Partial<Task>) => Promise<void>
+// 🔧 既存の初期状態を拡張
+const initialDragState: DragState = {
+  isDragging: false,
+  dragMode: 'move',  // 🆕 追加：デフォルトは移動モード
+  dragStartX: 0,
+  dragCurrentX: 0,
+  originalTask: null,
+  previewStartDate: null,
+  previewDueDate: null
 }
 
 export const useTaskDrag = ({
@@ -38,40 +33,30 @@ export const useTaskDrag = ({
   onTaskUpdate
 }: UseTaskDragProps) => {
   
-  const [dragState, setDragState] = useState<DragState>({
-    isDragging: false,
-    dragStartX: 0,
-    dragCurrentX: 0,
-    originalTask: null,
-    previewStartDate: null,
-    previewDueDate: null
-  })
-
+  const [dragState, setDragState] = useState<DragState>(initialDragState)
   const dragPreventDefault = useRef<boolean>(false)
 
-  // ドラッグ開始
+  // 🔧 修正：ドラッグ開始（モード対応追加）
   const handleDragStart = useCallback((
     event: React.MouseEvent,
-    task: Task
+    task: Task,
+    mode: DragMode = 'move'  // 🆕 追加：モードパラメータ
   ) => {
     try {
       event.preventDefault()
       
-      // 🔧 追加：制限設定状態をログ出力
-      logger.info('Task drag started with current restrictions', { 
+      logger.info('Task drag started with mode', { 
         taskId: task.id, 
         taskName: task.name,
-        mouseX: event.clientX,
-        restrictions: {
-          preventPastDates: APP_CONFIG.DRAG_RESTRICTIONS.PREVENT_PAST_DATES,
-          enforceDateOrder: APP_CONFIG.DRAG_RESTRICTIONS.ENFORCE_DATE_ORDER
-        }
+        dragMode: mode,  // 🆕 追加：モードログ
+        mouseX: event.clientX
       })
 
       const startX = event.clientX
       
       setDragState({
         isDragging: true,
+        dragMode: mode,  // 🆕 追加：モード状態保存
         dragStartX: startX,
         dragCurrentX: startX,
         originalTask: task,
@@ -82,15 +67,15 @@ export const useTaskDrag = ({
       dragPreventDefault.current = true
       
       // カーソルスタイルの変更
-      document.body.style.cursor = 'grabbing'
+      document.body.style.cursor = mode === 'move' ? 'grabbing' : 'col-resize'
       document.body.style.userSelect = 'none'
       
     } catch (error) {
-      logger.error('Drag start failed', { task, error })
+      logger.error('Drag start failed', { task, mode, error })
     }
   }, [])
 
-  // ドラッグ中
+  // 🔧 修正：ドラッグ中（モード分岐処理追加）
   const handleDragMove = useCallback((event: MouseEvent) => {
     if (!dragState.isDragging || !dragState.originalTask) return
 
@@ -98,79 +83,123 @@ export const useTaskDrag = ({
       const currentX = event.clientX
       const dragDistance = currentX - dragState.dragStartX
       
-      // 日数差を計算
-      const daysDiff = calculateDaysDifference(dragDistance, cellWidth, viewUnit)
+      let newDates: { startDate: Date; dueDate: Date }
       
-      // 新しい日付を計算
-      const newStartDate = new Date(dragState.originalTask.startDate)
-      newStartDate.setDate(newStartDate.getDate() + daysDiff)
+      // 🆕 追加：ドラッグモードによる計算分岐
+      switch (dragState.dragMode) {
+        case 'resize-start':
+          // 開始日のみ変更（期限日固定）
+          newDates = calculateStartDateResize(
+            dragState.originalTask,
+            dragDistance,
+            cellWidth,
+            viewUnit
+          )
+          logger.debug('Start date resize', {
+            taskId: dragState.originalTask.id,
+            originalStart: dragState.originalTask.startDate,
+            newStart: newDates.startDate,
+            dragDistance
+          })
+          break
+          
+        case 'resize-end':
+          // 期限日のみ変更（開始日固定）
+          newDates = calculateEndDateResize(
+            dragState.originalTask,
+            dragDistance,
+            cellWidth,
+            viewUnit
+          )
+          logger.debug('End date resize', {
+            taskId: dragState.originalTask.id,
+            originalEnd: dragState.originalTask.dueDate,
+            newEnd: newDates.dueDate,
+            dragDistance
+          })
+          break
+          
+        case 'move':
+        default:
+          // 🔧 既存：タスク全体移動（既存ロジック保持）
+          const daysDiff = calculateDaysDifference(dragDistance, cellWidth, viewUnit)
+          
+          const newStartDate = new Date(dragState.originalTask.startDate)
+          newStartDate.setDate(newStartDate.getDate() + daysDiff)
+          
+          const newDueDate = new Date(dragState.originalTask.dueDate)
+          newDueDate.setDate(newDueDate.getDate() + daysDiff)
+          
+          // スナップ機能適用
+          newDates = {
+            startDate: snapDateToGrid(newStartDate, viewUnit),
+            dueDate: snapDateToGrid(newDueDate, viewUnit)
+          }
+          
+          logger.debug('Task move', {
+            taskId: dragState.originalTask.id,
+            daysDiff,
+            newStartDate: newDates.startDate,
+            newDueDate: newDates.dueDate,
+            dragDistance
+          })
+          break
+      }
       
-      const newDueDate = new Date(dragState.originalTask.dueDate)
-      newDueDate.setDate(newDueDate.getDate() + daysDiff)
-      
-      // グリッドにスナップ
-      const snappedStartDate = snapDateToGrid(newStartDate, viewUnit)
-      const snappedDueDate = snapDateToGrid(newDueDate, viewUnit)
-      
-      // 🔧 修正：設定ベース妥当性チェック（警告メッセージ対応）
-      const validation = validateDateChange(
+      // 🔧 既存：妥当性チェック（既存ロジック活用）
+      const validation = validateResize(
         dragState.originalTask.startDate,
         dragState.originalTask.dueDate,
-        snappedStartDate,
-        snappedDueDate
+        newDates.startDate,
+        newDates.dueDate
       )
       
       if (validation.isValid) {
         setDragState(prev => ({
           ...prev,
           dragCurrentX: currentX,
-          previewStartDate: snappedStartDate,
-          previewDueDate: snappedDueDate
+          previewStartDate: newDates.startDate,
+          previewDueDate: newDates.dueDate
         }))
         
-        // 🔧 追加：警告メッセージがある場合はログ出力
+        // 警告メッセージがある場合はログ出力
         if (validation.warningMessage) {
           logger.warn('Drag operation has warnings', { 
             taskId: dragState.originalTask.id,
             warningMessage: validation.warningMessage,
-            restrictions: {
-              preventPastDates: APP_CONFIG.DRAG_RESTRICTIONS.PREVENT_PAST_DATES,
-              enforceDateOrder: APP_CONFIG.DRAG_RESTRICTIONS.ENFORCE_DATE_ORDER
-            }
+            dragMode: dragState.dragMode
           })
         }
       } else {
         logger.warn('Invalid date change during drag', { 
           taskId: dragState.originalTask.id,
           errorMessage: validation.errorMessage,
-          restrictions: {
-            preventPastDates: APP_CONFIG.DRAG_RESTRICTIONS.PREVENT_PAST_DATES,
-            enforceDateOrder: APP_CONFIG.DRAG_RESTRICTIONS.ENFORCE_DATE_ORDER
-          }
+          dragMode: dragState.dragMode
         })
       }
       
     } catch (error) {
-      logger.error('Drag move failed', { error })
+      logger.error('Drag move failed', { error, dragMode: dragState.dragMode })
     }
   }, [dragState, cellWidth, viewUnit])
 
-  // ドラッグ終了
+  // 🔧 既存：ドラッグ終了（モード情報ログ追加）
   const handleDragEnd = useCallback(async () => {
     if (!dragState.isDragging || !dragState.originalTask) return
 
     try {
-      // 🔧 追加：最終的な制限チェックと警告表示
+      // 最終的な妥当性チェック
       const finalValidation = dragState.previewStartDate && dragState.previewDueDate ? 
-        validateDateChange(
+        validateResize(
           dragState.originalTask.startDate,
           dragState.originalTask.dueDate,
           dragState.previewStartDate,
           dragState.previewDueDate
         ) : { isValid: false }
 
-      logger.info('Task drag ended with validation', { 
+      logger.info('Task drag ended', { 
         taskId: dragState.originalTask.id,
+        dragMode: dragState.dragMode,  // 🆕 追加：モード情報
         originalStartDate: dragState.originalTask.startDate,
         newStartDate: dragState.previewStartDate,
         originalDueDate: dragState.originalTask.dueDate,
@@ -178,24 +207,18 @@ export const useTaskDrag = ({
         validation: {
           isValid: finalValidation.isValid,
           hasError: !!finalValidation.errorMessage,
-          hasWarning: !!finalValidation.warningMessage,
-          errorMessage: finalValidation.errorMessage,
-          warningMessage: finalValidation.warningMessage
-        },
-        restrictions: {
-          preventPastDates: APP_CONFIG.DRAG_RESTRICTIONS.PREVENT_PAST_DATES,
-          enforceDateOrder: APP_CONFIG.DRAG_RESTRICTIONS.ENFORCE_DATE_ORDER
+          hasWarning: !!finalValidation.warningMessage
         }
       })
 
-      // 🔧 修正：エラーがある場合は更新を中止
+      // エラーがある場合は更新を中止
       if (!finalValidation.isValid) {
         logger.warn('Task update cancelled due to validation error', { 
           taskId: dragState.originalTask.id,
-          errorMessage: finalValidation.errorMessage
+          errorMessage: finalValidation.errorMessage,
+          dragMode: dragState.dragMode
         })
         
-        // エラーメッセージをコンソールに表示（UIトーストは将来の拡張で追加可能）
         if (finalValidation.errorMessage) {
           console.warn(`ドラッグ操作エラー: ${finalValidation.errorMessage}`)
         }
@@ -218,35 +241,31 @@ export const useTaskDrag = ({
         
         logger.info('Task dates updated via drag', { 
           taskId: dragState.originalTask.id,
+          dragMode: dragState.dragMode,
           updatedStartDate: dragState.previewStartDate,
           updatedDueDate: dragState.previewDueDate
         })
         
-        // 🔧 追加：警告メッセージがある場合はユーザーに通知
+        // 警告メッセージがある場合はユーザーに通知
         if (finalValidation.warningMessage) {
           console.info(`ドラッグ操作警告: ${finalValidation.warningMessage}`)
         }
       } else {
         logger.info('No date changes detected, skipping update', { 
-          taskId: dragState.originalTask.id 
+          taskId: dragState.originalTask.id,
+          dragMode: dragState.dragMode
         })
       }
 
     } catch (error) {
       logger.error('Task update failed after drag', { 
-        taskId: dragState.originalTask?.id, 
+        taskId: dragState.originalTask?.id,
+        dragMode: dragState.dragMode,
         error 
       })
     } finally {
       // 状態をリセット
-      setDragState({
-        isDragging: false,
-        dragStartX: 0,
-        dragCurrentX: 0,
-        originalTask: null,
-        previewStartDate: null,
-        previewDueDate: null
-      })
+      setDragState(initialDragState)
 
       // カーソルスタイルをリセット
       document.body.style.cursor = ''
@@ -255,29 +274,19 @@ export const useTaskDrag = ({
     }
   }, [dragState, onTaskUpdate])
 
-  // ドラッグキャンセル
+  // 🔧 既存：ドラッグキャンセル（モード情報ログ追加）
   const handleDragCancel = useCallback(() => {
     logger.info('Task drag cancelled', {
       taskId: dragState.originalTask?.id,
-      restrictions: {
-        preventPastDates: APP_CONFIG.DRAG_RESTRICTIONS.PREVENT_PAST_DATES,
-        enforceDateOrder: APP_CONFIG.DRAG_RESTRICTIONS.ENFORCE_DATE_ORDER
-      }
+      dragMode: dragState.dragMode  // 🆕 追加：モード情報
     })
     
-    setDragState({
-      isDragging: false,
-      dragStartX: 0,
-      dragCurrentX: 0,
-      originalTask: null,
-      previewStartDate: null,
-      previewDueDate: null
-    })
+    setDragState(initialDragState)
 
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
     dragPreventDefault.current = false
-  }, [dragState.originalTask?.id])
+  }, [dragState.originalTask?.id, dragState.dragMode])
 
   return {
     dragState,

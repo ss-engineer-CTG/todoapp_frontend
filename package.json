@@ -1,25 +1,17 @@
 {
   "name": "todo-app",
   "version": "1.0.0",
-  "description": "階層型ToDoリストアプリケーション",
+  "description": "階層型ToDoリストアプリケーション - Electron統合改善版",
   "main": "electron/main.js",
-  "scripts": {
-    "dev": "concurrently --kill-others \"npm run dev:frontend\" \"npm run dev:backend\" \"wait-on http://localhost:3000 http://localhost:8000/api/health --timeout 60000 && npm run dev:electron\"",
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && python app.py",
-    "dev:electron": "electron .",
-    "build": "npm run build:frontend && npm run build:backend",
-    "build:frontend": "cd frontend && npm run build",
-    "build:backend": "echo 'Backend build complete'",
-    "build:electron": "electron-builder",
-    "package": "npm run build && npm run build:electron",
-    "dist": "npm run package",
-    "clean": "rimraf dist build frontend/dist backend/__pycache__",
-    "lint": "cd frontend && npm run lint",
-    "test": "npm run test:frontend && npm run test:backend",
-    "test:frontend": "cd frontend && npm test",
-    "test:backend": "cd backend && python -m pytest",
-    "postinstall": "cd frontend && npm install"
+  "homepage": ".",
+  "author": {
+    "name": "Todo App Team",
+    "email": "team@todoapp.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/todo-app.git"
   },
   "keywords": [
     "todo",
@@ -27,25 +19,68 @@
     "hierarchy",
     "electron",
     "react",
-    "python"
+    "python",
+    "desktop-app",
+    "productivity"
   ],
-  "author": "Todo App Team",
-  "license": "MIT",
+  "scripts": {
+    "dev": "concurrently --kill-others \"npm run dev:frontend\" \"npm run dev:backend\" \"wait-on http://localhost:3000 http://localhost:8000/api/health --timeout 60000 && npm run dev:electron\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python app.py",
+    "dev:electron": "cross-env NODE_ENV=development electron .",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "echo 'Backend build complete'",
+    "build:electron": "electron-builder",
+    "package": "npm run build && npm run build:electron",
+    "dist": "npm run package",
+    "clean": "rimraf dist build frontend/dist backend/__pycache__ backend/*.pyc",
+    "clean:all": "npm run clean && npm run clean:node_modules",
+    "clean:node_modules": "rimraf node_modules frontend/node_modules",
+    "lint": "npm run lint:frontend && npm run lint:backend",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:backend": "cd backend && python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "cd frontend && npm test",
+    "test:backend": "cd backend && python -m pytest",
+    "test:electron": "echo 'Electron tests not yet implemented'",
+    "postinstall": "npm run install:frontend",
+    "install:frontend": "cd frontend && npm install",
+    "install:backend": "cd backend && pip install -r requirements.txt",
+    "start": "npm run dev",
+    "predev": "echo 'Starting Todo App development environment...'",
+    "prepack": "npm run build",
+    "electron": "electron .",
+    "electron:dev": "cross-env NODE_ENV=development electron .",
+    "electron:prod": "cross-env NODE_ENV=production electron .",
+    "check:python": "python --version && echo 'Python environment check passed'",
+    "check:deps": "npm run check:python && echo 'Dependency check completed'",
+    "setup": "npm install && npm run install:frontend && npm run install:backend && echo 'Setup completed successfully'"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
   "devDependencies": {
     "electron": "^27.0.0",
     "electron-builder": "^24.6.4",
     "concurrently": "^8.2.2",
     "wait-on": "^7.0.1",
-    "rimraf": "^5.0.5"
+    "rimraf": "^5.0.5",
+    "cross-env": "^7.0.3"
   },
   "dependencies": {
     "electron-store": "^8.1.0"
+  },
+  "optionalDependencies": {
+    "electron-builder-squirrel-windows": "^24.6.4"
   },
   "build": {
     "appId": "com.todoapp.hierarchical",
     "productName": "階層型ToDoリスト",
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "electron/assets"
     },
     "files": [
       "electron/**/*",
@@ -54,7 +89,11 @@
       "!backend/__pycache__",
       "!backend/*.pyc",
       "!backend/venv",
-      "!backend/.env"
+      "!backend/.env",
+      "!backend/.pytest_cache",
+      "!backend/tests",
+      "!**/*.log",
+      "!**/*.map"
     ],
     "extraResources": [
       {
@@ -65,7 +104,9 @@
           "!__pycache__",
           "!*.pyc",
           "!venv",
-          "!.env"
+          "!.env",
+          "!.pytest_cache",
+          "!tests"
         ]
       }
     ],
@@ -76,14 +117,23 @@
         {
           "target": "dmg",
           "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
         }
-      ]
+      ],
+      "darkModeSupport": true
     },
     "win": {
       "icon": "electron/assets/icon.ico",
       "target": [
         {
           "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
           "arch": ["x64"]
         }
       ]
@@ -95,6 +145,10 @@
         {
           "target": "AppImage",
           "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
         }
       ]
     },
@@ -102,11 +156,34 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "shortcutName": "階層型ToDoリスト",
+      "include": "electron/build/installer.nsh"
+    },
+    "dmg": {
+      "title": "階層型ToDoリスト ${version}",
+      "background": "electron/assets/dmg-background.png",
+      "iconSize": 80,
+      "contents": [
+        {
+          "x": 410,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 130,
+          "y": 150,
+          "type": "file"
+        }
+      ]
+    },
+    "appx": {
+      "backgroundColor": "transparent",
+      "displayName": "階層型ToDoリスト"
     }
   },
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
+  "electronBuilder": {
+    "builderCacheDir": ".cache/electron-builder"
   }
 }

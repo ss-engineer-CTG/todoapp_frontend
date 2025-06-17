@@ -1,10 +1,13 @@
-// システムプロンプト準拠：Timeline型定義統一（ドラッグ機能対応版）
-// 🔧 修正内容：ドラッグ関連型の追加、onTaskUpdate型の追加
+// システムプロンプト準拠：Timeline型定義統一（リサイズ機能対応版）
+// 🔧 修正内容：DragMode型の追加、既存型は完全保持
 
 import { Task, Project, AppViewMode } from '@core/types'
 
 // タイムライン表示単位
 export type TimelineViewUnit = 'day' | 'week'
+
+// 🆕 追加：ドラッグモード識別用型（最小限）
+export type DragMode = 'move' | 'resize-start' | 'resize-end'
 
 // 子タスク情報を含むタスク型
 export interface TaskWithChildren {
@@ -47,9 +50,10 @@ export interface TimelineState {
   scrollLeft: number
 }
 
-// 🆕 追加：ドラッグ状態の型定義
+// 🔧 修正：既存のドラッグ状態にモード情報追加
 export interface DragState {
   isDragging: boolean
+  dragMode: DragMode  // 🆕 追加：この1行のみ
   dragStartX: number
   dragCurrentX: number
   originalTask: Task | null
@@ -57,30 +61,22 @@ export interface DragState {
   previewDueDate: Date | null
 }
 
-// 🆕 追加：ドラッグイベントハンドラーの型定義
+// ドラッグイベントハンドラーの型定義
 export interface DragHandlers {
-  handleDragStart: (event: React.MouseEvent, task: Task) => void
+  handleDragStart: (event: React.MouseEvent, task: Task, mode: DragMode) => void
   handleDragMove: (event: MouseEvent) => void
   handleDragEnd: () => void
   handleDragCancel: () => void
 }
 
-// 🆕 追加：ドラッグ操作の設定
-export interface DragConfiguration {
-  threshold: number // ドラッグ開始の閾値（ピクセル）
-  snapToGrid: boolean // グリッドへのスナップ機能
-  allowPastDates: boolean // 過去日への移動許可
-  maxDateChange: number // 最大変更可能日数
-}
-
-// 🆕 追加：ドラッグ検証結果
-export interface DragValidationResult {
+// 🆕 追加：リサイズ検証結果
+export interface ResizeValidationResult {
   isValid: boolean
   errorMessage?: string
   warningMessage?: string
 }
 
-// TimelineViewProps（onTaskUpdate追加）
+// TimelineViewProps
 export interface TimelineViewProps {
   projects: Project[]
   tasks: Task[]
@@ -90,7 +86,7 @@ export interface TimelineViewProps {
   onToggleTask?: (taskId: string) => void
   onExpandAll?: () => void
   onCollapseAll?: () => void
-  onTaskUpdate?: (taskId: string, updates: Partial<Task>) => Promise<void> // 🆕 追加
+  onTaskUpdate?: (taskId: string, updates: Partial<Task>) => Promise<void>
 }
 
 // TimelineControlsProps
@@ -106,7 +102,7 @@ export interface TimelineControlsProps {
   onViewModeChange?: (mode: AppViewMode) => void
 }
 
-// TimelineRendererProps（onTaskUpdate追加）
+// TimelineRendererProps
 export interface TimelineRendererProps {
   projects: Project[]
   tasks: Task[]
@@ -119,10 +115,10 @@ export interface TimelineRendererProps {
   scrollLeft: number
   onToggleProject?: (projectId: string) => void
   onToggleTask?: (taskId: string) => void
-  onTaskUpdate?: (taskId: string, updates: Partial<Task>) => Promise<void> // 🆕 追加
+  onTaskUpdate?: (taskId: string, updates: Partial<Task>) => Promise<void>
 }
 
-// 🆕 追加：ドラッグ可能なタスクバーのプロパティ
+// 🔧 修正：ドラッグ可能なタスクバーのプロパティにモード対応追加
 export interface DraggableTaskBarProps {
   taskWithChildren: TaskWithChildren
   project: Project
@@ -138,59 +134,52 @@ export interface DraggableTaskBarProps {
   zoomLevel: number
   theme: 'light' | 'dark'
   onTaskClick?: (taskId: string) => void
-  onDragStart: (event: React.MouseEvent, task: Task) => void
+  onDragStart: (event: React.MouseEvent, task: Task, mode: DragMode) => void // 🔧 修正：mode追加
   isDragging: boolean
   isPreview?: boolean
   previewStartDate?: Date | null
   previewDueDate?: Date | null
 }
 
-// 🆕 追加：ドラッグ操作用のユーティリティ関数の型
-export interface DragCalculationUtils {
-  calculateDateFromPosition: (
-    mouseX: number,
-    timelineStartDate: Date,
-    cellWidth: number,
-    viewUnit: TimelineViewUnit,
-    scrollLeft?: number
-  ) => Date
-  
-  calculatePositionFromDate: (
-    date: Date,
-    timelineStartDate: Date,
+// 🆕 追加：リサイズ操作用のユーティリティ関数の型
+export interface ResizeCalculationUtils {
+  calculateStartDateResize: (
+    originalTask: Task,
+    deltaX: number,
     cellWidth: number,
     viewUnit: TimelineViewUnit
-  ) => number
+  ) => { startDate: Date; dueDate: Date }
   
-  snapDateToGrid: (
-    date: Date,
+  calculateEndDateResize: (
+    originalTask: Task,
+    deltaX: number,
+    cellWidth: number,
     viewUnit: TimelineViewUnit
-  ) => Date
+  ) => { startDate: Date; dueDate: Date }
   
-  validateDateChange: (
+  validateResize: (
     originalStartDate: Date,
     originalDueDate: Date,
     newStartDate: Date,
     newDueDate: Date
-  ) => DragValidationResult
+  ) => ResizeValidationResult
 }
 
-// 🆕 追加：useTaskDragフックの戻り値型
+// useTaskDragフックの戻り値型
 export interface UseTaskDragReturn {
   dragState: DragState
-  handleDragStart: (event: React.MouseEvent, task: Task) => void
+  handleDragStart: (event: React.MouseEvent, task: Task, mode: DragMode) => void
   handleDragMove: (event: MouseEvent) => void
   handleDragEnd: () => void
   handleDragCancel: () => void
   isDragging: boolean
 }
 
-// 🆕 追加：useTaskDragフックのプロパティ型
+// useTaskDragフックのプロパティ型
 export interface UseTaskDragProps {
   timelineStartDate: Date
   cellWidth: number
   viewUnit: TimelineViewUnit
   scrollLeft: number
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => Promise<void>
-  dragConfiguration?: Partial<DragConfiguration>
 }

@@ -1,191 +1,435 @@
-const { app, BrowserWindow, shell } = require('electron')
-const path = require('path')
-const { spawn } = require('child_process')
+/**
+ * Electronメインプロセス（改善版）
+ * システムプロンプト準拠：KISS原則、DRY原則、適切なエラーハンドリング
+ */
 
-// システムプロンプト準拠: ハードコード禁止、設定の一元管理
-const APP_CONFIG = {
-  PORTS: {
-    FRONTEND: 3000,
-    BACKEND: 8000
-  },
-  PATHS: {
-    BACKEND_SCRIPT: 'app.py',
-    BACKEND_DIR: 'backend',
-    FRONTEND_DIST: path.join('frontend', 'dist'),
-    FRONTEND_INDEX: 'index.html'
-  },
-  WINDOW: {
-    WIDTH: 1400,
-    HEIGHT: 900,
-    MIN_WIDTH: 800,
-    MIN_HEIGHT: 600
-  }
-}
+const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron')
+const { APP_CONFIG, PathHelper, URL_CONFIG, LOG_CONFIG, isDev } = require('./config')
+const { backendChecker } = require('./backend-checker')
 
-const isDev = process.env.NODE_ENV === 'development'
-
-let mainWindow
-let pythonProcess
-
-// システムプロンプト準拠: パス結合専用関数
-function joinPath(...segments) {
-  return path.join(...segments)
-}
-
-// Pythonバックエンドプロセスを起動
-function startPythonBackend() {
-  console.log('Pythonバックエンドを起動しています...')
-  
-  const pythonPath = isDev ? 'python' : joinPath(process.resourcesPath, 'python', 'python')
-  const scriptPath = isDev 
-    ? joinPath(__dirname, '..', APP_CONFIG.PATHS.BACKEND_DIR, APP_CONFIG.PATHS.BACKEND_SCRIPT)
-    : joinPath(process.resourcesPath, APP_CONFIG.PATHS.BACKEND_DIR, APP_CONFIG.PATHS.BACKEND_SCRIPT)
-
-  const workingDirectory = isDev 
-    ? joinPath(__dirname, '..', APP_CONFIG.PATHS.BACKEND_DIR)
-    : joinPath(process.resourcesPath, APP_CONFIG.PATHS.BACKEND_DIR)
-
-  pythonProcess = spawn(pythonPath, [scriptPath], {
-    stdio: 'pipe',
-    cwd: workingDirectory
-  })
-
-  pythonProcess.stdout.on('data', (data) => {
-    console.log(`Python stdout: ${data}`)
-  })
-
-  pythonProcess.stderr.on('data', (data) => {
-    console.error(`Python stderr: ${data}`)
-  })
-
-  pythonProcess.on('close', (code) => {
-    console.log(`Pythonプロセスが終了しました。終了コード: ${code}`)
-  })
-
-  pythonProcess.on('error', (error) => {
-    console.error('Pythonプロセスの起動に失敗しました:', error)
-  })
-
-  // バックエンドの起動を待つ
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log('Pythonバックエンドの起動が完了しました')
-      resolve()
-    }, 3000)
-  })
-}
-
-// Pythonバックエンドプロセスを停止
-function stopPythonBackend() {
-  if (pythonProcess) {
-    console.log('Pythonバックエンドを停止しています...')
-    pythonProcess.kill('SIGTERM')
-    pythonProcess = null
-  }
-}
-
-// メインウィンドウを作成
-function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: APP_CONFIG.WINDOW.WIDTH,
-    height: APP_CONFIG.WINDOW.HEIGHT,
-    minWidth: APP_CONFIG.WINDOW.MIN_WIDTH,
-    minHeight: APP_CONFIG.WINDOW.MIN_HEIGHT,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      enableRemoteModule: false,
-      preload: joinPath(__dirname, 'preload.js'),
-      webSecurity: true
-    },
-    icon: joinPath(__dirname, 'assets', 'icon.png'),
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    show: false
-  })
-
-  // システムプロンプト準拠: URL構築の一元化
-  const frontendUrl = isDev 
-    ? `http://localhost:${APP_CONFIG.PORTS.FRONTEND}`
-    : `file://${joinPath(__dirname, '..', APP_CONFIG.PATHS.FRONTEND_DIST, APP_CONFIG.PATHS.FRONTEND_INDEX)}`
-
-  mainWindow.loadURL(frontendUrl)
-
-  // 開発環境では開発者ツールを開く
-  if (isDev) {
-    mainWindow.webContents.openDevTools()
+class TodoAppMain {
+  constructor() {
+    this.mainWindow = null
+    this.splashWindow = null
+    this.isQuitting = false
+    this.appStartTime = Date.now()
   }
 
-  // ウィンドウが準備完了したら表示
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show()
+  /**
+   * ログ出力ヘルパー
+   */
+  log(level, message, error = null) {
+    const timestamp = LOG_CONFIG.TIMESTAMP ? new Date().toISOString() : ''
+    const prefix = LOG_CONFIG.PREFIX
+    const fullMessage = `${timestamp} ${prefix} [${level}] ${message}`
     
-    if (isDev) {
-      mainWindow.focus()
+    if (level === 'ERROR') {
+      console.error(fullMessage)
+      if (error) console.error(error)
+    } else if (level === 'WARN') {
+      console.warn(fullMessage)
+    } else {
+      console.log(fullMessage)
     }
-  })
+  }
 
-  // ウィンドウが閉じられたときの処理
-  mainWindow.on('closed', () => {
-    mainWindow = null
-  })
+  /**
+   * アプリケーション初期化
+   */
+  async initialize() {
+    this.log('INFO', 'Electronアプリケーションを初期化しています...')
+    
+    try {
+      // IPC通信ハンドラー設定
+      this.setupIpcHandlers()
+      
+      // アプリケーションイベント設定
+      this.setupAppEvents()
+      
+      this.log('INFO', 'アプリケーション初期化が完了しました')
+    } catch (error) {
+      this.log('ERROR', 'アプリケーション初期化に失敗しました', error)
+      throw error
+    }
+  }
 
-  // 外部リンクはデフォルトブラウザで開く
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
-    return { action: 'deny' }
-  })
+  /**
+   * スプラッシュウィンドウ作成
+   */
+  createSplashWindow() {
+    this.log('INFO', 'スプラッシュ画面を作成しています...')
+    
+    try {
+      this.splashWindow = new BrowserWindow({
+        width: APP_CONFIG.SPLASH.WIDTH,
+        height: APP_CONFIG.SPLASH.HEIGHT,
+        frame: false,
+        alwaysOnTop: true,
+        center: true,
+        resizable: false,
+        show: false,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          enableRemoteModule: false,
+          webSecurity: true
+        },
+        icon: PathHelper.getAssetPath('icon.png')
+      })
 
-  // ナビゲーション制御
-  mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
-    const parsedUrl = new URL(navigationUrl)
+      // スプラッシュ画面読み込み
+      this.splashWindow.loadFile(PathHelper.getSplashPath())
+
+      // 準備完了時に表示
+      this.splashWindow.once('ready-to-show', () => {
+        this.splashWindow.show()
+        this.log('INFO', 'スプラッシュ画面を表示しました')
+      })
+
+      // エラーハンドリング
+      this.splashWindow.on('closed', () => {
+        this.splashWindow = null
+      })
+
+    } catch (error) {
+      this.log('ERROR', 'スプラッシュ画面の作成に失敗しました', error)
+      // スプラッシュ画面なしでも継続
+    }
+  }
+
+  /**
+   * メインウィンドウ作成
+   */
+  createMainWindow() {
+    this.log('INFO', 'メインウィンドウを作成しています...')
     
-    const allowedOrigins = [
-      `http://localhost:${APP_CONFIG.PORTS.FRONTEND}`,
-      'file:'
-    ]
-    
-    const isAllowed = allowedOrigins.some(origin => 
-      parsedUrl.origin === origin || parsedUrl.protocol === origin
-    )
-    
-    if (!isAllowed) {
+    try {
+      this.mainWindow = new BrowserWindow({
+        width: APP_CONFIG.WINDOW.WIDTH,
+        height: APP_CONFIG.WINDOW.HEIGHT,
+        minWidth: APP_CONFIG.WINDOW.MIN_WIDTH,
+        minHeight: APP_CONFIG.WINDOW.MIN_HEIGHT,
+        show: false, // 準備完了まで非表示
+        webPreferences: {
+          nodeIntegration: APP_CONFIG.SECURITY.NODE_INTEGRATION,
+          contextIsolation: APP_CONFIG.SECURITY.CONTEXT_ISOLATION,
+          enableRemoteModule: APP_CONFIG.SECURITY.ENABLE_REMOTE_MODULE,
+          preload: PathHelper.getPreloadPath(),
+          webSecurity: APP_CONFIG.SECURITY.WEB_SECURITY
+        },
+        icon: PathHelper.getAssetPath('icon.png'),
+        titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default'
+      })
+
+      // フロントエンド読み込み
+      this.mainWindow.loadURL(URL_CONFIG.FRONTEND)
+
+      // 開発環境設定
+      if (isDev && APP_CONFIG.DEV.AUTO_OPEN_DEV_TOOLS) {
+        this.mainWindow.webContents.openDevTools()
+      }
+
+      // ウィンドウイベント設定
+      this.setupMainWindowEvents()
+
+      // セキュリティ設定
+      this.setupSecurityHandlers()
+
+      this.log('INFO', 'メインウィンドウを作成しました')
+
+    } catch (error) {
+      this.log('ERROR', 'メインウィンドウの作成に失敗しました', error)
+      throw error
+    }
+  }
+
+  /**
+   * メインウィンドウイベント設定
+   */
+  setupMainWindowEvents() {
+    // 準備完了時の処理
+    this.mainWindow.once('ready-to-show', () => {
+      // スプラッシュ画面を閉じる
+      if (this.splashWindow) {
+        this.splashWindow.close()
+        this.splashWindow = null
+      }
+
+      // メインウィンドウを表示
+      this.mainWindow.show()
+
+      if (isDev && APP_CONFIG.DEV.FOCUS_ON_SHOW) {
+        this.mainWindow.focus()
+      }
+
+      const totalTime = Date.now() - this.appStartTime
+      this.log('INFO', `アプリケーションの起動が完了しました (${totalTime}ms)`)
+    })
+
+    // 閉じる時の処理
+    this.mainWindow.on('closed', () => {
+      this.mainWindow = null
+    })
+
+    // 最小化前の処理
+    this.mainWindow.on('minimize', () => {
+      this.log('DEBUG', 'ウィンドウが最小化されました')
+    })
+
+    // 復元時の処理
+    this.mainWindow.on('restore', () => {
+      this.log('DEBUG', 'ウィンドウが復元されました')
+    })
+  }
+
+  /**
+   * セキュリティハンドラー設定
+   */
+  setupSecurityHandlers() {
+    // 外部リンクの処理
+    this.mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+      this.log('INFO', `外部リンクを開きます: ${url}`)
+      shell.openExternal(url)
+      return { action: 'deny' }
+    })
+
+    // ナビゲーション制御
+    this.mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+      const isAllowed = URL_CONFIG.ALLOWED_ORIGINS.some(origin => 
+        navigationUrl.startsWith(origin)
+      )
+      
+      if (!isAllowed) {
+        this.log('WARN', `不許可のナビゲーションをブロックしました: ${navigationUrl}`)
+        event.preventDefault()
+        shell.openExternal(navigationUrl)
+      }
+    })
+
+    // 新しいウィンドウの制御
+    this.mainWindow.webContents.on('new-window', (event, url) => {
       event.preventDefault()
-      shell.openExternal(navigationUrl)
+      shell.openExternal(url)
+    })
+  }
+
+  /**
+   * IPC通信ハンドラー設定
+   */
+  setupIpcHandlers() {
+    // アプリケーション制御
+    ipcMain.handle('app-close', () => {
+      this.log('INFO', 'アプリケーション終了要求を受信しました')
+      app.quit()
+    })
+
+    ipcMain.handle('app-minimize', () => {
+      if (this.mainWindow) {
+        this.mainWindow.minimize()
+      }
+    })
+
+    ipcMain.handle('app-maximize', () => {
+      if (this.mainWindow) {
+        if (this.mainWindow.isMaximized()) {
+          this.mainWindow.unmaximize()
+        } else {
+          this.mainWindow.maximize()
+        }
+      }
+    })
+
+    // アプリケーション情報
+    ipcMain.handle('app-get-version', () => {
+      return {
+        app: app.getVersion(),
+        electron: process.versions.electron,
+        node: process.versions.node,
+        chrome: process.versions.chrome
+      }
+    })
+
+    // バックエンド状態
+    ipcMain.handle('backend-get-status', () => {
+      return backendChecker.getHealthStatus()
+    })
+
+    // 設定管理（将来実装）
+    ipcMain.handle('settings-save', async (event, data) => {
+      this.log('DEBUG', '設定保存要求', data)
+      // TODO: electron-store を使用した設定保存
+      return { success: true }
+    })
+
+    ipcMain.handle('settings-load', async () => {
+      this.log('DEBUG', '設定読み込み要求')
+      // TODO: electron-store を使用した設定読み込み
+      return {}
+    })
+
+    // ダイアログ表示
+    ipcMain.handle('dialog-show-message', async (event, options) => {
+      if (this.mainWindow) {
+        return await dialog.showMessageBox(this.mainWindow, options)
+      }
+      return await dialog.showMessageBox(options)
+    })
+
+    this.log('DEBUG', 'IPC通信ハンドラーを設定しました')
+  }
+
+  /**
+   * アプリケーションイベント設定
+   */
+  setupAppEvents() {
+    // アプリケーション準備完了
+    app.on('ready', async () => {
+      await this.onReady()
+    })
+
+    // すべてのウィンドウが閉じられた時
+    app.on('window-all-closed', () => {
+      this.onWindowAllClosed()
+    })
+
+    // アクティベート（macOS）
+    app.on('activate', () => {
+      this.onActivate()
+    })
+
+    // 終了前処理
+    app.on('before-quit', () => {
+      this.onBeforeQuit()
+    })
+
+    // セカンドインスタンス防止
+    app.on('second-instance', () => {
+      this.onSecondInstance()
+    })
+  }
+
+  /**
+   * アプリケーション準備完了時の処理
+   */
+  async onReady() {
+    this.log('INFO', 'Electronアプリケーションの準備が完了しました')
+    
+    try {
+      // スプラッシュ画面表示
+      this.createSplashWindow()
+      
+      // バックエンド起動
+      await backendChecker.startPythonBackend()
+      
+      // メインウィンドウ作成
+      this.createMainWindow()
+      
+    } catch (error) {
+      this.log('ERROR', 'アプリケーションの起動に失敗しました', error)
+      
+      // エラーダイアログ表示
+      await this.showStartupError(error)
+      app.quit()
     }
-  })
+  }
+
+  /**
+   * 起動エラーダイアログ表示
+   */
+  async showStartupError(error) {
+    const options = {
+      type: 'error',
+      title: 'アプリケーション起動エラー',
+      message: 'アプリケーションの起動に失敗しました',
+      detail: `エラーの詳細:\n${error.message}\n\n以下を確認してください:\n- Pythonがインストールされているか\n- バックエンドの依存関係がインストールされているか`,
+      buttons: ['終了', '詳細をコピー']
+    }
+
+    try {
+      const result = await dialog.showMessageBox(options)
+      
+      if (result.response === 1) {
+        // 詳細をクリップボードにコピー
+        const { clipboard } = require('electron')
+        clipboard.writeText(`Error: ${error.message}\nStack: ${error.stack}`)
+      }
+    } catch (dialogError) {
+      this.log('ERROR', 'エラーダイアログの表示に失敗しました', dialogError)
+    }
+  }
+
+  /**
+   * すべてのウィンドウが閉じられた時の処理
+   */
+  onWindowAllClosed() {
+    this.log('INFO', 'すべてのウィンドウが閉じられました')
+    
+    // バックエンド停止
+    backendChecker.stopPythonBackend()
+    
+    // macOS以外では終了
+    if (process.platform !== 'darwin') {
+      app.quit()
+    }
+  }
+
+  /**
+   * アクティベート時の処理（macOS）
+   */
+  onActivate() {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      this.log('INFO', 'ウィンドウを再作成します')
+      this.createMainWindow()
+    }
+  }
+
+  /**
+   * 終了前処理
+   */
+  onBeforeQuit() {
+    this.log('INFO', 'アプリケーションを終了しています...')
+    this.isQuitting = true
+    backendChecker.stopPythonBackend()
+  }
+
+  /**
+   * セカンドインスタンス実行時の処理
+   */
+  onSecondInstance() {
+    // 既存のウィンドウをフォーカス
+    if (this.mainWindow) {
+      if (this.mainWindow.isMinimized()) {
+        this.mainWindow.restore()
+      }
+      this.mainWindow.focus()
+    }
+  }
 }
 
-// アプリケーションの準備が完了したときの処理
-app.whenReady().then(async () => {
-  console.log('Electronアプリケーションの準備が完了しました')
-  
-  try {
-    await startPythonBackend()
-    createWindow()
-    console.log('アプリケーションの起動が完了しました')
-  } catch (error) {
-    console.error('アプリケーションの起動に失敗しました:', error)
-    app.quit()
-  }
+// セカンドインスタンス防止
+const gotTheLock = app.requestSingleInstanceLock()
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
+if (!gotTheLock) {
+  console.log('アプリケーションは既に起動しています')
+  app.quit()
+} else {
+  // メインアプリケーション実行
+  const todoApp = new TodoAppMain()
+  
+  // 未処理例外のキャッチ
+  process.on('uncaughtException', (error) => {
+    todoApp.log('ERROR', '未処理例外が発生しました', error)
+    console.error('Uncaught Exception:', error)
   })
-})
-
-// すべてのウィンドウが閉じられたときの処理
-app.on('window-all-closed', () => {
-  stopPythonBackend()
   
-  if (process.platform !== 'darwin') {
+  process.on('unhandledRejection', (reason, promise) => {
+    todoApp.log('ERROR', '未処理のPromise拒否が発生しました', reason)
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason)
+  })
+  
+  // アプリケーション初期化
+  todoApp.initialize().catch((error) => {
+    console.error('Application initialization failed:', error)
     app.quit()
-  }
-})
-
-// アプリケーション終了前の処理
-app.on('before-quit', () => {
-  console.log('アプリケーションを終了しています...')
-  stopPythonBackend()
-})
+  })
+}

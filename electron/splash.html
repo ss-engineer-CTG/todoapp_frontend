@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>階層型ToDoリスト - 起動中</title>
+    <style>
+        /* システムプロンプト準拠：シンプルで理解しやすいCSS */
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .splash-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            width: 100vw;
+            text-align: center;
+        }
+
+        .logo-container {
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            margin: 0 auto 20px;
+            animation: pulse 2s infinite;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+
+        .app-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            opacity: 0.95;
+        }
+
+        .app-subtitle {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-bottom: 40px;
+        }
+
+        .loading-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .loading-text {
+            font-size: 16px;
+            opacity: 0.8;
+            animation: fadeInOut 1.5s infinite;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.6));
+            border-radius: 2px;
+            width: 0%;
+            animation: progressAnimation 3s ease-in-out infinite;
+        }
+
+        @keyframes progressAnimation {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        .status-text {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 20px;
+            min-height: 16px;
+        }
+
+        /* ダークモード対応 */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            }
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 480px) {
+            .app-title {
+                font-size: 20px;
+            }
+            
+            .logo {
+                width: 60px;
+                height: 60px;
+                font-size: 28px;
+            }
+            
+            .progress-bar {
+                width: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="splash-container">
+        <div class="logo-container">
+            <div class="logo">📝</div>
+        </div>
+        
+        <h1 class="app-title">階層型ToDoリスト</h1>
+        <p class="app-subtitle">タスク管理をシンプルに、効率的に</p>
+        
+        <div class="loading-section">
+            <p class="loading-text" id="loadingText">起動中...</p>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+            <p class="status-text" id="statusText">アプリケーションを準備しています</p>
+        </div>
+    </div>
+
+    <script>
+        // システムプロンプト準拠：シンプルなJavaScript、過度な複雑化を避ける
+        
+        class SplashManager {
+            constructor() {
+                this.loadingText = document.getElementById('loadingText');
+                this.statusText = document.getElementById('statusText');
+                this.currentStep = 0;
+                this.steps = [
+                    { text: '起動中...', status: 'アプリケーションを準備しています' },
+                    { text: 'バックエンドを起動中...', status: 'サーバーとの接続を確立しています' },
+                    { text: 'データベースを確認中...', status: 'データを読み込んでいます' },
+                    { text: '画面を準備中...', status: 'もうすぐ完了します' }
+                ];
+                this.init();
+            }
+
+            init() {
+                this.updateStep();
+                
+                // 定期的にステップを更新（視覚的効果のため）
+                this.stepInterval = setInterval(() => {
+                    this.nextStep();
+                }, 1500);
+
+                // スプラッシュ画面の最小表示時間確保
+                this.minDisplayTime = 2000;
+                this.startTime = Date.now();
+            }
+
+            updateStep() {
+                const step = this.steps[this.currentStep];
+                if (step) {
+                    this.loadingText.textContent = step.text;
+                    this.statusText.textContent = step.status;
+                }
+            }
+
+            nextStep() {
+                if (this.currentStep < this.steps.length - 1) {
+                    this.currentStep++;
+                    this.updateStep();
+                }
+            }
+
+            // メインプロセスから呼び出される完了通知
+            onBackendReady() {
+                this.loadingText.textContent = '準備完了！';
+                this.statusText.textContent = 'アプリケーションを開いています...';
+                
+                // 最小表示時間を確保してから終了
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.minDisplayTime - elapsed);
+                
+                setTimeout(() => {
+                    this.finish();
+                }, remainingTime);
+            }
+
+            finish() {
+                if (this.stepInterval) {
+                    clearInterval(this.stepInterval);
+                }
+                
+                // スプラッシュ画面終了をメインプロセスに通知
+                if (window.electronAPI && window.electronAPI.splashReady) {
+                    window.electronAPI.splashReady();
+                }
+            }
+        }
+
+        // スプラッシュマネージャー初期化
+        const splashManager = new SplashManager();
+
+        // グローバルに公開（メインプロセスから呼び出し可能）
+        window.splashManager = splashManager;
+
+        // ドキュメント読み込み完了後の処理
+        document.addEventListener('DOMContentLoaded', () => {
+            // 追加の初期化処理があればここに記述
+        });
+
+        // エラーハンドリング
+        window.addEventListener('error', (event) => {
+            console.error('Splash screen error:', event.error);
+        });
+    </script>
+</body>
+</html>
