@@ -20,7 +20,7 @@ class Config:
         self.log_file = BACKEND_PATHS['LOG_FILE']
         
         # サーバー設定
-        self.host = os.getenv("HOST", "0.0.0.0")
+        self.host = os.getenv("HOST", "localhost")
         self.port = int(os.getenv("PORT", 8000))
         self.debug = os.getenv("DEBUG", "false").lower() == "true"
         
