@@ -180,8 +180,8 @@ export const getDatePosition = (
     const diffDays = Math.round(
       (date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
     )
-    // 日表示の場合、オフセット調整を統一
-    return diffDays * cellWidth + cellWidth
+    // 日表示の場合、正確な日付位置を計算（1日ずれ修正）
+    return diffDays * cellWidth
   }
 }
 
@@ -209,6 +209,7 @@ export const calculateScrollPosition = (
     const diffDays = Math.round(
       (targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
     )
+    // 日表示の場合も正確な位置計算（getDatePositionと一貫性保持）
     return diffDays * cellWidth
   }
 }
