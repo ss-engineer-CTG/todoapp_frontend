@@ -166,7 +166,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
         if (isTaskDraft) {
           canSave = !!newState.name.trim()
-          hasActualChanges = canSave
+          // 修正: 草稿タスクでは「未保存」表示を防ぐためhasChangesは常にfalse
+          hasActualChanges = false
         } else {
           hasActualChanges = Boolean(
             newState.name !== selectedTask.name ||
@@ -375,7 +376,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   }
 
   const projectInfo = getProjectInfo(selectedTask.projectId)
-  const isEmptyName = !selectedTask.name.trim()
+  // 修正: editingState.nameを基準に判定し、草稿タスクでは入力の有無で適切に判定
+  const isEmptyName = !editingState.name.trim()
 
   return (
     <div
@@ -390,12 +392,14 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">
             タスク詳細
-            {editingState.hasChanges && (
+            {/* 修正: 草稿タスクでは「未保存」を表示しない */}
+            {editingState.hasChanges && !isTaskDraft && (
               <span className="ml-2 text-xs text-orange-500 font-normal">
                 •未保存
               </span>
             )}
-            {isEmptyName && (
+            {/* 修正: 草稿タスクでは保存時のみ「名前未設定」エラーを表示 */}
+            {isEmptyName && !isTaskDraft && (
               <span className="ml-2 text-xs text-red-500 font-normal">
                 •名前未設定
               </span>

@@ -59,17 +59,12 @@ export const useTaskOperations = ({
 
       const { _isDraft, ...taskData } = { ...draft, ...updates }
       
-      // 修正：日付がnullの場合は現在日時を設定
-      if (!taskData.startDate || !isValidDate(taskData.startDate)) {
-        taskData.startDate = new Date()
-      }
-      if (!taskData.dueDate || !isValidDate(taskData.dueDate)) {
-        taskData.dueDate = new Date()
-      }
+      // 修正: 日付のundefined/nullはそのまま送信（バックエンドでデフォルト値処理）
+      // フロントエンドでのデフォルト日付設定は削除してデータ整合性を保つ
 
       const savedTask = await apiActions.createTask(taskData)
       
-      // 草稿をローカル状態から削除
+      // KISS原則: シンプルに草稿削除のみ（親での再読み込みで新タスク取得）
       setAllTasks(prev => prev.filter(t => t.id !== draftId))
       
       logger.info('Draft task saved successfully', { 

@@ -50,7 +50,11 @@ async def create_task(
         if task_dict.get('completion_date'):
             task_dict['completion_date'] = task_dict['completion_date'].isoformat()
         
-        created_task = service.create_task(task_dict)
+        created_task_dict = service.create_task(task_dict)
+        
+        # 辞書からTaskResponseモデルに変換
+        created_task = TaskResponse(**created_task_dict)
+        
         logger.info(f"Task created successfully: {created_task.id}")
         return created_task
     except Exception as e:

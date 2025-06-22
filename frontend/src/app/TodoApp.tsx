@@ -440,46 +440,73 @@ const TodoApp: React.FC = () => {
       let savedTask: Task | null = null
 
       if (isDraftTask(task)) {
+        logger.info('Saving draft task and initiating UI update flow', { 
+          draftId: taskId,
+          projectId: selectedProjectId,
+          viewMode 
+        })
+        
         savedTask = await saveDraft(taskId, updates)
         
-        // APIから最新データを取得
+        // 根本解決: データの再読み込みで確実に最新状態を反映
+        logger.info('Reloading tasks after draft save to ensure UI consistency')
         const updatedTasks = viewMode === 'timeline' 
           ? await loadTasks()
           : await loadTasks(selectedProjectId)
         
-        // ローカル表示状態を即座に更新してリアルタイム反映
         if (updatedTasks) {
           setManagedTasks(updatedTasks.map(task => ({ ...task })))
           setAllTasksWithDrafts(updatedTasks.map(task => ({ ...task })))
           
-          logger.info('Local task state updated after save', { 
+          logger.info('Task data reloaded successfully', { 
             taskCount: updatedTasks.length,
-            newTaskIncluded: updatedTasks.some(t => t.id === savedTask?.id)
+            newTaskFound: updatedTasks.some(t => t.id === savedTask?.id)
           })
         }
         
         if (savedTask) {
-          logger.info('Setting focus to newly created task', { 
+          logger.info('Initiating post-save UI transition sequence', { 
             oldDraftId: taskId, 
-            newTaskId: savedTask.id 
+            newTaskId: savedTask.id,
+            sequence: 'focus_transition -> detail_panel_hide'
           })
           
-          setPendingFocusTaskId(savedTask.id)
-          setSelectedTaskId(savedTask.id)
+          // 1. タスク一覧セクションにフォーカス移動
           setActiveArea("tasks")
           
+          // 2. 詳細パネルを非表示にする
+          setIsDetailPanelVisible(false)
+          
+          // 3. 新しいタスクを選択状態にして視覚的に確認可能にする
+          setSelectedTaskId(savedTask.id)
+          setPendingFocusTaskId(savedTask.id)
+          
+          // 4. DOM更新後にフォーカスを新しいタスクに設定
           setTimeout(() => {
             if (savedTask) {
+              logger.info('Focusing newly created task in task list', { 
+                taskId: savedTask.id,
+                detailPanelVisible: false,
+                activeArea: 'tasks'
+              })
               focusTaskById(savedTask.id)
             }
-          }, 100)
+          }, 150) // DOM更新とアニメーション完了を待つ
         }
         
         return savedTask
       } else {
+        // 既存タスク更新の場合
+        logger.info('Updating existing task and initiating UI update flow', { 
+          taskId,
+          projectId: selectedProjectId,
+          viewMode 
+        })
+        
         await updateTask(taskId, updates)
         
-        // 既存タスク更新時も同様にローカル状態を更新
+        // 既存タスク更新時も同様に自動リロードを実行
+        logger.info('Executing automatic reload for existing task update')
         const updatedTasks = viewMode === 'timeline' 
           ? await loadTasks()
           : await loadTasks(selectedProjectId)
@@ -487,7 +514,38 @@ const TodoApp: React.FC = () => {
         if (updatedTasks) {
           setManagedTasks(updatedTasks.map(task => ({ ...task })))
           setAllTasksWithDrafts(updatedTasks.map(task => ({ ...task })))
+          
+          logger.info('Local task state updated after existing task modification', { 
+            taskCount: updatedTasks.length,
+            updatedTaskId: taskId
+          })
         }
+        
+        // 既存タスク更新時も新規作成時と同様のUI遷移を実行
+        logger.info('Initiating post-update UI transition sequence', { 
+          taskId,
+          sequence: 'focus_transition -> detail_panel_hide'
+        })
+        
+        // 1. タスク一覧セクションにフォーカス移動
+        setActiveArea("tasks")
+        
+        // 2. 詳細パネルを非表示にする
+        setIsDetailPanelVisible(false)
+        
+        // 3. 更新されたタスクを選択状態にして視覚的に確認可能にする
+        setSelectedTaskId(taskId)
+        setPendingFocusTaskId(taskId)
+        
+        // 4. DOM更新後にフォーカスを更新されたタスクに設定
+        setTimeout(() => {
+          logger.info('Focusing updated task in task list', { 
+            taskId,
+            detailPanelVisible: false,
+            activeArea: 'tasks'
+          })
+          focusTaskById(taskId)
+        }, 150) // DOM更新とアニメーション完了を待つ
         
         return task
       }
@@ -505,6 +563,7 @@ const TodoApp: React.FC = () => {
     setPendingFocusTaskId,
     setSelectedTaskId, 
     setActiveArea,
+    setIsDetailPanelVisible,
     focusTaskById,
     setManagedTasks,
     setAllTasksWithDrafts

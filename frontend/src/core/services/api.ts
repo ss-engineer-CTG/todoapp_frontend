@@ -89,17 +89,25 @@ class ApiService {
 
     const converted = { ...data }
 
-    // Date型をISO文字列に変換
+    // Date型をISO文字列に変換、undefined/nullは除去
     if (converted.startDate instanceof Date) {
       converted.start_date = converted.startDate.toISOString()
       delete converted.startDate
+    } else if (converted.startDate === undefined || converted.startDate === null) {
+      delete converted.startDate
     }
+    
     if (converted.dueDate instanceof Date) {
       converted.due_date = converted.dueDate.toISOString()
       delete converted.dueDate
+    } else if (converted.dueDate === undefined || converted.dueDate === null) {
+      delete converted.dueDate
     }
+    
     if (converted.completionDate instanceof Date) {
       converted.completion_date = converted.completionDate.toISOString()
+      delete converted.completionDate
+    } else if (converted.completionDate === undefined || converted.completionDate === null) {
       delete converted.completionDate
     }
 
@@ -160,6 +168,21 @@ class ApiService {
     if (!convertedTask.name || !convertedTask.name.trim()) {
       throw new Error('タスク名は必須です')
     }
+    
+    // バックエンドが必須とする日付フィールドのデフォルト値設定
+    if (!convertedTask.start_date) {
+      convertedTask.start_date = new Date().toISOString()
+    }
+    if (!convertedTask.due_date) {
+      convertedTask.due_date = new Date().toISOString()
+    }
+    
+    // デバッグログ: 送信データを詳細確認
+    logger.info('Sending task data to backend', {
+      originalTask: task,
+      convertedTask: convertedTask,
+      requestBody: JSON.stringify(convertedTask)
+    })
     
     return this.request<Task>(APP_PATHS.API.TASKS, {
       method: 'POST',
