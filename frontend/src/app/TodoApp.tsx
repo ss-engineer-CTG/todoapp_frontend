@@ -507,11 +507,10 @@ const TodoApp: React.FC = () => {
 
       await updateTask(taskId, updates)
       
-      // タイムラインビューでは全タスクをリロード
-      if (viewMode === 'timeline') {
-        await loadTasks()
-      } else {
-        await loadTasks(selectedProjectId)
+      // ドラッグ操作後は両方の状態を更新してビュー間の整合性を保つ
+      await loadTasks() // 全タスク（タイムラインビュー用）
+      if (selectedProjectId) {
+        await loadTasks(selectedProjectId) // 選択プロジェクトのタスク（リストビュー用）
       }
       
       logger.info('Task update via drag completed', { taskId })
