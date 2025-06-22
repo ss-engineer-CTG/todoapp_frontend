@@ -568,7 +568,7 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
       <div 
         className="absolute top-0 bg-red-500 z-30"
         style={{ 
-          left: `${getDatePosition(today, timeRange.startDate, dimensions.cellWidth, viewUnit)}px`,
+          left: `${getDatePosition(today, timeRange.startDate, dimensions.cellWidth, viewUnit) + (viewUnit === 'day' ? -dimensions.cellWidth / 2 : dimensions.cellWidth / 2)}px`,
           width: `2px`,
           height: '100%'
         }}
