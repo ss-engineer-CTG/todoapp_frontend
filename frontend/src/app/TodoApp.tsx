@@ -442,10 +442,20 @@ const TodoApp: React.FC = () => {
       if (isDraftTask(task)) {
         savedTask = await saveDraft(taskId, updates)
         
-        if (viewMode === 'timeline') {
-          await loadTasks()
-        } else {
-          await loadTasks(selectedProjectId)
+        // APIから最新データを取得
+        const updatedTasks = viewMode === 'timeline' 
+          ? await loadTasks()
+          : await loadTasks(selectedProjectId)
+        
+        // ローカル表示状態を即座に更新してリアルタイム反映
+        if (updatedTasks) {
+          setManagedTasks(updatedTasks.map(task => ({ ...task })))
+          setAllTasksWithDrafts(updatedTasks.map(task => ({ ...task })))
+          
+          logger.info('Local task state updated after save', { 
+            taskCount: updatedTasks.length,
+            newTaskIncluded: updatedTasks.some(t => t.id === savedTask?.id)
+          })
         }
         
         if (savedTask) {
@@ -469,10 +479,14 @@ const TodoApp: React.FC = () => {
       } else {
         await updateTask(taskId, updates)
         
-        if (viewMode === 'timeline') {
-          await loadTasks()
-        } else {
-          await loadTasks(selectedProjectId)
+        // 既存タスク更新時も同様にローカル状態を更新
+        const updatedTasks = viewMode === 'timeline' 
+          ? await loadTasks()
+          : await loadTasks(selectedProjectId)
+        
+        if (updatedTasks) {
+          setManagedTasks(updatedTasks.map(task => ({ ...task })))
+          setAllTasksWithDrafts(updatedTasks.map(task => ({ ...task })))
         }
         
         return task
@@ -491,7 +505,9 @@ const TodoApp: React.FC = () => {
     setPendingFocusTaskId,
     setSelectedTaskId, 
     setActiveArea,
-    focusTaskById
+    focusTaskById,
+    setManagedTasks,
+    setAllTasksWithDrafts
   ])
 
   // 🆕 追加：ドラッグによるタスク更新ハンドラー
