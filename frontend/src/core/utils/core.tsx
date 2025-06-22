@@ -180,7 +180,8 @@ export const getDatePosition = (
     const diffDays = Math.round(
       (date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
     )
-    return diffDays * cellWidth
+    // 日表示の場合、オフセット調整を統一
+    return diffDays * cellWidth + cellWidth
   }
 }
 

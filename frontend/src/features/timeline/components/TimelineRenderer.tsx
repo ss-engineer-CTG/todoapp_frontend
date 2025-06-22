@@ -295,11 +295,6 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     let startPos = getDatePosition(task.startDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
     let endPos = getDatePosition(task.dueDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
     
-    if (viewUnit === 'day') {
-      startPos += dimensions.cellWidth
-      endPos += dimensions.cellWidth
-    }
-    
     const barWidth = Math.max(80, endPos - startPos + dimensions.cellWidth)
     const barHeight = Math.max(20, dimensions.taskBarHeight - (task.level * 2))
 
