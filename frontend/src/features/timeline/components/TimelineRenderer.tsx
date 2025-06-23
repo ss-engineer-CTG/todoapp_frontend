@@ -138,10 +138,10 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
           borderColor: '#f87171',
           textColor: task.level > 1 ? 'text-gray-700 dark:text-gray-300' : 'text-white'
         }
-      default: // 'not-started'
+      default: // 'not-started'（未開始タスクも進行中と同じ青色）
         return {
-          backgroundColor: `rgba(74, 222, 128, ${levelOpacity})`,
-          borderColor: '#4ade80',
+          backgroundColor: `rgba(96, 165, 250, ${levelOpacity})`,
+          borderColor: '#60a5fa',
           textColor: task.level > 1 ? 'text-gray-700 dark:text-gray-300' : 'text-white'
         }
     }
