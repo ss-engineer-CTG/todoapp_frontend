@@ -122,9 +122,9 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     switch (status) {
       case 'completed':
         return {
-          backgroundColor: `rgba(74, 222, 128, ${levelOpacity})`,
-          borderColor: '#4ade80',
-          textColor: task.level > 1 ? 'text-gray-700 dark:text-gray-300' : 'text-white'
+          backgroundColor: `rgba(148, 163, 184, ${levelOpacity})`,
+          borderColor: '#94a3b8',
+          textColor: task.level > 1 ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900'
         }
       case 'in-progress':
         return {
@@ -138,11 +138,11 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
           borderColor: '#f87171',
           textColor: task.level > 1 ? 'text-gray-700 dark:text-gray-300' : 'text-white'
         }
-      default:
+      default: // 'not-started'
         return {
-          backgroundColor: `rgba(148, 163, 184, ${levelOpacity})`,
-          borderColor: '#94a3b8',
-          textColor: task.level > 1 ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900'
+          backgroundColor: `rgba(74, 222, 128, ${levelOpacity})`,
+          borderColor: '#4ade80',
+          textColor: task.level > 1 ? 'text-gray-700 dark:text-gray-300' : 'text-white'
         }
     }
   }, [])
@@ -154,26 +154,36 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
   const getConnectionLineStyle = useCallback((task: Task): { 
     color: string; 
     opacity: number; 
-    style: 'solid' | 'dashed';
+    style: 'solid' | 'dotted' | 'dashed';
     width: number;
   } => {
-    const baseOpacity = Math.max(0.7, dimensions.zoomRatio)
-    const baseWidth = Math.max(2, Math.round(4 * dimensions.zoomRatio))
+    const baseOpacity = 0.9  // プロジェクト管理ツール風に統一された透明度
+    const baseWidth = Math.max(2, Math.round(3 * dimensions.zoomRatio))  // 少し太めの線
+    const accentColor = '#8B5CF6'  // 統一されたアクセントカラー（紫）
     
-    if (task.level <= 1) {
-      return {
-        color: 'rgba(156, 163, 175, 0.9)',
-        opacity: baseOpacity,
-        style: 'solid',
-        width: baseWidth
-      }
-    } else {
-      return {
-        color: 'rgba(156, 163, 175, 0.7)',
-        opacity: baseOpacity * 0.8,
-        style: 'dashed',
-        width: Math.max(1, Math.round(baseWidth * 0.8))
-      }
+    // プロジェクト管理ツール風の階層別線種
+    switch (task.level) {
+      case 1: // 親タスク（レベル1）- 実線
+        return {
+          color: accentColor,
+          opacity: baseOpacity,
+          style: 'solid',
+          width: baseWidth
+        }
+      case 2: // 子タスク（レベル2）- 点線
+        return {
+          color: accentColor,
+          opacity: baseOpacity,
+          style: 'dotted',
+          width: baseWidth
+        }
+      default: // 孫タスク（レベル3以上）- 破線
+        return {
+          color: accentColor,
+          opacity: baseOpacity,
+          style: 'dashed',
+          width: Math.max(1, Math.round(baseWidth * 0.9))
+        }
     }
   }, [dimensions.zoomRatio])
 
@@ -200,31 +210,25 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
 
       return (
         <div className="absolute pointer-events-none">
+          {/* プロジェクト管理ツール風: 親タスク接続点の円 */}
           <div
-            className="absolute z-10 flex items-center justify-center"
+            className="absolute z-10"
             style={{
-              left: `${parentConnectionX - Math.round(8 * dimensions.zoomRatio)}px`,
+              left: `${parentConnectionX - Math.round(4 * dimensions.zoomRatio)}px`,
               top: `${taskBarCenterY}px`,
               transform: 'translateY(-50%)',
-              width: `${Math.max(16, Math.round(20 * dimensions.zoomRatio))}px`,
-              height: `${Math.max(16, Math.round(20 * dimensions.zoomRatio))}px`,
-              backgroundColor: theme === 'dark' ? '#fbbf24' : '#f59e0b',
+              width: `${Math.max(8, Math.round(8 * dimensions.zoomRatio))}px`,
+              height: `${Math.max(8, Math.round(8 * dimensions.zoomRatio))}px`,
+              backgroundColor: lineColor,
               borderRadius: '50%',
-              border: `${Math.max(2, Math.round(3 * dimensions.zoomRatio))}px solid ${
-                theme === 'dark' ? '#374151' : '#ffffff'
+              border: `${Math.max(1, Math.round(2 * dimensions.zoomRatio))}px solid ${
+                theme === 'dark' ? '#1f2937' : '#ffffff'
               }`,
-              boxShadow: theme === 'dark' ? 
-                '0 2px 6px rgba(0, 0, 0, 0.6)' : 
-                '0 2px 6px rgba(0, 0, 0, 0.3)',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
             }}
-          >
-            <Star 
-              size={Math.max(8, Math.round(12 * dimensions.zoomRatio))} 
-              className="text-white" 
-              fill="currentColor" 
-            />
-          </div>
+          />
 
+          {/* プロジェクト管理ツール風: 垂直線 */}
           <div
             className="absolute"
             style={{
@@ -233,12 +237,16 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
               width: `${lineWidth}px`,
               height: `${Math.round(dimensions.rowHeight.task * 0.9)}px`,
               backgroundColor: borderStyle === 'solid' ? lineColor : 'transparent',
-              border: borderStyle === 'dashed' ? `${lineWidth}px dashed ${lineColor}` : 'none',
-              borderRadius: borderStyle === 'solid' ? '1px' : '0px',
+              border: borderStyle === 'dotted' ? 
+                `${lineWidth}px dotted ${lineColor}` : 
+                borderStyle === 'dashed' ? 
+                  `${lineWidth}px dashed ${lineColor}` : 'none',
+              opacity: connectionStyle.opacity,
               zIndex: 1
             }}
           />
           
+          {/* プロジェクト管理ツール風: 水平線 */}
           <div
             className="absolute"
             style={{
@@ -248,26 +256,29 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
               width: `${Math.abs(childConnectionX - parentConnectionX) + Math.round(connectionOffset * 0.8)}px`,
               height: `${lineWidth}px`,
               backgroundColor: borderStyle === 'solid' ? lineColor : 'transparent',
-              border: borderStyle === 'dashed' ? `${lineWidth}px dashed ${lineColor}` : 'none',
-              borderRadius: borderStyle === 'solid' ? '1px' : '0px',
+              border: borderStyle === 'dotted' ? 
+                `${lineWidth}px dotted ${lineColor}` : 
+                borderStyle === 'dashed' ? 
+                  `${lineWidth}px dashed ${lineColor}` : 'none',
+              opacity: connectionStyle.opacity,
               zIndex: 1
             }}
           />
           
+          {/* プロジェクト管理ツール風: 子タスク接続点の円 */}
           <div
-            className="absolute rounded-full border-2"
+            className="absolute rounded-full"
             style={{
-              left: `${childConnectionX - Math.round(6 * dimensions.zoomRatio)}px`,
+              left: `${childConnectionX - Math.round(4 * dimensions.zoomRatio)}px`,
               top: `${taskBarCenterY}px`,
               transform: 'translateY(-50%)',
-              width: `${Math.max(10, Math.round(12 * dimensions.zoomRatio))}px`,
-              height: `${Math.max(10, Math.round(12 * dimensions.zoomRatio))}px`,
+              width: `${Math.max(8, Math.round(8 * dimensions.zoomRatio))}px`,
+              height: `${Math.max(8, Math.round(8 * dimensions.zoomRatio))}px`,
               backgroundColor: lineColor,
-              borderColor: theme === 'dark' ? '#374151' : '#ffffff',
-              borderWidth: `${Math.max(2, Math.round(3 * dimensions.zoomRatio))}px`,
-              boxShadow: theme === 'dark' ? 
-                '0 2px 4px rgba(0, 0, 0, 0.6)' : 
-                '0 2px 4px rgba(0, 0, 0, 0.3)',
+              border: `${Math.max(1, Math.round(2 * dimensions.zoomRatio))}px solid ${
+                theme === 'dark' ? '#1f2937' : '#ffffff'
+              }`,
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
               zIndex: 2
             }}
           />

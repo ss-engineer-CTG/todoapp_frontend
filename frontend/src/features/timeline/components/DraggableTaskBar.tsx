@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { Task, Project } from '@core/types'
 import { TaskWithChildren, DragMode } from '../types'
 import { 
-  Check, AlertTriangle, ChevronDown, ChevronRight
+  ChevronDown, ChevronRight
 } from 'lucide-react'
 import { 
   calculateTimelineTaskStatus,
@@ -251,12 +251,7 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
 
       {/* 🔧 既存：左側アイコン群（保持） */}
       <div className="px-3 flex items-center flex-shrink-0 space-x-2">
-        {/* ステータスアイコン */}
-        <div className="flex items-center space-x-1">
-          {task.completed && <Check size={Math.max(10, 14)} />}
-          {calculateTimelineTaskStatus(task) === 'overdue' && !task.completed && 
-            <AlertTriangle size={Math.max(10, 14)} />}
-        </div>
+        {/* ステータスアイコン - 削除済み */}
         
         {/* 折り畳みバッジ */}
         {hasChildren && dimensions.zoomRatio > 0.5 && (
