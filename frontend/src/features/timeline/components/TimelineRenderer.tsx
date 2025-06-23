@@ -117,32 +117,36 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
 
   const getTaskStatusStyle = useCallback((task: Task) => {
     const status = calculateTimelineTaskStatus(task)
-    const levelOpacity = Math.max(0.6, 1 - (task.level * 0.1))
+    const levelOpacity = Math.max(0.9, 1 - (task.level * 0.05))
     
     switch (status) {
       case 'completed':
         return {
-          backgroundColor: `rgba(148, 163, 184, ${levelOpacity})`,
-          borderColor: '#94a3b8',
-          textColor: task.level > 1 ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900'
+          background: `linear-gradient(135deg, rgba(34, 197, 94, ${levelOpacity * 0.2}) 0%, rgba(16, 185, 129, ${levelOpacity * 0.3}) 100%)`,
+          borderColor: '#10b981',
+          textColor: 'text-emerald-800 dark:text-emerald-700',
+          borderStyle: 'solid'
         }
       case 'in-progress':
         return {
-          backgroundColor: `rgba(96, 165, 250, ${levelOpacity})`,
-          borderColor: '#60a5fa',
-          textColor: task.level > 1 ? 'text-gray-700 dark:text-gray-300' : 'text-white'
+          background: `linear-gradient(135deg, rgba(59, 130, 246, ${levelOpacity * 0.2}) 0%, rgba(37, 99, 235, ${levelOpacity * 0.3}) 100%)`,
+          borderColor: '#2563eb',
+          textColor: 'text-blue-800 dark:text-blue-700',
+          borderStyle: 'solid'
         }
       case 'overdue':
         return {
-          backgroundColor: `rgba(248, 113, 113, ${levelOpacity})`,
-          borderColor: '#f87171',
-          textColor: task.level > 1 ? 'text-gray-700 dark:text-gray-300' : 'text-white'
+          background: `linear-gradient(135deg, rgba(239, 68, 68, ${levelOpacity * 0.2}) 0%, rgba(220, 38, 38, ${levelOpacity * 0.3}) 100%)`,
+          borderColor: '#dc2626',
+          textColor: 'text-red-800 dark:text-red-700',
+          borderStyle: 'solid'
         }
-      default: // 'not-started'（未開始タスクも進行中と同じ青色）
+      default: // 'not-started'
         return {
-          backgroundColor: `rgba(96, 165, 250, ${levelOpacity})`,
-          borderColor: '#60a5fa',
-          textColor: task.level > 1 ? 'text-gray-700 dark:text-gray-300' : 'text-white'
+          background: `linear-gradient(135deg, rgba(168, 85, 247, ${levelOpacity * 0.2}) 0%, rgba(147, 51, 234, ${levelOpacity * 0.3}) 100%)`,
+          borderColor: '#9333ea',
+          textColor: 'text-purple-800 dark:text-purple-700',
+          borderStyle: 'solid'
         }
     }
   }, [])
