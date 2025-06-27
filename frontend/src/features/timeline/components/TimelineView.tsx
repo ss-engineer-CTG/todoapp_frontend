@@ -335,7 +335,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                         }}
                       >
                         <div className="text-indigo-700 dark:text-indigo-300 font-bold">
-                          {monthGroup.year}年{getMonthName(new Date(monthGroup.year, monthGroup.month))}
+                          {monthGroup.year}年{getMonthName(monthGroup.month)}
                         </div>
                       </div>
                     ))
@@ -439,7 +439,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
             taskRelationMap={taskRelationMap}
             zoomLevel={state.zoomLevel}
             viewUnit={state.viewUnit}
-            theme={theme}
+            theme={theme === 'system' ? 'light' : theme}
             timeRange={timeRange}
             visibleDates={visibleDates}
             scrollLeft={state.scrollLeft}

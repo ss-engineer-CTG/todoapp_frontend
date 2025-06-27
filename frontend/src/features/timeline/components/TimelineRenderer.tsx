@@ -122,31 +122,28 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     switch (status) {
       case 'completed':
         return {
-          background: `linear-gradient(135deg, rgba(34, 197, 94, ${levelOpacity * 0.2}) 0%, rgba(16, 185, 129, ${levelOpacity * 0.3}) 100%)`,
+          backgroundColor: `linear-gradient(135deg, rgba(34, 197, 94, ${levelOpacity * 0.2}) 0%, rgba(16, 185, 129, ${levelOpacity * 0.3}) 100%)`,
           borderColor: '#10b981',
-          textColor: 'text-emerald-800 dark:text-emerald-700',
-          borderStyle: 'solid'
+          textColor: 'text-emerald-800 dark:text-emerald-700'
         }
       case 'in-progress':
         return {
-          background: `linear-gradient(135deg, rgba(59, 130, 246, ${levelOpacity * 0.2}) 0%, rgba(37, 99, 235, ${levelOpacity * 0.3}) 100%)`,
+          backgroundColor: `linear-gradient(135deg, rgba(59, 130, 246, ${levelOpacity * 0.2}) 0%, rgba(37, 99, 235, ${levelOpacity * 0.3}) 100%)`,
           borderColor: '#2563eb',
           textColor: 'text-blue-800 dark:text-blue-700',
           borderStyle: 'solid'
         }
       case 'overdue':
         return {
-          background: `linear-gradient(135deg, rgba(239, 68, 68, ${levelOpacity * 0.2}) 0%, rgba(220, 38, 38, ${levelOpacity * 0.3}) 100%)`,
+          backgroundColor: `linear-gradient(135deg, rgba(239, 68, 68, ${levelOpacity * 0.2}) 0%, rgba(220, 38, 38, ${levelOpacity * 0.3}) 100%)`,
           borderColor: '#dc2626',
-          textColor: 'text-red-800 dark:text-red-700',
-          borderStyle: 'solid'
+          textColor: 'text-red-800 dark:text-red-700'
         }
       default: // 'not-started'
         return {
-          background: `linear-gradient(135deg, rgba(168, 85, 247, ${levelOpacity * 0.2}) 0%, rgba(147, 51, 234, ${levelOpacity * 0.3}) 100%)`,
+          backgroundColor: `linear-gradient(135deg, rgba(168, 85, 247, ${levelOpacity * 0.2}) 0%, rgba(147, 51, 234, ${levelOpacity * 0.3}) 100%)`,
           borderColor: '#9333ea',
-          textColor: 'text-purple-800 dark:text-purple-700',
-          borderStyle: 'solid'
+          textColor: 'text-purple-800 dark:text-purple-700'
         }
     }
   }, [])
