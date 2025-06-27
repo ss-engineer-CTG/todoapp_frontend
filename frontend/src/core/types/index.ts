@@ -1,5 +1,5 @@
-// システムプロンプト準拠: 共通型定義（ドラッグ制限型追加版）
-// 🔧 修正内容：DragRestrictions型定義を追加、既存型は完全保持
+// システムプロンプト準拠: 統合型定義ファイル
+// 🔧 修正内容：types.tsの内容を統合、重複排除実施
 
 // UI関連型
 export type AreaType = "projects" | "tasks" | "details" | "timeline"
@@ -79,4 +79,31 @@ export interface SelectionState {
   selectedId: string | null
   selectedIds: string[]
   isMultiSelectMode: boolean
+}
+
+// API関連型（types.tsから統合）
+export interface TaskRelationMap {
+  childrenMap: { [parentId: string]: string[] }
+  parentMap: { [childId: string]: string | null }
+}
+
+export interface BatchOperationResult {
+  success: boolean
+  message: string
+  affected_count: number
+  task_ids: string[]
+}
+
+export interface TaskApiActions {
+  createTask: (task: Omit<Task, 'id'>) => Promise<Task>
+  updateTask: (id: string, task: Partial<Task>) => Promise<Task>
+  deleteTask: (id: string) => Promise<void>
+  loadTasks: () => Promise<Task[]>
+  batchUpdateTasks: (operation: BatchOperation, taskIds: string[]) => Promise<BatchOperationResult>
+}
+
+export interface ProjectApiActions {
+  createProject: (project: Omit<Project, 'id'>) => Promise<Project>
+  updateProject: (id: string, project: Partial<Project>) => Promise<Project>
+  deleteProject: (id: string) => Promise<void>
 }

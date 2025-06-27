@@ -1,8 +1,8 @@
 // システムプロンプト準拠：Timeline統合ユーティリティ（ドラッグ機能対応版）
 // 🔧 修正内容：ドラッグ関連エクスポートの追加
 
-import { Task, Project } from '@core/types'
-import { TaskRelationMap, TaskChildrenMap } from '../types'
+import { Task, Project, TaskRelationMap } from '@core/types'
+import { TaskChildrenMap } from '../types'
 import { logger } from '@core/utils'
 
 // ===== 基本設定 =====

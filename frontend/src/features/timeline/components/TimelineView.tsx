@@ -15,6 +15,7 @@ import {
   getMonthName,
   getWeekNumber
 } from '@core/utils'
+import { isFirstDayOfWeek, isFirstDayOfMonth } from '../utils'
 
 // 🔧 修正：onTaskUpdateプロパティを含むインターフェース
 interface ExtendedTimelineViewProps extends TimelineViewProps {
@@ -162,13 +163,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
 
   const classes = getAppClasses()
 
-  const isFirstDayOfWeek = useCallback((date: Date): boolean => {
-    return date.getDay() === 1
-  }, [])
-
-  const isFirstDayOfMonth = useCallback((date: Date, index: number, visibleDates: Date[]): boolean => {
-    return index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
-  }, [])
+  // 重複関数削除：utils/index.tsからインポート済み
 
   useEffect(() => {
     logger.info('Timeline view state changed (all projects mode)', {

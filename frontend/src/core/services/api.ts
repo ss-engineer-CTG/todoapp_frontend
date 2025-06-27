@@ -1,7 +1,6 @@
 // システムプロンプト準拠：API通信統合（apiService + 日付変換）
 
-import { Project, Task } from '@core/types'
-import { BatchOperationResult } from '@tasklist/types'
+import { Project, Task, BatchOperationResult } from '@core/types'
 import { APP_CONFIG, APP_PATHS, joinPath } from '@core/config'
 import { logger, handleError, convertApiResponseDate } from '@core/utils/core'
 
