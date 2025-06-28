@@ -5,7 +5,7 @@ export const calculateDimensions = (zoomLevel: number, viewUnit: 'day' | 'week')
   const zoomRatio = zoomLevel / 100
   
   const baseSizes = {
-    cellWidth: { day: 60, week: 120 },
+    cellWidth: { day: 20, week: 16 },
     rowHeight: { project: 40, task: 32, subtask: 28 },
     fontSize: { base: 14, small: 12, large: 16 },
     taskBarHeight: 24
