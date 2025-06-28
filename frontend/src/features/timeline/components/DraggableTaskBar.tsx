@@ -1,14 +1,14 @@
 // システムプロンプト準拠：ドラッグ可能なタスクバーコンポーネント（リサイズハンドル対応版）
 // 🔧 修正内容：既存機能を保持しつつ、左端・右端ハンドル機能を追加
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Task, Project } from '@core/types'
 import { TaskWithChildren, DragMode } from '../types'
 import { 
   ChevronDown, ChevronRight
 } from 'lucide-react'
 import { 
-  calculateTimelineTaskStatus,
   isDraftTask
 } from '@tasklist/utils/task'
 import { 
@@ -19,7 +19,6 @@ import {
 // 🔧 定数定義（システムプロンプト準拠：一元管理）
 const RESIZE_HANDLE_WIDTH = 8   // リサイズハンドル領域の幅
 const TASK_BAR_MIN_WIDTH = 60   // タスクバーの最小幅
-const HOVER_TRANSITION_DELAY = 100  // ホバー効果の遅延時間
 
 interface DraggableTaskBarProps {
   taskWithChildren: TaskWithChildren
@@ -48,7 +47,6 @@ interface DraggableTaskBarProps {
 
 export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
   taskWithChildren,
-  project,
   startPos,
   barWidth,
   barHeight,
@@ -69,12 +67,14 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
   // 🆕 追加：ホバー状態管理
   const [hoverMode, setHoverMode] = useState<DragMode | null>(null)
   const [isHovering, setIsHovering] = useState<boolean>(false)
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const taskBarRef = useRef<HTMLDivElement>(null)
 
   // 🔧 既存：ドラッグ中のマウスイベント設定（保持）
   useEffect(() => {
     if (!isDragging) return
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMouseMove = () => {
       // ドラッグ中の処理は親コンポーネントで管理
     }
 
@@ -160,7 +160,12 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
 
   // 🆕 追加：マウスエンター時の処理
   const handleMouseEnter = useCallback(() => {
-    if (!isDragging && !isTaskDraft) {
+    if (!isDragging && !isTaskDraft && taskBarRef.current) {
+      const rect = taskBarRef.current.getBoundingClientRect()
+      setTooltipPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.top - 10
+      })
       setIsHovering(true)
     }
   }, [isDragging, isTaskDraft])
@@ -197,6 +202,7 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
 
   return (
     <div
+      ref={taskBarRef}
       className={`absolute rounded-lg shadow-lg flex items-center transition-all duration-200 ${
         !isTaskDraft ? 'hover:shadow-xl' : 'opacity-50'
       } ${isDragging ? 'z-50' : 'hover:scale-[1.02]'}`}
@@ -221,10 +227,6 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleTaskClick}
-      title={!isTaskDraft ? 
-        `${task.name}${hasChildren ? ` (${childrenCount}個の子タスク)` : ''} - ドラッグして日程を変更` :
-        `${task.name} (作成中のため移動不可)`
-      }
     >
       {/* 🆕 追加：左端リサイズハンドル */}
       {shouldShowHandles() && (
@@ -314,20 +316,34 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
         </div>
       )}
 
-      {/* 🆕 追加：ホバー時のモード表示 */}
-      {isHovering && !isDragging && !isTaskDraft && hoverMode && (
+      {/* 🆕 追加：ホバー時のタスク情報表示（Portal使用） */}
+      {isHovering && !isDragging && createPortal(
         <div 
-          className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs px-2 py-1 rounded whitespace-nowrap z-10 transition-opacity duration-200"
+          className="absolute text-sm px-3 py-2 rounded-lg shadow-xl whitespace-nowrap transition-all duration-200"
           style={{
-            backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)',
+            left: `${tooltipPosition.x}px`,
+            top: `${tooltipPosition.y}px`,
+            transform: 'translateX(-50%)',
+            zIndex: 99999,
+            backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.95)' : 'rgba(255, 255, 255, 0.98)',
             color: theme === 'dark' ? 'white' : 'black',
-            border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'}`
+            border: `2px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)'}`,
+            backdropFilter: 'blur(8px)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+            pointerEvents: 'none'
           }}
         >
-          {hoverMode === 'resize-start' && '◀ 開始日を変更'}
-          {hoverMode === 'resize-end' && '期限日を変更 ▶'}
-          {hoverMode === 'move' && '↕ タスクを移動'}
-        </div>
+          <div className="flex flex-col space-y-1">
+            <div className="font-semibold text-base">{task.name}</div>
+            <div className="text-xs opacity-80 space-y-0.5">
+              <div>📅 開始: {new Date(task.startDate).toLocaleDateString('ja-JP')}</div>
+              <div>⏰ 期限: {new Date(task.dueDate).toLocaleDateString('ja-JP')}</div>
+              <div>⏱️ 期間: {Math.ceil((new Date(task.dueDate).getTime() - new Date(task.startDate).getTime()) / (1000 * 60 * 60 * 24))}日間</div>
+              {task.notes && <div className="max-w-xs truncate">📝 {task.notes}</div>}
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )
