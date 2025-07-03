@@ -122,28 +122,28 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     switch (status) {
       case 'completed':
         return {
-          backgroundColor: `linear-gradient(135deg, rgba(34, 197, 94, ${levelOpacity * 0.2}) 0%, rgba(16, 185, 129, ${levelOpacity * 0.3}) 100%)`,
-          borderColor: '#10b981',
-          textColor: 'text-emerald-800 dark:text-emerald-700'
+          backgroundColor: `linear-gradient(135deg, rgba(5, 150, 105, ${levelOpacity * 0.85}) 0%, rgba(16, 185, 129, ${levelOpacity * 0.9}) 50%, rgba(34, 197, 94, ${levelOpacity * 0.8}) 100%)`,
+          borderColor: '#059669',
+          textColor: 'text-white dark:text-white'
         }
       case 'in-progress':
         return {
-          backgroundColor: `linear-gradient(135deg, rgba(59, 130, 246, ${levelOpacity * 0.2}) 0%, rgba(37, 99, 235, ${levelOpacity * 0.3}) 100%)`,
-          borderColor: '#2563eb',
-          textColor: 'text-blue-800 dark:text-blue-700',
+          backgroundColor: `linear-gradient(135deg, rgba(37, 99, 235, ${levelOpacity * 0.85}) 0%, rgba(59, 130, 246, ${levelOpacity * 0.9}) 50%, rgba(96, 165, 250, ${levelOpacity * 0.8}) 100%)`,
+          borderColor: '#1d4ed8',
+          textColor: 'text-white dark:text-white',
           borderStyle: 'solid'
         }
       case 'overdue':
         return {
-          backgroundColor: `linear-gradient(135deg, rgba(239, 68, 68, ${levelOpacity * 0.2}) 0%, rgba(220, 38, 38, ${levelOpacity * 0.3}) 100%)`,
-          borderColor: '#dc2626',
-          textColor: 'text-red-800 dark:text-red-700'
+          backgroundColor: `linear-gradient(135deg, rgba(220, 38, 38, ${levelOpacity * 0.85}) 0%, rgba(239, 68, 68, ${levelOpacity * 0.9}) 50%, rgba(248, 113, 113, ${levelOpacity * 0.8}) 100%)`,
+          borderColor: '#b91c1c',
+          textColor: 'text-white dark:text-white'
         }
       default: // 'not-started'
         return {
-          backgroundColor: `linear-gradient(135deg, rgba(168, 85, 247, ${levelOpacity * 0.2}) 0%, rgba(147, 51, 234, ${levelOpacity * 0.3}) 100%)`,
-          borderColor: '#9333ea',
-          textColor: 'text-purple-800 dark:text-purple-700'
+          backgroundColor: `linear-gradient(135deg, rgba(126, 34, 206, ${levelOpacity * 0.85}) 0%, rgba(147, 51, 234, ${levelOpacity * 0.9}) 50%, rgba(168, 85, 247, ${levelOpacity * 0.8}) 100%)`,
+          borderColor: '#7c3aed',
+          textColor: 'text-white dark:text-white'
         }
     }
   }, [])
@@ -152,43 +152,50 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     return level * Math.max(20, Math.round(32 * dimensions.zoomRatio))
   }, [dimensions.zoomRatio])
 
-  const getConnectionLineStyle = useCallback((task: Task): { 
+  const getConnectionLineStyle = useCallback((task: Task, project: Project): { 
     color: string; 
+    gradientColor: string;
     opacity: number; 
     style: 'solid' | 'dotted' | 'dashed';
     width: number;
   } => {
-    const baseOpacity = 0.9  // プロジェクト管理ツール風に統一された透明度
+    const baseOpacity = 0.8  // プロジェクト色との調和を考慮した透明度
     const baseWidth = Math.max(2, Math.round(3 * dimensions.zoomRatio))  // 少し太めの線
-    const accentColor = '#8B5CF6'  // 統一されたアクセントカラー（紫）
+    
+    // プロジェクト色をベースにした線色（適度な透明度でグラデーション）
+    const projectColor = project.color
+    const gradientColor = `linear-gradient(135deg, ${projectColor}CC, ${projectColor}99)`
     
     // プロジェクト管理ツール風の階層別線種
     switch (task.level) {
       case 1: // 親タスク（レベル1）- 実線
         return {
-          color: accentColor,
+          color: projectColor,
+          gradientColor,
           opacity: baseOpacity,
           style: 'solid',
           width: baseWidth
         }
       case 2: // 子タスク（レベル2）- 点線
         return {
-          color: accentColor,
-          opacity: baseOpacity,
+          color: projectColor,
+          gradientColor,
+          opacity: baseOpacity * 0.9,
           style: 'dotted',
           width: baseWidth
         }
       default: // 孫タスク（レベル3以上）- 破線
         return {
-          color: accentColor,
-          opacity: baseOpacity,
+          color: projectColor,
+          gradientColor,
+          opacity: baseOpacity * 0.8,
           style: 'dashed',
           width: Math.max(1, Math.round(baseWidth * 0.9))
         }
     }
   }, [dimensions.zoomRatio])
 
-  const renderConnectionLines = useCallback((task: Task, parentTask: Task | null) => {
+  const renderConnectionLines = useCallback((task: Task, parentTask: Task | null, project: Project) => {
     if (!parentTask || task.level === 0 || dimensions.zoomRatio < 0.3) return null
     if (!isValidDate(task.startDate) || !isValidDate(parentTask.startDate)) return null
 
@@ -198,38 +205,40 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
       
       const connectionOffset = Math.max(15, Math.round(20 * dimensions.zoomRatio))
       
-      const parentConnectionX = parentTaskStartPos - connectionOffset
+      // 親タスクの開始日から線を出現（ダイヤモンド接続点）
+      const parentConnectionX = parentTaskStartPos - Math.round(8 * dimensions.zoomRatio)
+      // 子タスクの左端で終了（矢印接続点）
       const childConnectionX = childTaskStartPos - connectionOffset
       
-      const connectionStyle = getConnectionLineStyle(task)
+      const connectionStyle = getConnectionLineStyle(task, project)
       const lineColor = connectionStyle.color
+      const gradientColor = connectionStyle.gradientColor
       const lineWidth = connectionStyle.width
       const borderStyle = connectionStyle.style
       
-      const taskBarHeight = Math.max(20, dimensions.taskBarHeight - (task.level * 2))
+      const taskBarHeight = Math.max(24, dimensions.taskBarHeight - (task.level * 1.5))
       const taskBarCenterY = (dimensions.rowHeight.task - taskBarHeight) / 2 + (taskBarHeight / 2)
 
       return (
         <div className="absolute pointer-events-none">
-          {/* プロジェクト管理ツール風: 親タスク接続点の円 */}
+          {/* 親タスク右端のダイヤモンド形接続点（アウトプット） */}
           <div
             className="absolute z-10"
             style={{
-              left: `${parentConnectionX - Math.round(4 * dimensions.zoomRatio)}px`,
+              left: `${parentConnectionX - Math.round(6 * dimensions.zoomRatio)}px`,
               top: `${taskBarCenterY}px`,
-              transform: 'translateY(-50%)',
-              width: `${Math.max(8, Math.round(8 * dimensions.zoomRatio))}px`,
-              height: `${Math.max(8, Math.round(8 * dimensions.zoomRatio))}px`,
-              backgroundColor: lineColor,
-              borderRadius: '50%',
+              transform: 'translateY(-50%) rotate(45deg)',
+              width: `${Math.max(10, Math.round(10 * dimensions.zoomRatio))}px`,
+              height: `${Math.max(10, Math.round(10 * dimensions.zoomRatio))}px`,
+              background: gradientColor,
               border: `${Math.max(1, Math.round(2 * dimensions.zoomRatio))}px solid ${
                 theme === 'dark' ? '#1f2937' : '#ffffff'
               }`,
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
             }}
           />
 
-          {/* プロジェクト管理ツール風: 垂直線 */}
+          {/* T字型結合部での垂直線 */}
           <div
             className="absolute"
             style={{
@@ -237,7 +246,7 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
               top: `-${Math.round(dimensions.rowHeight.task * 0.4)}px`,
               width: `${lineWidth}px`,
               height: `${Math.round(dimensions.rowHeight.task * 0.9)}px`,
-              backgroundColor: borderStyle === 'solid' ? lineColor : 'transparent',
+              background: borderStyle === 'solid' ? gradientColor : 'transparent',
               border: borderStyle === 'dotted' ? 
                 `${lineWidth}px dotted ${lineColor}` : 
                 borderStyle === 'dashed' ? 
@@ -247,7 +256,7 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
             }}
           />
           
-          {/* プロジェクト管理ツール風: 水平線 */}
+          {/* グラデーション水平線 */}
           <div
             className="absolute"
             style={{
@@ -256,7 +265,7 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
               transform: 'translateY(-50%)',
               width: `${Math.abs(childConnectionX - parentConnectionX) + Math.round(connectionOffset * 0.8)}px`,
               height: `${lineWidth}px`,
-              backgroundColor: borderStyle === 'solid' ? lineColor : 'transparent',
+              background: borderStyle === 'solid' ? gradientColor : 'transparent',
               border: borderStyle === 'dotted' ? 
                 `${lineWidth}px dotted ${lineColor}` : 
                 borderStyle === 'dashed' ? 
@@ -266,20 +275,19 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
             }}
           />
           
-          {/* プロジェクト管理ツール風: 子タスク接続点の円 */}
+          {/* 子タスク左端の矢印形接続点（インプット） */}
           <div
-            className="absolute rounded-full"
+            className="absolute"
             style={{
-              left: `${childConnectionX - Math.round(4 * dimensions.zoomRatio)}px`,
+              left: `${childConnectionX - Math.round(8 * dimensions.zoomRatio)}px`,
               top: `${taskBarCenterY}px`,
               transform: 'translateY(-50%)',
-              width: `${Math.max(8, Math.round(8 * dimensions.zoomRatio))}px`,
-              height: `${Math.max(8, Math.round(8 * dimensions.zoomRatio))}px`,
-              backgroundColor: lineColor,
-              border: `${Math.max(1, Math.round(2 * dimensions.zoomRatio))}px solid ${
-                theme === 'dark' ? '#1f2937' : '#ffffff'
-              }`,
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
+              width: '0',
+              height: '0',
+              borderLeft: `${Math.max(8, Math.round(8 * dimensions.zoomRatio))}px solid ${lineColor}`,
+              borderTop: `${Math.max(6, Math.round(6 * dimensions.zoomRatio))}px solid transparent`,
+              borderBottom: `${Math.max(6, Math.round(6 * dimensions.zoomRatio))}px solid transparent`,
+              filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))',
               zIndex: 2
             }}
           />
@@ -308,7 +316,7 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     let endPos = getDatePosition(task.dueDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
     
     const barWidth = Math.max(80, endPos - startPos + dimensions.cellWidth)
-    const barHeight = Math.max(20, dimensions.taskBarHeight - (task.level * 2))
+    const barHeight = Math.max(24, dimensions.taskBarHeight - (task.level * 1.5))
 
     // 🆕 追加：ドラッグ中かつ対象タスクの場合の処理
     const isCurrentlyDragging = isDragging && dragState.originalTask?.id === task.id
@@ -567,7 +575,7 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
               
               return (
                 <div key={taskWithChildren.task.id} style={{ width: `${totalTimelineWidth}px`, minWidth: `${totalTimelineWidth}px` }}>
-                  {renderConnectionLines(taskWithChildren.task, parentTask)}
+                  {renderConnectionLines(taskWithChildren.task, parentTask, project)}
                   {renderTaskBar(taskWithChildren, project)}
                 </div>
               )

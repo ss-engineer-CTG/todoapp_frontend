@@ -269,12 +269,17 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
         )}
       </div>
       
-      {/* 🔧 既存：タスク名表示（保持） */}
+      {/* 🔧 改善：タスク名表示（フォント強化） */}
       <div 
-        className="px-2 font-semibold truncate flex-1"
-        style={{ fontSize: `${Math.max(10, dimensions.fontSize.small - task.level)}px` }}
+        className="px-2 font-medium truncate flex-1"
+        style={{ 
+          fontSize: `${Math.max(12, dimensions.fontSize.small - (task.level * 0.5))}px`,
+          fontWeight: task.level === 0 ? '600' : task.level === 1 ? '500' : '400',
+          letterSpacing: '0.025em',
+          lineHeight: '1.3'
+        }}
       >
-        {getDisplayText(task.name, zoomLevel, Math.max(10, 20 - task.level * 2))}
+        {getDisplayText(task.name, zoomLevel, Math.max(12, 22 - task.level * 1.5))}
       </div>
 
       {/* 🆕 追加：右端リサイズハンドル */}
