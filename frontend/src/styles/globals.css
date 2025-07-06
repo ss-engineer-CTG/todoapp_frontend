@@ -230,10 +230,10 @@ body {
   box-sizing: border-box;
 }
 
-/* 🔧 強制：タスクバー背景表示の保証 */
-.timeline-task-bar[style*="background"] {
-  background-color: unset !important; /* Tailwindのリセットを無効化 */
-  background-image: unset !important; /* 重複を防ぐ */
+/* 🔧 修正：タスクバー背景表示の保証 - 上書きを削除 */
+.timeline-task-bar {
+  /* インライン背景スタイルを優先的に適用 */
+  background-color: transparent; /* フォールバック */
 }
 
 .timeline-task-bar:hover {

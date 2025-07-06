@@ -3,10 +3,9 @@
 
 import React, { useMemo, useCallback, useEffect } from 'react'
 import { 
-  Check, AlertTriangle, ChevronDown, ChevronRight, Factory, Star
+  ChevronDown, ChevronRight, Factory
 } from 'lucide-react'
 import { Task, Project } from '@core/types'
-import { TaskRelationMap } from '@tasklist/types'
 import { TimelineRendererProps, TaskWithChildren } from '../types'
 import { DraggableTaskBar } from './DraggableTaskBar'
 import { useTaskDrag } from '../hooks/useTaskDrag'
@@ -58,10 +57,8 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     handleDragCancel,
     isDragging
   } = useTaskDrag({
-    timelineStartDate: timeRange.startDate,
     cellWidth: dimensions.cellWidth,
     viewUnit,
-    scrollLeft,
     onTaskUpdate: onTaskUpdate || (async () => {
       logger.warn('Task update handler not provided')
     })
@@ -122,32 +119,44 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     switch (status) {
       case 'completed':
         return {
-          background: `linear-gradient(135deg, rgba(5, 150, 105, ${levelOpacity * 0.85}) 0%, rgba(16, 185, 129, ${levelOpacity * 0.9}) 50%, rgba(34, 197, 94, ${levelOpacity * 0.8}) 100%)`,
-          backgroundColor: '#059669', // Solid color fallback
+          background: `linear-gradient(135deg, rgba(239, 250, 244, ${levelOpacity * 0.85}) 0%, rgba(243, 251, 247, ${levelOpacity * 0.9}) 50%, rgba(247, 252, 249, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: '#eff8f4', // Solid color fallback
           borderColor: '#059669',
-          textColor: 'text-white dark:text-white'
+          textColor: 'text-gray-800 dark:text-gray-200',
+          // Dark mode colors
+          darkBackground: `linear-gradient(135deg, rgba(20, 83, 45, ${levelOpacity * 0.85}) 0%, rgba(25, 90, 50, ${levelOpacity * 0.9}) 50%, rgba(30, 97, 55, ${levelOpacity * 0.8}) 100%)`,
+          darkBackgroundColor: '#14532d'
         }
       case 'in-progress':
         return {
-          background: `linear-gradient(135deg, rgba(37, 99, 235, ${levelOpacity * 0.85}) 0%, rgba(59, 130, 246, ${levelOpacity * 0.9}) 50%, rgba(96, 165, 250, ${levelOpacity * 0.8}) 100%)`,
-          backgroundColor: '#1d4ed8', // Solid color fallback
+          background: `linear-gradient(135deg, rgba(239, 246, 255, ${levelOpacity * 0.85}) 0%, rgba(243, 248, 255, ${levelOpacity * 0.9}) 50%, rgba(247, 250, 255, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: '#eff6ff', // Solid color fallback
           borderColor: '#1d4ed8',
-          textColor: 'text-white dark:text-white',
-          borderStyle: 'solid'
+          textColor: 'text-gray-800 dark:text-gray-200',
+          borderStyle: 'solid',
+          // Dark mode colors
+          darkBackground: `linear-gradient(135deg, rgba(30, 58, 138, ${levelOpacity * 0.85}) 0%, rgba(37, 99, 235, ${levelOpacity * 0.9}) 50%, rgba(45, 125, 255, ${levelOpacity * 0.8}) 100%)`,
+          darkBackgroundColor: '#1e3a8a'
         }
       case 'overdue':
         return {
-          background: `linear-gradient(135deg, rgba(220, 38, 38, ${levelOpacity * 0.85}) 0%, rgba(239, 68, 68, ${levelOpacity * 0.9}) 50%, rgba(248, 113, 113, ${levelOpacity * 0.8}) 100%)`,
-          backgroundColor: '#b91c1c', // Solid color fallback
+          background: `linear-gradient(135deg, rgba(254, 242, 242, ${levelOpacity * 0.85}) 0%, rgba(254, 244, 244, ${levelOpacity * 0.9}) 50%, rgba(255, 247, 247, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: '#fef2f2', // Solid color fallback
           borderColor: '#b91c1c',
-          textColor: 'text-white dark:text-white'
+          textColor: 'text-gray-800 dark:text-gray-200',
+          // Dark mode colors
+          darkBackground: `linear-gradient(135deg, rgba(127, 29, 29, ${levelOpacity * 0.85}) 0%, rgba(153, 27, 27, ${levelOpacity * 0.9}) 50%, rgba(185, 28, 28, ${levelOpacity * 0.8}) 100%)`,
+          darkBackgroundColor: '#7f1d1d'
         }
       default: // 'not-started'
         return {
-          background: `linear-gradient(135deg, rgba(126, 34, 206, ${levelOpacity * 0.85}) 0%, rgba(147, 51, 234, ${levelOpacity * 0.9}) 50%, rgba(168, 85, 247, ${levelOpacity * 0.8}) 100%)`,
-          backgroundColor: '#7c3aed', // Solid color fallback
+          background: `linear-gradient(135deg, rgba(250, 245, 255, ${levelOpacity * 0.85}) 0%, rgba(252, 248, 255, ${levelOpacity * 0.9}) 50%, rgba(253, 250, 255, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: '#faf5ff', // Solid color fallback
           borderColor: '#7c3aed',
-          textColor: 'text-white dark:text-white'
+          textColor: 'text-gray-800 dark:text-gray-200',
+          // Dark mode colors
+          darkBackground: `linear-gradient(135deg, rgba(76, 29, 149, ${levelOpacity * 0.85}) 0%, rgba(109, 40, 217, ${levelOpacity * 0.9}) 50%, rgba(124, 58, 237, ${levelOpacity * 0.8}) 100%)`,
+          darkBackgroundColor: '#4c1d95'
         }
     }
   }, [])

@@ -15,6 +15,7 @@ import {
   getDisplayText,
   logger
 } from '@core/utils/core'
+import { useTheme } from '@core/components/ThemeProvider'
 
 // 🔧 定数定義（システムプロンプト準拠：一元管理）
 const RESIZE_HANDLE_WIDTH = 8   // リサイズハンドル領域の幅
@@ -64,6 +65,7 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
 }) => {
   const { task, hasChildren, childrenCount } = taskWithChildren
   const isTaskDraft = isDraftTask(task)
+  const { theme: currentTheme } = useTheme()
   
   // 🆕 追加：ホバー状態管理
   const [hoverMode, setHoverMode] = useState<DragMode | null>(null)
@@ -213,8 +215,8 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
         height: `${barHeight}px`,
         top: '50%',
         transform: `translateY(-50%) ${transform}`,
-        background: statusStyle.background,
-        backgroundColor: statusStyle.backgroundColor,
+        background: currentTheme === 'dark' ? statusStyle.darkBackground : statusStyle.background,
+        backgroundColor: currentTheme === 'dark' ? statusStyle.darkBackgroundColor : statusStyle.backgroundColor,
         color: statusStyle.textColor,
         borderWidth: task.level > 1 ? '1px' : '2px',
         borderStyle: task.level > 1 ? 'dashed' : 'solid',

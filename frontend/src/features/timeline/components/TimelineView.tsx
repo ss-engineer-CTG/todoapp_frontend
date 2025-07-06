@@ -13,7 +13,8 @@ import {
   logger,
   getDateCellClass,
   getMonthName,
-  getWeekNumber
+  getWeekNumber,
+  calculateDateHeaderFontSize
 } from '@core/utils'
 import { isFirstDayOfWeek, isFirstDayOfMonth } from '../utils'
 
@@ -49,6 +50,12 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   } = useTimeline(100, 'week')
 
   const today = new Date()
+  
+  // 動的フォントサイズ計算
+  const dynamicFontSizes = useMemo(() => 
+    calculateDateHeaderFontSize(dimensions.cellWidth, state.viewUnit, state.zoomLevel),
+    [dimensions.cellWidth, state.viewUnit, state.zoomLevel]
+  )
   
   const taskRelationMap = useMemo(() => {
     logger.info('Building task relation map for all projects', {
@@ -330,7 +337,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                           minWidth: `${monthGroup.width}px`,
                           borderRightWidth: '3px',
                           borderRightColor: theme === 'dark' ? '#6366f1' : '#4f46e5',
-                          fontSize: `${dimensions.fontSize.base}px`,
+                          fontSize: `${dynamicFontSizes.base}px`,
                           backgroundColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(79, 70, 229, 0.05)'
                         }}
                       >
@@ -360,7 +367,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                           minWidth: `${dimensions.cellWidth}px`,
                           borderRightWidth: isLastDateOfMonth ? '3px' : isFirstWeek ? '2px' : '1px',
                           borderRightColor: isLastDateOfMonth ? (theme === 'dark' ? '#6366f1' : '#4f46e5') : isFirstWeek ? (theme === 'dark' ? '#6b7280' : '#9ca3af') : (theme === 'dark' ? '#4b5563' : '#d1d5db'),
-                          fontSize: `${dimensions.fontSize.small}px`
+                          fontSize: `${dynamicFontSizes.small}px`
                         }}
                       >
                         <div className={`font-medium ${
@@ -402,7 +409,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                         borderLeftColor: isFirstMonth ? (theme === 'dark' ? '#6366f1' : '#4f46e5') : undefined,
                       }}
                     >
-                      <div className="font-bold text-gray-900 dark:text-white" style={{ fontSize: `${dimensions.fontSize.base}px` }}>
+                      <div className="font-bold text-gray-900 dark:text-white" style={{ fontSize: `${dynamicFontSizes.base}px` }}>
                         {weekStart.getMonth() === weekEnd.getMonth() 
                           ? (isFirstMonth 
                               ? `${weekStart.getMonth() + 1}/${weekStart.getDate()}-${weekEnd.getDate()}`
@@ -411,7 +418,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                         }
                       </div>
                       {state.zoomLevel > 40 && (
-                        <div className="text-gray-600 dark:text-gray-300 mt-1" style={{ fontSize: `${Math.max(8, dimensions.fontSize.base - 2)}px` }}>
+                        <div className="text-gray-600 dark:text-gray-300 mt-1" style={{ fontSize: `${dynamicFontSizes.small}px` }}>
                           第{getWeekNumber(weekStart)}週
                         </div>
                       )}

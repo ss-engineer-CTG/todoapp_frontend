@@ -134,7 +134,6 @@ const TodoApp: React.FC = () => {
     cancelDraft,
     deleteTask: deleteTaskOperation,
     toggleTaskCompletion,
-    toggleTaskCollapse,
     copyTasks,
     pasteTasks
   } = useTaskOperations({
@@ -675,7 +674,7 @@ const TodoApp: React.FC = () => {
           </button>
           <button
             className={`px-3 py-2 text-sm font-medium rounded-none flex items-center space-x-2 transition-colors ${
-              viewMode === 'timeline' 
+              viewMode === 'timeline' as const
                 ? 'bg-blue-600 text-white' 
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}

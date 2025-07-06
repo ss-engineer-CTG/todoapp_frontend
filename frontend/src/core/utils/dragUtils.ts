@@ -260,7 +260,7 @@ export const calculateDateFromPosition = (
   position: number,
   startDate: Date,
   cellWidth: number,
-  viewUnit: 'day' | 'week' = 'week'
+  _viewUnit: 'day' | 'week' = 'week'
 ): Date => {
   const daysDiff = Math.round(position / cellWidth)
   const resultDate = new Date(startDate)

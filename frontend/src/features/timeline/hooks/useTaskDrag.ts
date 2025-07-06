@@ -6,7 +6,6 @@ import { Task } from '@core/types'
 import { DragState, DragMode, UseTaskDragProps } from '../types'
 import { logger } from '@core/utils/core'
 import { 
-  calculateDateFromPosition, 
   calculateDaysDifference, 
   validateResize,
   snapDateToGrid,
@@ -26,10 +25,8 @@ const initialDragState: DragState = {
 }
 
 export const useTaskDrag = ({
-  timelineStartDate,
   cellWidth,
   viewUnit,
-  scrollLeft,
   onTaskUpdate
 }: UseTaskDragProps) => {
   

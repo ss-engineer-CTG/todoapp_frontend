@@ -177,9 +177,7 @@ export interface UseTaskDragReturn {
 
 // useTaskDragフックのプロパティ型
 export interface UseTaskDragProps {
-  timelineStartDate: Date
   cellWidth: number
   viewUnit: TimelineViewUnit
-  scrollLeft: number
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => Promise<void>
 }

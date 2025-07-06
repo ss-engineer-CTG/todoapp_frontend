@@ -20,7 +20,8 @@ export {
   getDateCellClass, 
   getWeekBackground,
   calculateDynamicSizes,
-  getDisplayText
+  getDisplayText,
+  calculateDateHeaderFontSize
 } from './timelineUtils'
 export { 
   calculatePreciseDateDifference, 

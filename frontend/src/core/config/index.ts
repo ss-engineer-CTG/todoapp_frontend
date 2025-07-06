@@ -126,7 +126,7 @@ export const TIMELINE_CONFIG = {
   ZOOM: APP_CONFIG.TIMELINE.ZOOM,
   SCROLL: APP_CONFIG.TIMELINE.SCROLL,
   BASE_SIZES: {
-    cellWidth: { day: 30, week: 20 },
+    cellWidth: { day: 30, week: 12 },
     rowHeight: { project: 48, task: 40, subtask: 32 },
     fontSize: { base: 14, small: 12, large: 16 }
   }
