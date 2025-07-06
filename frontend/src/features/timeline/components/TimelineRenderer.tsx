@@ -122,26 +122,30 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     switch (status) {
       case 'completed':
         return {
-          backgroundColor: `linear-gradient(135deg, rgba(5, 150, 105, ${levelOpacity * 0.85}) 0%, rgba(16, 185, 129, ${levelOpacity * 0.9}) 50%, rgba(34, 197, 94, ${levelOpacity * 0.8}) 100%)`,
+          background: `linear-gradient(135deg, rgba(5, 150, 105, ${levelOpacity * 0.85}) 0%, rgba(16, 185, 129, ${levelOpacity * 0.9}) 50%, rgba(34, 197, 94, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: '#059669', // Solid color fallback
           borderColor: '#059669',
           textColor: 'text-white dark:text-white'
         }
       case 'in-progress':
         return {
-          backgroundColor: `linear-gradient(135deg, rgba(37, 99, 235, ${levelOpacity * 0.85}) 0%, rgba(59, 130, 246, ${levelOpacity * 0.9}) 50%, rgba(96, 165, 250, ${levelOpacity * 0.8}) 100%)`,
+          background: `linear-gradient(135deg, rgba(37, 99, 235, ${levelOpacity * 0.85}) 0%, rgba(59, 130, 246, ${levelOpacity * 0.9}) 50%, rgba(96, 165, 250, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: '#1d4ed8', // Solid color fallback
           borderColor: '#1d4ed8',
           textColor: 'text-white dark:text-white',
           borderStyle: 'solid'
         }
       case 'overdue':
         return {
-          backgroundColor: `linear-gradient(135deg, rgba(220, 38, 38, ${levelOpacity * 0.85}) 0%, rgba(239, 68, 68, ${levelOpacity * 0.9}) 50%, rgba(248, 113, 113, ${levelOpacity * 0.8}) 100%)`,
+          background: `linear-gradient(135deg, rgba(220, 38, 38, ${levelOpacity * 0.85}) 0%, rgba(239, 68, 68, ${levelOpacity * 0.9}) 50%, rgba(248, 113, 113, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: '#b91c1c', // Solid color fallback
           borderColor: '#b91c1c',
           textColor: 'text-white dark:text-white'
         }
       default: // 'not-started'
         return {
-          backgroundColor: `linear-gradient(135deg, rgba(126, 34, 206, ${levelOpacity * 0.85}) 0%, rgba(147, 51, 234, ${levelOpacity * 0.9}) 50%, rgba(168, 85, 247, ${levelOpacity * 0.8}) 100%)`,
+          background: `linear-gradient(135deg, rgba(126, 34, 206, ${levelOpacity * 0.85}) 0%, rgba(147, 51, 234, ${levelOpacity * 0.9}) 50%, rgba(168, 85, 247, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: '#7c3aed', // Solid color fallback
           borderColor: '#7c3aed',
           textColor: 'text-white dark:text-white'
         }
@@ -372,7 +376,8 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
             barHeight={barHeight}
             statusStyle={{
               ...statusStyle,
-              backgroundColor: statusStyle.backgroundColor.replace(/[\d.]+\)/, '0.5)')
+              background: statusStyle.background.replace(/[\d.]+\)/, '0.5)'),
+              backgroundColor: statusStyle.backgroundColor
             }}
             dimensions={dimensions}
             zoomLevel={zoomLevel}

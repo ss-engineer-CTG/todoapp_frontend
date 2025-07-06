@@ -27,6 +27,7 @@ interface DraggableTaskBarProps {
   barWidth: number
   barHeight: number
   statusStyle: {
+    background: string
     backgroundColor: string
     borderColor: string
     textColor: string
@@ -203,7 +204,7 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
   return (
     <div
       ref={taskBarRef}
-      className={`absolute rounded-lg shadow-lg flex items-center transition-all duration-200 ${
+      className={`absolute rounded-lg shadow-lg flex items-center transition-all duration-200 timeline-task-bar ${
         !isTaskDraft ? 'hover:shadow-xl' : 'opacity-50'
       } ${isDragging ? 'z-50' : 'hover:scale-[1.02]'}`}
       style={{ 
@@ -212,6 +213,7 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
         height: `${barHeight}px`,
         top: '50%',
         transform: `translateY(-50%) ${transform}`,
+        background: statusStyle.background,
         backgroundColor: statusStyle.backgroundColor,
         color: statusStyle.textColor,
         borderWidth: task.level > 1 ? '1px' : '2px',
