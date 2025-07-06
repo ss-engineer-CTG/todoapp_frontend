@@ -71,6 +71,20 @@ export const getDisplayText = (text: string, _zoomLevel?: number, maxLength: num
   return text.substring(0, maxLength - 3) + '...'
 }
 
+// タスクの期間を日数で計算
+export const calculateTaskDuration = (startDate: Date, dueDate: Date): number => {
+  const start = new Date(startDate)
+  const end = new Date(dueDate)
+  const diffTime = end.getTime() - start.getTime()
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+}
+
+// タスクバーの幅から期間が短いかどうかを判定
+export const isShortDurationTask = (barWidth: number, durationDays: number): boolean => {
+  // 幅が30px以下の場合は短期間タスクとして判定
+  return barWidth <= 30
+}
+
 // 列幅に基づく動的フォントサイズ計算
 export const calculateDynamicFontSize = (
   cellWidth: number,

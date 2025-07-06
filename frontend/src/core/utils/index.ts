@@ -5,3 +5,6 @@ export { cn } from './cn'
 
 // その他のユーティリティ関数のエクスポート
 export * from './core'
+
+// タイムラインユーティリティ関数のエクスポート
+export * from './timelineUtils'

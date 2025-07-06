@@ -13,8 +13,10 @@ import {
 } from '@tasklist/utils/task'
 import { 
   getDisplayText,
+  calculateTaskDuration,
+  isShortDurationTask,
   logger
-} from '@core/utils/core'
+} from '@core/utils'
 import { useTheme } from '@core/components/ThemeProvider'
 
 // 🔧 定数定義（システムプロンプト準拠：一元管理）
@@ -66,6 +68,10 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
   const { task, hasChildren, childrenCount } = taskWithChildren
   const isTaskDraft = isDraftTask(task)
   const { theme: currentTheme } = useTheme()
+  
+  // タスク期間の計算
+  const taskDuration = calculateTaskDuration(new Date(task.startDate), new Date(task.dueDate))
+  const isShortTask = isShortDurationTask(barWidth, taskDuration)
   
   // 🆕 追加：ホバー状態管理
   const [hoverMode, setHoverMode] = useState<DragMode | null>(null)
@@ -196,7 +202,7 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
 
   // 🆕 追加：ハンドル表示判定
   const shouldShowHandles = useCallback((): boolean => {
-    return isHovering && !isTaskDraft && !isDragging && barWidth >= TASK_BAR_MIN_WIDTH
+    return isHovering && !isTaskDraft && !isDragging && barWidth >= 20
   }, [isHovering, isTaskDraft, isDragging, barWidth])
 
   // プレビュー時の透明度調整
@@ -204,34 +210,36 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
   const transform = isDragging ? 'scale(1.02)' : 'scale(1)'
 
   return (
-    <div
-      ref={taskBarRef}
-      className={`absolute rounded-lg shadow-lg flex items-center transition-all duration-200 timeline-task-bar ${
-        !isTaskDraft ? 'hover:shadow-xl' : 'opacity-50'
-      } ${isDragging ? 'z-50' : 'hover:scale-[1.02]'}`}
-      style={{ 
-        left: `${startPos}px`,
-        width: `${barWidth}px`,
-        height: `${barHeight}px`,
-        top: '50%',
-        transform: `translateY(-50%) ${transform}`,
-        background: currentTheme === 'dark' ? statusStyle.darkBackground : statusStyle.background,
-        backgroundColor: currentTheme === 'dark' ? statusStyle.darkBackgroundColor : statusStyle.backgroundColor,
-        color: statusStyle.textColor,
-        borderWidth: task.level > 1 ? '1px' : '2px',
-        borderStyle: task.level > 1 ? 'dashed' : 'solid',
-        borderColor: statusStyle.borderColor,
-        zIndex: isDragging ? 50 : 2,
-        opacity,
-        userSelect: 'none',
-        cursor: getCursorStyle()
-      }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleTaskClick}
-    >
+    <>
+      {/* メインのタスクバー */}
+      <div
+        ref={taskBarRef}
+        className={`absolute rounded-lg shadow-lg flex items-center transition-all duration-200 timeline-task-bar ${
+          !isTaskDraft ? 'hover:shadow-xl' : 'opacity-50'
+        } ${isDragging ? 'z-50' : 'hover:scale-[1.02]'}`}
+        style={{ 
+          left: `${startPos}px`,
+          width: `${barWidth}px`,
+          height: `${barHeight}px`,
+          top: '50%',
+          transform: `translateY(-50%) ${transform}`,
+          background: statusStyle.background,
+          backgroundColor: statusStyle.backgroundColor,
+          color: statusStyle.textColor,
+          borderWidth: task.level > 1 ? '1px' : '2px',
+          borderStyle: task.level > 1 ? 'dashed' : 'solid',
+          borderColor: statusStyle.borderColor,
+          zIndex: isDragging ? 50 : 2,
+          opacity,
+          userSelect: 'none',
+          cursor: getCursorStyle()
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleTaskClick}
+      >
       {/* 🆕 追加：左端リサイズハンドル */}
       {shouldShowHandles() && (
         <div
@@ -273,18 +281,20 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
         )}
       </div>
       
-      {/* 🔧 改善：タスク名表示（フォント強化） */}
-      <div 
-        className="px-2 font-medium truncate flex-1"
-        style={{ 
-          fontSize: `${Math.max(12, dimensions.fontSize.small - (task.level * 0.5))}px`,
-          fontWeight: task.level === 0 ? '600' : task.level === 1 ? '500' : '400',
-          letterSpacing: '0.025em',
-          lineHeight: '1.3'
-        }}
-      >
-        {getDisplayText(task.name, zoomLevel, Math.max(12, 22 - task.level * 1.5))}
-      </div>
+      {/* 🔧 改善：タスク名表示（短期間タスクは表示しない） */}
+      {!isShortTask && (
+        <div 
+          className="px-2 font-medium truncate flex-1"
+          style={{ 
+            fontSize: `${Math.max(12, dimensions.fontSize.small - (task.level * 0.5))}px`,
+            fontWeight: task.level === 0 ? '600' : task.level === 1 ? '500' : '400',
+            letterSpacing: '0.025em',
+            lineHeight: '1.3'
+          }}
+        >
+          {getDisplayText(task.name, zoomLevel, Math.max(12, 22 - task.level * 1.5))}
+        </div>
+      )}
 
       {/* 🆕 追加：右端リサイズハンドル */}
       {shouldShowHandles() && (
@@ -354,6 +364,34 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
         </div>,
         document.body
       )}
-    </div>
+      </div>
+
+      {/* 🆕 追加：短期間タスクの外部ラベル表示 */}
+      {isShortTask && (
+        <div 
+          className="absolute z-10 pointer-events-none"
+          style={{
+            left: `${startPos + barWidth + 8}px`, // タスクバーの右端から8px離れた位置
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: `${Math.max(11, dimensions.fontSize.small - (task.level * 0.5))}px`,
+            fontWeight: task.level === 0 ? '600' : task.level === 1 ? '500' : '400',
+            color: currentTheme === 'dark' ? '#e5e7eb' : '#374151',
+            backgroundColor: currentTheme === 'dark' ? 'rgba(17, 24, 39, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            whiteSpace: 'nowrap',
+            letterSpacing: '0.025em',
+            lineHeight: '1.3',
+            maxWidth: '200px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}
+        >
+          {task.name}
+        </div>
+      )}
+    </>
   )
 }

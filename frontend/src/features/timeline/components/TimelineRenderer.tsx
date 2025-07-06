@@ -328,7 +328,7 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     let startPos = getDatePosition(task.startDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
     let endPos = getDatePosition(task.dueDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
     
-    const barWidth = Math.max(80, endPos - startPos + dimensions.cellWidth)
+    const barWidth = endPos - startPos + dimensions.cellWidth
     const barHeight = Math.max(24, dimensions.taskBarHeight - (task.level * 1.5))
 
     // 🆕 追加：ドラッグ中かつ対象タスクの場合の処理

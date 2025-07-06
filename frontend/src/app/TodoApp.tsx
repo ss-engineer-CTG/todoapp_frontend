@@ -52,7 +52,7 @@ const TodoApp: React.FC = () => {
   const [isAddingProject, setIsAddingProject] = useState<boolean>(false)
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
   
-  const [viewMode, setViewMode] = useState<AppViewMode>('tasklist' as AppViewMode)
+  const [viewMode, setViewMode] = useState<AppViewMode>('tasklist')
   
   const [timelineScrollToToday, setTimelineScrollToToday] = useState<(() => void) | null>(null)
 
@@ -674,7 +674,7 @@ const TodoApp: React.FC = () => {
           </button>
           <button
             className={`px-3 py-2 text-sm font-medium rounded-none flex items-center space-x-2 transition-colors ${
-              viewMode === 'timeline' as const
+              viewMode === 'timeline'
                 ? 'bg-blue-600 text-white' 
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
