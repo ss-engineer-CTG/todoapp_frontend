@@ -81,8 +81,8 @@ export const calculateTaskDuration = (startDate: Date, dueDate: Date): number =>
 
 // タスクバーの幅から期間が短いかどうかを判定
 export const isShortDurationTask = (barWidth: number, durationDays: number): boolean => {
-  // 幅が30px以下の場合は短期間タスクとして判定
-  return barWidth <= 30
+  // 7日以内または幅が30px以下の場合は短期間タスクとして判定
+  return durationDays <= 7 || barWidth <= 30
 }
 
 // 列幅に基づく動的フォントサイズ計算
