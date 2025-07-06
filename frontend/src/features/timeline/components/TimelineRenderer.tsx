@@ -115,51 +115,48 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
   const getTaskStatusStyle = useCallback((task: Task) => {
     const status = calculateTimelineTaskStatus(task)
     const levelOpacity = Math.max(0.9, 1 - (task.level * 0.05))
+    const isDark = theme === 'dark'
     
     switch (status) {
       case 'completed':
         return {
-          background: `linear-gradient(135deg, rgba(239, 250, 244, ${levelOpacity * 0.85}) 0%, rgba(243, 251, 247, ${levelOpacity * 0.9}) 50%, rgba(247, 252, 249, ${levelOpacity * 0.8}) 100%)`,
-          backgroundColor: '#eff8f4', // Solid color fallback
+          background: isDark 
+            ? `linear-gradient(135deg, rgba(20, 83, 45, ${levelOpacity * 0.85}) 0%, rgba(25, 90, 50, ${levelOpacity * 0.9}) 50%, rgba(30, 97, 55, ${levelOpacity * 0.8}) 100%)`
+            : `linear-gradient(135deg, rgba(239, 250, 244, ${levelOpacity * 0.85}) 0%, rgba(243, 251, 247, ${levelOpacity * 0.9}) 50%, rgba(247, 252, 249, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: isDark ? '#14532d' : '#eff8f4',
           borderColor: '#059669',
           textColor: 'text-gray-800 dark:text-gray-200',
-          // Dark mode colors
-          darkBackground: `linear-gradient(135deg, rgba(20, 83, 45, ${levelOpacity * 0.85}) 0%, rgba(25, 90, 50, ${levelOpacity * 0.9}) 50%, rgba(30, 97, 55, ${levelOpacity * 0.8}) 100%)`,
-          darkBackgroundColor: '#14532d'
         }
       case 'in-progress':
         return {
-          background: `linear-gradient(135deg, rgba(239, 246, 255, ${levelOpacity * 0.85}) 0%, rgba(243, 248, 255, ${levelOpacity * 0.9}) 50%, rgba(247, 250, 255, ${levelOpacity * 0.8}) 100%)`,
-          backgroundColor: '#eff6ff', // Solid color fallback
+          background: isDark 
+            ? `linear-gradient(135deg, rgba(30, 58, 138, ${levelOpacity * 0.85}) 0%, rgba(37, 99, 235, ${levelOpacity * 0.9}) 50%, rgba(45, 125, 255, ${levelOpacity * 0.8}) 100%)`
+            : `linear-gradient(135deg, rgba(239, 246, 255, ${levelOpacity * 0.85}) 0%, rgba(243, 248, 255, ${levelOpacity * 0.9}) 50%, rgba(247, 250, 255, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: isDark ? '#1e3a8a' : '#eff6ff',
           borderColor: '#1d4ed8',
           textColor: 'text-gray-800 dark:text-gray-200',
           borderStyle: 'solid',
-          // Dark mode colors
-          darkBackground: `linear-gradient(135deg, rgba(30, 58, 138, ${levelOpacity * 0.85}) 0%, rgba(37, 99, 235, ${levelOpacity * 0.9}) 50%, rgba(45, 125, 255, ${levelOpacity * 0.8}) 100%)`,
-          darkBackgroundColor: '#1e3a8a'
         }
       case 'overdue':
         return {
-          background: `linear-gradient(135deg, rgba(254, 242, 242, ${levelOpacity * 0.85}) 0%, rgba(254, 244, 244, ${levelOpacity * 0.9}) 50%, rgba(255, 247, 247, ${levelOpacity * 0.8}) 100%)`,
-          backgroundColor: '#fef2f2', // Solid color fallback
+          background: isDark 
+            ? `linear-gradient(135deg, rgba(127, 29, 29, ${levelOpacity * 0.85}) 0%, rgba(153, 27, 27, ${levelOpacity * 0.9}) 50%, rgba(185, 28, 28, ${levelOpacity * 0.8}) 100%)`
+            : `linear-gradient(135deg, rgba(254, 242, 242, ${levelOpacity * 0.85}) 0%, rgba(254, 244, 244, ${levelOpacity * 0.9}) 50%, rgba(255, 247, 247, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: isDark ? '#7f1d1d' : '#fef2f2',
           borderColor: '#b91c1c',
           textColor: 'text-gray-800 dark:text-gray-200',
-          // Dark mode colors
-          darkBackground: `linear-gradient(135deg, rgba(127, 29, 29, ${levelOpacity * 0.85}) 0%, rgba(153, 27, 27, ${levelOpacity * 0.9}) 50%, rgba(185, 28, 28, ${levelOpacity * 0.8}) 100%)`,
-          darkBackgroundColor: '#7f1d1d'
         }
       default: // 'not-started'
         return {
-          background: `linear-gradient(135deg, rgba(250, 245, 255, ${levelOpacity * 0.85}) 0%, rgba(252, 248, 255, ${levelOpacity * 0.9}) 50%, rgba(253, 250, 255, ${levelOpacity * 0.8}) 100%)`,
-          backgroundColor: '#faf5ff', // Solid color fallback
+          background: isDark 
+            ? `linear-gradient(135deg, rgba(76, 29, 149, ${levelOpacity * 0.85}) 0%, rgba(109, 40, 217, ${levelOpacity * 0.9}) 50%, rgba(124, 58, 237, ${levelOpacity * 0.8}) 100%)`
+            : `linear-gradient(135deg, rgba(250, 245, 255, ${levelOpacity * 0.85}) 0%, rgba(252, 248, 255, ${levelOpacity * 0.9}) 50%, rgba(253, 250, 255, ${levelOpacity * 0.8}) 100%)`,
+          backgroundColor: isDark ? '#4c1d95' : '#faf5ff',
           borderColor: '#7c3aed',
           textColor: 'text-gray-800 dark:text-gray-200',
-          // Dark mode colors
-          darkBackground: `linear-gradient(135deg, rgba(76, 29, 149, ${levelOpacity * 0.85}) 0%, rgba(109, 40, 217, ${levelOpacity * 0.9}) 50%, rgba(124, 58, 237, ${levelOpacity * 0.8}) 100%)`,
-          darkBackgroundColor: '#4c1d95'
         }
     }
-  }, [])
+  }, [theme])
 
   const calculateIndent = useCallback((level: number): number => {
     return level * Math.max(20, Math.round(32 * dimensions.zoomRatio))
