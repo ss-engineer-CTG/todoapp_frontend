@@ -13,6 +13,7 @@ This is a cross-platform desktop task management application called "階層型To
 - **Backend**: Python FastAPI 0.104.1 + SQLite + Uvicorn
 - **Structure**: Feature-based organization with clean separation of concerns
 
+
 ## Essential Commands
 
 ### Development

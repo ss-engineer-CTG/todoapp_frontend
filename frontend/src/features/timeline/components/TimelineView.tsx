@@ -4,8 +4,9 @@
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { TimelineControls } from './TimelineControls'
 import { TimelineRenderer } from './TimelineRenderer'
-import { TimelineViewProps } from '../types'
+import { TimelineViewProps, SelectionMode } from '../types'
 import { useTimeline } from '../hooks/useTimeline'
+import { useRowSelection } from '../hooks/useRowSelection'
 import { buildTaskRelationMap } from '@tasklist/utils/task'
 import { useTheme } from '@core/components/ThemeProvider'
 import { Task } from '@core/types'
@@ -48,6 +49,22 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     scrollToToday,
     timelineRef
   } = useTimeline(100, 'week')
+
+  // 行レベル選択機能
+  const {
+    selectedTaskIds,
+    selectedCount,
+    isSelecting,
+    isDragSelecting,
+    previewTaskIds,
+    selectAll,
+    clearSelection,
+    getSelectedTasks,
+    handleRowClick,
+    handleRowMouseDown,
+    updateTasksRef,
+    registerRowElement
+  } = useRowSelection()
 
   const today = new Date()
   
@@ -155,6 +172,30 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     })
     onCollapseAll?.()
   }, [onCollapseAll, projects.length, tasks.length])
+
+  // 選択解除ハンドラー（空白部分クリック時）
+  const handleSelectionClear = useCallback(() => {
+    if (isSelecting) {
+      logger.info('Clearing selection from timeline background click', {
+        previousSelectedCount: selectedCount
+      })
+      clearSelection()
+    }
+  }, [isSelecting, selectedCount, clearSelection])
+
+  // 全選択ハンドラー（Ctrl+A）
+  const handleSelectAll = useCallback(() => {
+    logger.info('Select all tasks requested', {
+      totalTasks: tasks.length,
+      currentSelectedCount: selectedCount
+    })
+    selectAll(tasks)
+  }, [tasks, selectedCount, selectAll])
+
+  // タスクリストの更新（行選択フックに通知）
+  useEffect(() => {
+    updateTasksRef(tasks)
+  }, [tasks, updateTasksRef])
 
   const getAppClasses = useCallback(() => {
     return theme === 'dark' 
@@ -285,6 +326,25 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
         onCollapseAll={handleCollapseAll}
         onViewModeChange={onViewModeChange}
       />
+      
+      {/* 複数選択状態インジケーター */}
+      {isSelecting && (
+        <div className={`px-4 py-2 border-b ${
+          theme === 'dark' ? 'bg-blue-900/20 border-blue-700 text-blue-200' : 'bg-blue-50 border-blue-200 text-blue-800'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">
+              {selectedCount}個のタスクが選択されています
+            </span>
+            <button
+              onClick={clearSelection}
+              className="text-sm px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
+            >
+              選択解除
+            </button>
+          </div>
+        </div>
+      )}
       
       <main className="flex-1 flex flex-col overflow-hidden w-full min-w-0" style={{ height: 'calc(100vh - 114px)' }}>
         <div className={`${classes.dateHeader} border-b-2 overflow-hidden w-full`}>
@@ -433,13 +493,14 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
         <div 
           className="w-full flex-1 relative overflow-auto timeline-content" 
           onScroll={handleTimelineScroll}
+          onClick={handleSelectionClear}
           ref={timelineRef}
           style={{
             scrollbarWidth: 'thin',
             scrollbarColor: theme === 'dark' ? '#6b7280 #1f2937' : '#9ca3af #ffffff'
           }}
         >
-          {/* 🔧 修正：TimelineRendererにonTaskUpdateを渡す */}
+          {/* 🔧 修正：TimelineRendererに行選択機能を渡す */}
           <TimelineRenderer
             projects={projects}
             tasks={tasks}
@@ -452,7 +513,13 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
             scrollLeft={state.scrollLeft}
             onToggleProject={handleToggleProjectLocal}
             onToggleTask={handleToggleTaskLocal}
-            onTaskUpdate={onTaskUpdate} // 🆕 追加
+            onTaskUpdate={onTaskUpdate}
+            selectedTaskIds={selectedTaskIds}
+            previewTaskIds={previewTaskIds}
+            onRowClick={handleRowClick}
+            onRowMouseDown={handleRowMouseDown}
+            onSelectionClear={handleSelectionClear}
+            registerRowElement={registerRowElement}
           />
         </div>
       </main>

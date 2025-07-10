@@ -102,6 +102,34 @@ export interface TimelineControlsProps {
   onViewModeChange?: (mode: AppViewMode) => void
 }
 
+// 複数選択関連の型定義
+export type SelectionMode = 'single' | 'multiple' | 'range'
+export type RowSelectionMode = 'single' | 'multiple' | 'range' | 'drag'
+
+export interface SelectionState {
+  selectedTaskIds: Set<string>
+  lastSelectedTaskId: string | null
+  selectionMode: SelectionMode
+  isSelecting: boolean
+}
+
+// 行選択関連の型定義
+export interface DragSelectionState {
+  isDragging: boolean
+  startY: number
+  currentY: number
+  startTaskId: string | null
+  previewTaskIds: Set<string>
+}
+
+export interface RowSelectionState {
+  selectedTaskIds: Set<string>
+  lastSelectedTaskId: string | null
+  selectionMode: RowSelectionMode
+  isSelecting: boolean
+  dragSelection: DragSelectionState
+}
+
 // TimelineRendererProps
 export interface TimelineRendererProps {
   projects: Project[]
@@ -116,6 +144,13 @@ export interface TimelineRendererProps {
   onToggleProject?: (projectId: string) => void
   onToggleTask?: (taskId: string) => void
   onTaskUpdate?: (taskId: string, updates: Partial<Task>) => Promise<void>
+  // 行選択関連
+  selectedTaskIds?: Set<string>
+  previewTaskIds?: Set<string>
+  onRowClick?: (event: React.MouseEvent, taskId: string) => void
+  onRowMouseDown?: (event: React.MouseEvent, taskId: string) => void
+  onSelectionClear?: () => void
+  registerRowElement?: (taskId: string, element: HTMLElement) => void
 }
 
 // 🔧 修正：ドラッグ可能なタスクバーのプロパティにモード対応追加
@@ -139,6 +174,9 @@ export interface DraggableTaskBarProps {
   isPreview?: boolean
   previewStartDate?: Date | null
   previewDueDate?: Date | null
+  // 複数選択関連
+  isSelected?: boolean
+  onTaskSelect?: (taskId: string, mode: SelectionMode) => void
 }
 
 // 🆕 追加：リサイズ操作用のユーティリティ関数の型

@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Task, Project } from '@core/types'
-import { TaskWithChildren, DragMode } from '../types'
+import { TaskWithChildren, DragMode, SelectionMode } from '../types'
 import { 
   ChevronDown, ChevronRight
 } from 'lucide-react'
@@ -47,6 +47,9 @@ interface DraggableTaskBarProps {
   isPreview?: boolean
   previewStartDate?: Date | null
   previewDueDate?: Date | null
+  // 複数選択関連
+  isSelected?: boolean
+  onTaskSelect?: (taskId: string, mode: SelectionMode) => void
 }
 
 export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
@@ -63,7 +66,9 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
   isDragging,
   isPreview = false,
   previewStartDate,
-  previewDueDate
+  previewDueDate,
+  isSelected = false,
+  onTaskSelect
 }) => {
   const { task, hasChildren, childrenCount } = taskWithChildren
   const isTaskDraft = isDraftTask(task)
@@ -100,20 +105,21 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
     }
   }, [isDragging])
 
-  // 🔧 既存：タスククリックハンドラー（保持）
+  // 🔧 修正：タスククリックハンドラー（行選択との共存）
   const handleTaskClick = useCallback((e: React.MouseEvent) => {
     // ドラッグ操作でない場合のみクリック処理
     if (!isDragging) {
       e.preventDefault()
-      e.stopPropagation()
+      e.stopPropagation() // 行選択を防ぐ
       
-      logger.info('Draggable task bar clicked', { 
+      logger.info('Task bar clicked - executing task toggle', { 
         taskId: task.id, 
         taskName: task.name,
         hasChildren,
         currentCollapsed: task.collapsed
       })
       
+      // タスクバーのクリックは従来のタスク操作（展開/折りたたみ）のみ実行
       if (onTaskClick) {
         onTaskClick(task.id)
       }
@@ -134,8 +140,11 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
     }
   }, [barWidth])
 
-  // 🆕 追加：マウスダウン時のドラッグ開始処理
+  // 🔧 修正：マウスダウン時の処理（行選択と共存）
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // 🆕 追加：イベント伝播を停止してタスクドラッグを優先
+    e.stopPropagation()
+    
     // 草稿タスクはドラッグ不可
     if (isTaskDraft) {
       logger.info('Draft task drag prevented', { taskId: task.id })
@@ -144,7 +153,7 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
 
     const mode = getDragModeFromPosition(e)
     
-    logger.info('Task bar mouse down - initiating drag', { 
+    logger.info('Task bar mouse down - initiating task drag (priority over row selection)', { 
       taskId: task.id,
       dragMode: mode,
       mouseX: e.clientX,
@@ -208,6 +217,24 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
   // プレビュー時の透明度調整
   const opacity = isPreview ? 0.7 : 1
   const transform = isDragging ? 'scale(1.02)' : 'scale(1)'
+  
+  // 選択状態のスタイル
+  const getSelectionStyle = useCallback(() => {
+    if (isSelected) {
+      return {
+        borderColor: theme === 'dark' ? '#3b82f6' : '#2563eb',
+        borderWidth: '2px',
+        borderStyle: 'solid',
+        boxShadow: theme === 'dark' 
+          ? '0 0 0 2px rgba(59, 130, 246, 0.3)' 
+          : '0 0 0 2px rgba(37, 99, 235, 0.3)',
+        backgroundColor: theme === 'dark' 
+          ? 'rgba(59, 130, 246, 0.1)' 
+          : 'rgba(37, 99, 235, 0.1)'
+      }
+    }
+    return {}
+  }, [isSelected, theme])
 
   return (
     <>
@@ -216,7 +243,9 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
         ref={taskBarRef}
         className={`absolute rounded-lg shadow-lg flex items-center transition-all duration-200 timeline-task-bar ${
           !isTaskDraft ? 'hover:shadow-xl' : 'opacity-50'
-        } ${isDragging ? 'z-50' : 'hover:scale-[1.02]'}`}
+        } ${isDragging ? 'z-50' : 'hover:scale-[1.02]'} ${
+          isSelected ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
+        }`}
         style={{ 
           left: `${startPos}px`,
           width: `${barWidth}px`,
@@ -232,7 +261,9 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
           zIndex: isDragging ? 50 : 2,
           opacity,
           userSelect: 'none',
-          cursor: getCursorStyle()
+          cursor: getCursorStyle(),
+          // 選択状態のスタイルを適用
+          ...getSelectionStyle()
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

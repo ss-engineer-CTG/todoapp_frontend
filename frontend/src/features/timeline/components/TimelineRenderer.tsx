@@ -8,6 +8,7 @@ import {
 import { Task, Project } from '@core/types'
 import { TimelineRendererProps, TaskWithChildren } from '../types'
 import { DraggableTaskBar } from './DraggableTaskBar'
+import { TaskRow } from './TaskRow'
 import { useTaskDrag } from '../hooks/useTaskDrag'
 import { 
   calculateTimelineTaskStatus,
@@ -42,7 +43,13 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
   scrollLeft,
   onToggleProject,
   onToggleTask,
-  onTaskUpdate
+  onTaskUpdate,
+  selectedTaskIds,
+  previewTaskIds,
+  onRowClick,
+  onRowMouseDown,
+  onSelectionClear,
+  registerRowElement
 }) => {
   
   const today = new Date()
@@ -313,103 +320,54 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     }
   }, [dimensions, getDatePosition, timeRange, viewUnit, theme, getConnectionLineStyle])
 
-  // 🔧 修正：renderTaskBarをDraggableTaskBarに置き換え
-  const renderTaskBar = useCallback((taskWithChildren: TaskWithChildren, project: Project) => {
+  // 🔧 修正：TaskRowコンポーネントを使用してHook問題を解決
+  const renderTaskRow = useCallback((taskWithChildren: TaskWithChildren, project: Project) => {
     const { task } = taskWithChildren
     
-    if (!isValidDate(task.startDate) || !isValidDate(task.dueDate)) return null
-
-    const statusStyle = getTaskStatusStyle(task)
-    const indent = calculateIndent(task.level)
-    
-    let startPos = getDatePosition(task.startDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
-    let endPos = getDatePosition(task.dueDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
-    
-    const barWidth = endPos - startPos + dimensions.cellWidth
-    const barHeight = Math.max(24, dimensions.taskBarHeight - (task.level * 1.5))
-
-    // 🆕 追加：ドラッグ中かつ対象タスクの場合の処理
-    const isCurrentlyDragging = isDragging && dragState.originalTask?.id === task.id
+    // 選択状態・プレビュー状態の確認
+    const isSelected = selectedTaskIds?.has(task.id) || false
+    const isPreview = previewTaskIds?.has(task.id) || false
 
     return (
-      <div
+      <TaskRow
         key={task.id}
-        className={`relative border-b transition-colors duration-150 ${
-          theme === 'dark' ? 'border-gray-700 hover:bg-gray-800/50' : 'border-gray-200 hover:bg-gray-50'
-        }`}
-        style={{ 
-          height: `${dimensions.rowHeight.task}px`,
-          paddingLeft: `${indent}px`
-        }}
-      >
-        {/* 🔧 修正：DraggableTaskBarコンポーネントを使用 */}
-        <DraggableTaskBar
-          taskWithChildren={taskWithChildren}
-          project={project}
-          startPos={startPos}
-          barWidth={barWidth}
-          barHeight={barHeight}
-          statusStyle={statusStyle}
-          dimensions={dimensions}
-          zoomLevel={zoomLevel}
-          theme={theme}
-          onTaskClick={onToggleTask}
-          onDragStart={handleDragStart}
-          isDragging={isCurrentlyDragging}
-          isPreview={false}
-          previewStartDate={dragState.previewStartDate}
-          previewDueDate={dragState.previewDueDate}
-        />
-
-        {/* 🆕 追加：ドラッグ中のプレビュー表示 */}
-        {isCurrentlyDragging && dragState.previewStartDate && dragState.previewDueDate && (
-          <DraggableTaskBar
-            taskWithChildren={{
-              ...taskWithChildren,
-              task: {
-                ...task,
-                startDate: dragState.previewStartDate,
-                dueDate: dragState.previewDueDate
-              }
-            }}
-            project={project}
-            startPos={getDatePosition(dragState.previewStartDate, timeRange.startDate, dimensions.cellWidth, viewUnit)}
-            barWidth={Math.max(80, 
-              getDatePosition(dragState.previewDueDate, timeRange.startDate, dimensions.cellWidth, viewUnit) - 
-              getDatePosition(dragState.previewStartDate, timeRange.startDate, dimensions.cellWidth, viewUnit) + 
-              dimensions.cellWidth
-            )}
-            barHeight={barHeight}
-            statusStyle={{
-              ...statusStyle,
-              background: statusStyle.background.replace(/[\d.]+\)/, '0.5)'),
-              backgroundColor: statusStyle.backgroundColor
-            }}
-            dimensions={dimensions}
-            zoomLevel={zoomLevel}
-            theme={theme}
-            onDragStart={() => {}}
-            isDragging={false}
-            isPreview={true}
-            previewStartDate={dragState.previewStartDate}
-            previewDueDate={dragState.previewDueDate}
-          />
-        )}
-      </div>
+        taskWithChildren={taskWithChildren}
+        project={project}
+        dimensions={dimensions}
+        timeRange={timeRange}
+        viewUnit={viewUnit}
+        theme={theme}
+        zoomLevel={zoomLevel}
+        onDragStart={handleDragStart}
+        isDragging={isDragging}
+        dragState={dragState}
+        onToggleTask={onToggleTask}
+        isSelected={isSelected}
+        isPreview={isPreview}
+        onRowClick={onRowClick}
+        onRowMouseDown={onRowMouseDown}
+        registerRowElement={registerRowElement}
+        getTaskStatusStyle={getTaskStatusStyle}
+        calculateIndent={calculateIndent}
+      />
     )
   }, [
-    getTaskStatusStyle, 
-    calculateIndent, 
-    getDatePosition, 
-    dimensions, 
-    timeRange, 
-    viewUnit, 
-    zoomLevel, 
-    theme, 
-    onToggleTask,
+    selectedTaskIds,
+    previewTaskIds,
+    dimensions,
+    timeRange,
+    viewUnit,
+    theme,
+    zoomLevel,
     handleDragStart,
     isDragging,
-    dragState
+    dragState,
+    onToggleTask,
+    onRowClick,
+    onRowMouseDown,
+    registerRowElement,
+    getTaskStatusStyle,
+    calculateIndent
   ])
 
   const getProjectTasks = useCallback((projectId: string): TaskWithChildren[] => {
@@ -587,7 +545,7 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
               return (
                 <div key={taskWithChildren.task.id} style={{ width: `${totalTimelineWidth}px`, minWidth: `${totalTimelineWidth}px` }}>
                   {renderConnectionLines(taskWithChildren.task, parentTask, project)}
-                  {renderTaskBar(taskWithChildren, project)}
+                  {renderTaskRow(taskWithChildren, project)}
                 </div>
               )
             })}
