@@ -57,6 +57,10 @@ export interface UseRowSelectionReturn {
   // 行クリック処理
   handleRowClick: (event: React.MouseEvent, taskId: string) => void
   handleRowMouseDown: (event: React.MouseEvent, taskId: string) => void
+  
+  // 位置管理（選択範囲枠線用）
+  taskPositions: Map<string, { top: number; left: number; width: number; height: number }>
+  updateTaskPosition: (taskId: string, position: { top: number; left: number; width: number; height: number }) => void
 }
 
 const initialDragState: DragSelectionState = {
@@ -76,8 +80,12 @@ export const useRowSelection = (): UseRowSelectionReturn => {
     dragSelection: initialDragState
   })
 
+  // ドラッグ終了直後のクリア防止用タイマー
+  const dragEndTimeRef = useRef<number>(0)
+
   const tasksRef = useRef<Task[]>([])
   const rowElementsRef = useRef<Map<string, HTMLElement>>(new Map())
+  const [taskPositions, setTaskPositions] = useState<Map<string, { top: number; left: number; width: number; height: number }>>(new Map())
 
   // タスクリストの更新
   const updateTasksRef = useCallback((tasks: Task[]) => {
@@ -87,6 +95,15 @@ export const useRowSelection = (): UseRowSelectionReturn => {
   // 行要素の登録
   const registerRowElement = useCallback((taskId: string, element: HTMLElement) => {
     rowElementsRef.current.set(taskId, element)
+  }, [])
+
+  // タスク位置の更新
+  const updateTaskPosition = useCallback((taskId: string, position: { top: number; left: number; width: number; height: number }) => {
+    setTaskPositions(prev => {
+      const newPositions = new Map(prev)
+      newPositions.set(taskId, position)
+      return newPositions
+    })
   }, [])
 
   // Y座標から対象タスクIDを取得
@@ -335,16 +352,24 @@ export const useRowSelection = (): UseRowSelectionReturn => {
       if (!prev.dragSelection.isDragging) return prev
 
       const newSelectedIds = new Set(prev.dragSelection.previewTaskIds)
+      const lastSelected = Array.from(newSelectedIds).pop() || null
+      
+      // ドラッグ終了時刻を記録（クリア防止用）
+      dragEndTimeRef.current = Date.now()
       
       logger.info('Drag selection ended', { 
         selectedCount: newSelectedIds.size,
-        taskIds: Array.from(newSelectedIds)
+        taskIds: Array.from(newSelectedIds),
+        lastSelectedTaskId: lastSelected,
+        dragEndTime: dragEndTimeRef.current
       })
 
       return {
         ...prev,
         selectedTaskIds: newSelectedIds,
+        lastSelectedTaskId: lastSelected,
         isSelecting: newSelectedIds.size > 0,
+        selectionMode: newSelectedIds.size > 1 ? 'multiple' : 'single',
         dragSelection: initialDragState
       }
     })
@@ -404,6 +429,11 @@ export const useRowSelection = (): UseRowSelectionReturn => {
   const getSelectedTasks = useCallback((tasks: Task[]) => {
     return tasks.filter(task => state.selectedTaskIds.has(task.id))
   }, [state.selectedTaskIds])
+
+  // ドラッグ終了直後かどうかをチェック
+  const isRecentDragEnd = useCallback((): boolean => {
+    return Date.now() - dragEndTimeRef.current < 200 // 200ms以内
+  }, [])
 
   // グローバルマウスイベントリスナー
   useEffect(() => {
@@ -472,10 +502,15 @@ export const useRowSelection = (): UseRowSelectionReturn => {
     isTaskSelected,
     isTaskPreview,
     getSelectedTasks,
+    isRecentDragEnd,
     
     // 行クリック処理
     handleRowClick,
     handleRowMouseDown,
+    
+    // 位置管理（選択範囲枠線用）
+    taskPositions,
+    updateTaskPosition,
     
     // 内部API（型に含めない）
     updateTasksRef: updateTasksRef as any,

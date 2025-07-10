@@ -63,7 +63,10 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     handleRowClick,
     handleRowMouseDown,
     updateTasksRef,
-    registerRowElement
+    registerRowElement,
+    taskPositions,
+    updateTaskPosition,
+    isRecentDragEnd
   } = useRowSelection()
 
   const today = new Date()
@@ -174,14 +177,38 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   }, [onCollapseAll, projects.length, tasks.length])
 
   // 選択解除ハンドラー（空白部分クリック時）
-  const handleSelectionClear = useCallback(() => {
+  const handleSelectionClear = useCallback((event: React.MouseEvent) => {
+    // ドラッグ選択中または直後の場合はクリアを防ぐ
+    if (isDragSelecting || isRecentDragEnd()) {
+      logger.info('Ignoring background click during or after drag selection', {
+        isDragSelecting,
+        isRecentDragEnd: isRecentDragEnd()
+      })
+      return
+    }
+    
+    // タスク行やその子要素がクリックされた場合はクリアしない
+    const target = event.target as HTMLElement
+    const isTaskRowClick = target.closest('.timeline-task-bar') || 
+                          target.closest('[data-task-row]') ||
+                          target.closest('.selection-border')
+    
+    if (isTaskRowClick) {
+      logger.info('Ignoring click on task-related element', {
+        targetClassName: target.className,
+        closestTaskRow: !!target.closest('[data-task-row]')
+      })
+      return
+    }
+    
     if (isSelecting) {
       logger.info('Clearing selection from timeline background click', {
-        previousSelectedCount: selectedCount
+        previousSelectedCount: selectedCount,
+        targetElement: target.className
       })
       clearSelection()
     }
-  }, [isSelecting, selectedCount, clearSelection])
+  }, [isSelecting, isDragSelecting, selectedCount, clearSelection, isRecentDragEnd])
 
   // 全選択ハンドラー（Ctrl+A）
   const handleSelectAll = useCallback(() => {
@@ -520,6 +547,8 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
             onRowMouseDown={handleRowMouseDown}
             onSelectionClear={handleSelectionClear}
             registerRowElement={registerRowElement}
+            taskPositions={taskPositions}
+            updateTaskPosition={updateTaskPosition}
           />
         </div>
       </main>

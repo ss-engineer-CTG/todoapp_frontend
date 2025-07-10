@@ -9,6 +9,7 @@ import { Task, Project } from '@core/types'
 import { TimelineRendererProps, TaskWithChildren } from '../types'
 import { DraggableTaskBar } from './DraggableTaskBar'
 import { TaskRow } from './TaskRow'
+import { SelectionBorder } from './SelectionBorder'
 import { useTaskDrag } from '../hooks/useTaskDrag'
 import { 
   calculateTimelineTaskStatus,
@@ -49,7 +50,9 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
   onRowClick,
   onRowMouseDown,
   onSelectionClear,
-  registerRowElement
+  registerRowElement,
+  taskPositions,
+  updateTaskPosition
 }) => {
   
   const today = new Date()
@@ -347,6 +350,7 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
         onRowClick={onRowClick}
         onRowMouseDown={onRowMouseDown}
         registerRowElement={registerRowElement}
+        updateTaskPosition={updateTaskPosition}
         getTaskStatusStyle={getTaskStatusStyle}
         calculateIndent={calculateIndent}
       />
@@ -366,73 +370,82 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     onRowClick,
     onRowMouseDown,
     registerRowElement,
+    updateTaskPosition,
     getTaskStatusStyle,
     calculateIndent
   ])
 
-  const getProjectTasks = useCallback((projectId: string): TaskWithChildren[] => {
-    try {
-      const projectTasks = tasks.filter(task => task.projectId === projectId)
-      
-      logger.info('Filtering tasks for project in all-projects mode', {
-        projectId,
-        totalTasks: tasks.length,
-        projectTasks: projectTasks.length
-      })
-      
-      const filtered = filterTasksForAllProjects(projectTasks, true, taskRelationMap)
-      const sorted = sortTasksHierarchically(filtered, taskRelationMap)
-      
-      const visibleTasks = sorted.filter(task => {
-        if (!isTaskVisibleInTimeline(task, tasks, taskRelationMap)) {
-          return false
+  // プロジェクトタスクデータのメモ化（パフォーマンス改善）
+  const projectTasksMap = useMemo(() => {
+    const result = new Map<string, TaskWithChildren[]>()
+    
+    projects.forEach(project => {
+      try {
+        const projectTasks = tasks.filter(task => task.projectId === project.id)
+        
+        if (projectTasks.length === 0) {
+          result.set(project.id, [])
+          return
         }
         
-        if (task.parentId) {
-          let currentParentId: string | null = task.parentId
-          
-          while (currentParentId) {
-            const parentTask = tasks.find(t => t.id === currentParentId)
-            if (!parentTask) break
-            
-            if (parentTask.collapsed) {
-              logger.debug('Task hidden due to collapsed parent', {
-                taskId: task.id,
-                taskName: task.name,
-                parentId: currentParentId,
-                parentName: parentTask.name
-              })
-              return false
-            }
-            
-            currentParentId = taskRelationMap.parentMap[currentParentId] || null
+        const filtered = filterTasksForAllProjects(projectTasks, true, taskRelationMap)
+        const sorted = sortTasksHierarchically(filtered, taskRelationMap)
+        
+        const visibleTasks = sorted.filter(task => {
+          if (!isTaskVisibleInTimeline(task, tasks, taskRelationMap)) {
+            return false
           }
-        }
-        
-        return true
-      })
+          
+          if (task.parentId) {
+            let currentParentId: string | null = task.parentId
+            
+            while (currentParentId) {
+              const parentTask = tasks.find(t => t.id === currentParentId)
+              if (!parentTask) break
+              
+              if (parentTask.collapsed) {
+                return false
+              }
+              
+              currentParentId = taskRelationMap.parentMap[currentParentId] || null
+            }
+          }
+          
+          return true
+        })
 
-      const result = visibleTasks.map(task => ({
-        task,
-        hasChildren: taskChildrenMap[task.id]?.hasChildren || false,
-        childrenCount: taskChildrenMap[task.id]?.childrenCount || 0
-      }))
+        const taskWithChildren = visibleTasks.map(task => ({
+          task,
+          hasChildren: taskChildrenMap[task.id]?.hasChildren || false,
+          childrenCount: taskChildrenMap[task.id]?.childrenCount || 0
+        }))
 
-      logger.info('Project tasks processed for timeline', {
-        projectId,
-        inputTasks: projectTasks.length,
-        filteredTasks: filtered.length,
-        visibleTasks: result.length
-      })
+        result.set(project.id, taskWithChildren)
+      } catch (error) {
+        logger.error('Project tasks filtering failed', { projectId: project.id, error })
+        result.set(project.id, [])
+      }
+    })
+    
+    logger.info('All project tasks processed for timeline', {
+      projectCount: projects.length,
+      totalProcessedTasks: Array.from(result.values()).reduce((sum, tasks) => sum + tasks.length, 0)
+    })
+    
+    return result
+  }, [projects, tasks, taskRelationMap, taskChildrenMap])
 
-      return result
-    } catch (error) {
-      logger.error('Project tasks filtering failed', { projectId, error })
-      return []
-    }
-  }, [tasks, taskRelationMap, taskChildrenMap])
+  const getProjectTasks = useCallback((projectId: string): TaskWithChildren[] => {
+    return projectTasksMap.get(projectId) || []
+  }, [projectTasksMap])
 
   const totalTimelineWidth = getTotalTimelineWidth()
+
+  // 選択されたタスクを取得
+  const selectedTasks = useMemo(() => {
+    if (!selectedTaskIds || selectedTaskIds.size === 0) return []
+    return tasks.filter(task => selectedTaskIds.has(task.id))
+  }, [tasks, selectedTaskIds])
 
   return (
     <div className="relative timeline-renderer-container" style={{ minWidth: `${totalTimelineWidth}px` }}>
@@ -573,6 +586,16 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
           <div className="bg-white rounded-full w-2 h-2" />
         </div>
       </div>
+      
+      {/* 選択範囲の枠線 */}
+      {selectedTasks.length > 0 && taskPositions && (
+        <SelectionBorder
+          selectedTasks={selectedTasks}
+          taskPositions={taskPositions}
+          theme={theme}
+          containerRef={{ current: null }}
+        />
+      )}
     </div>
   )
 }

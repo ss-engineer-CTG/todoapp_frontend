@@ -88,6 +88,25 @@ export default {
           "0%": { transform: "translateX(2px)" },
           "100%": { transform: "translateX(0)" },
         },
+        "pulse-subtle": {
+          "0%, 100%": { transform: "translateX(2px) scale(1)", opacity: 1 },
+          "50%": { transform: "translateX(3px) scale(1.001)", opacity: 0.98 },
+        },
+        "bounce-in": {
+          "0%": { transform: "scale(0) rotate(-45deg)", opacity: 0 },
+          "50%": { transform: "scale(1.3) rotate(-10deg)", opacity: 0.8 },
+          "100%": { transform: "scale(1) rotate(0deg)", opacity: 1 },
+        },
+        "selection-border": {
+          "0%, 100%": { 
+            borderColor: "rgba(59, 130, 246, 0.8)",
+            boxShadow: "0 0 10px rgba(59, 130, 246, 0.3), inset 0 0 10px rgba(59, 130, 246, 0.1)"
+          },
+          "50%": { 
+            borderColor: "rgba(59, 130, 246, 1)",
+            boxShadow: "0 0 20px rgba(59, 130, 246, 0.5), inset 0 0 15px rgba(59, 130, 246, 0.2)"
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -100,6 +119,9 @@ export default {
         "slide-in-from-bottom-2": "slide-in-from-bottom-2 0.2s ease-out",
         "slide-in-from-left-2": "slide-in-from-left-2 0.2s ease-out",
         "slide-in-from-right-2": "slide-in-from-right-2 0.2s ease-out",
+        "pulse-subtle": "pulse-subtle 2s ease-in-out infinite",
+        "bounce-in": "bounce-in 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)",
+        "selection-border": "selection-border 2s ease-in-out infinite",
       },
     },
   },

@@ -2,6 +2,7 @@
 // 機能：単一タスク行の描画と選択処理を担当
 
 import React, { useCallback } from 'react'
+import { Check } from 'lucide-react'
 import { Task, Project } from '@core/types'
 import { TaskWithChildren, DragMode, DragState } from '../types'
 import { DraggableTaskBar } from './DraggableTaskBar'
@@ -9,6 +10,7 @@ import {
   getDatePosition,
   isValidDate
 } from '@core/utils'
+import '../styles/animations.css'
 
 interface TaskRowProps {
   taskWithChildren: TaskWithChildren
@@ -42,6 +44,7 @@ interface TaskRowProps {
   onRowClick?: (event: React.MouseEvent, taskId: string) => void
   onRowMouseDown?: (event: React.MouseEvent, taskId: string) => void
   registerRowElement?: (taskId: string, element: HTMLElement) => void
+  updateTaskPosition?: (taskId: string, position: { top: number; left: number; width: number; height: number }) => void
   
   // スタイル計算
   getTaskStatusStyle: (task: Task) => {
@@ -70,6 +73,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
   onRowClick,
   onRowMouseDown,
   registerRowElement,
+  updateTaskPosition,
   getTaskStatusStyle,
   calculateIndent
 }) => {
@@ -95,11 +99,11 @@ export const TaskRow: React.FC<TaskRowProps> = ({
     let borderColor = ''
     
     if (isSelected) {
-      backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(37, 99, 235, 0.1)'
+      backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(37, 99, 235, 0.15)'
       borderColor = theme === 'dark' ? '#3b82f6' : '#2563eb'
     } else if (isPreview) {
-      backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(37, 99, 235, 0.05)'
-      borderColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.6)' : 'rgba(37, 99, 235, 0.6)'
+      backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(37, 99, 235, 0.08)'
+      borderColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.8)' : 'rgba(37, 99, 235, 0.8)'
     } else {
       backgroundColor = theme === 'dark' ? 'transparent' : 'transparent'
       borderColor = theme === 'dark' ? '#374151' : '#e5e7eb'
@@ -108,7 +112,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
     return {
       backgroundColor,
       borderColor,
-      borderLeftWidth: isSelected ? '4px' : '1px',
+      borderLeftWidth: isSelected ? '5px' : isPreview ? '3px' : '1px',
       borderLeftStyle: 'solid'
     }
   }, [isSelected, isPreview, theme])
@@ -135,30 +139,98 @@ export const TaskRow: React.FC<TaskRowProps> = ({
     }
   }, [task.id, onRowMouseDown])
 
-  // 行要素の登録
+  // 行要素の登録と位置更新（throttle付き）
   const rowRef = useCallback((element: HTMLDivElement | null) => {
-    if (element && registerRowElement) {
-      registerRowElement(task.id, element)
+    if (element) {
+      if (registerRowElement) {
+        registerRowElement(task.id, element)
+      }
+      
+      // 位置情報を更新（過度な更新を防ぐためタイマーを使用）
+      if (updateTaskPosition) {
+        setTimeout(() => {
+          const rect = element.getBoundingClientRect()
+          const containerRect = element.offsetParent?.getBoundingClientRect() || { top: 0, left: 0 }
+          
+          updateTaskPosition(task.id, {
+            top: rect.top - containerRect.top,
+            left: rect.left - containerRect.left,
+            width: rect.width,
+            height: rect.height
+          })
+        }, 0)
+      }
     }
-  }, [task.id, registerRowElement])
+  }, [task.id, registerRowElement, updateTaskPosition])
+
+  // チェックボックスクリック処理
+  const handleCheckboxClick = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation()
+    if (onRowClick) {
+      onRowClick(event, task.id)
+    }
+  }, [task.id, onRowClick])
 
   return (
     <div
       ref={rowRef}
-      className={`relative border-b transition-all duration-150 cursor-pointer select-none`}
+      data-task-row={task.id}
+      className={`relative border-b transition-all duration-300 cursor-pointer select-none group ${
+        isSelected ? 'animate-pulse-subtle bg-gradient-to-r' : ''
+      }`}
       style={{ 
         height: `${dimensions.rowHeight.task}px`,
         paddingLeft: `${indent}px`,
-        ...getRowStyle()
+        ...getRowStyle(),
+        // アニメーション付きハイライト効果
+        background: isSelected 
+          ? `linear-gradient(90deg, ${getRowStyle().backgroundColor}, transparent 60%)`
+          : getRowStyle().backgroundColor,
+        boxShadow: isSelected 
+          ? `inset 0 0 20px ${theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(37, 99, 235, 0.2)'}`
+          : 'none',
+        transform: isSelected ? 'translateX(2px)' : 'translateX(0)',
       }}
       onClick={handleRowClickLocal}
       onMouseDown={handleRowMouseDownLocal}
     >
+      {/* 選択チェックボックス */}
+      <div 
+        className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-20 transition-all duration-200 ${
+          isSelected ? 'opacity-100 scale-100' : 
+          isPreview ? 'opacity-80 scale-95' : 
+          'opacity-0 scale-75 group-hover:opacity-70 group-hover:scale-90'
+        }`}
+        onClick={handleCheckboxClick}
+      >
+        <div 
+          className={`w-5 h-5 rounded border-2 transition-all duration-200 cursor-pointer flex items-center justify-center ${
+            isSelected 
+              ? `bg-blue-500 border-blue-500 shadow-lg ${theme === 'dark' ? 'shadow-blue-400/50' : 'shadow-blue-500/30'}` 
+              : isPreview 
+                ? 'bg-blue-200 border-blue-400 dark:bg-blue-800 dark:border-blue-500'
+                : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-500 hover:border-blue-400'
+          }`}
+        >
+          {isSelected && (
+            <Check 
+              size={12} 
+              className="text-white animate-bounce-in" 
+              strokeWidth={3}
+            />
+          )}
+          {isPreview && !isSelected && (
+            <div 
+              className={`w-2 h-2 rounded-full ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'}`}
+            />
+          )}
+        </div>
+      </div>
       {/* DraggableTaskBarコンポーネントを使用 */}
       <DraggableTaskBar
         taskWithChildren={taskWithChildren}
         project={project}
-        startPos={startPos}
+        startPos={startPos + 32} // チェックボックス分のスペースを確保
         barWidth={barWidth}
         barHeight={barHeight}
         statusStyle={statusStyle}
@@ -187,7 +259,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
             }
           }}
           project={project}
-          startPos={getDatePosition(dragState.previewStartDate, timeRange.startDate, dimensions.cellWidth, viewUnit)}
+          startPos={getDatePosition(dragState.previewStartDate, timeRange.startDate, dimensions.cellWidth, viewUnit) + 32}
           barWidth={Math.max(80, 
             getDatePosition(dragState.previewDueDate, timeRange.startDate, dimensions.cellWidth, viewUnit) - 
             getDatePosition(dragState.previewStartDate, timeRange.startDate, dimensions.cellWidth, viewUnit) + 

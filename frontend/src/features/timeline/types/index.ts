@@ -151,6 +151,8 @@ export interface TimelineRendererProps {
   onRowMouseDown?: (event: React.MouseEvent, taskId: string) => void
   onSelectionClear?: () => void
   registerRowElement?: (taskId: string, element: HTMLElement) => void
+  taskPositions?: Map<string, { top: number; left: number; width: number; height: number }>
+  updateTaskPosition?: (taskId: string, position: { top: number; left: number; width: number; height: number }) => void
 }
 
 // 🔧 修正：ドラッグ可能なタスクバーのプロパティにモード対応追加
