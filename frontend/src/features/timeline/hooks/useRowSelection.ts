@@ -82,6 +82,10 @@ export const useRowSelection = (): UseRowSelectionReturn => {
 
   // ドラッグ終了直後のクリア防止用タイマー
   const dragEndTimeRef = useRef<number>(0)
+  
+  // クリック vs ドラッグ判定用
+  const dragStartPositionRef = useRef<{ x: number; y: number } | null>(null)
+  const DRAG_THRESHOLD = 5 // ピクセル
 
   const tasksRef = useRef<Task[]>([])
   const rowElementsRef = useRef<Map<string, HTMLElement>>(new Map())
@@ -106,37 +110,102 @@ export const useRowSelection = (): UseRowSelectionReturn => {
     })
   }, [])
 
-  // Y座標から対象タスクIDを取得
+  // Y座標から対象タスクIDを取得（精度向上版）
   const getTaskIdFromY = useCallback((y: number): string | null => {
+    let matchedTaskId: string | null = null
     let closestTaskId: string | null = null
     let closestDistance = Infinity
 
     rowElementsRef.current.forEach((element, taskId) => {
       const rect = element.getBoundingClientRect()
+      
+      // 完全に範囲内の場合は優先的に選択
+      if (y >= rect.top && y <= rect.bottom) {
+        if (!matchedTaskId) {
+          matchedTaskId = taskId
+        }
+      }
+      
+      // フォールバック用に最も近い要素も記録
       const elementCenterY = rect.top + rect.height / 2
       const distance = Math.abs(y - elementCenterY)
-      
-      if (distance < closestDistance && y >= rect.top && y <= rect.bottom) {
+      if (distance < closestDistance) {
         closestDistance = distance
         closestTaskId = taskId
       }
     })
 
-    return closestTaskId
+    // 完全一致があればそれを返し、なければ最も近い要素を返す
+    const result = matchedTaskId || closestTaskId
+    
+    if (result) {
+      logger.debug('Task selected from Y coordinate', {
+        y,
+        taskId: result,
+        isExactMatch: !!matchedTaskId,
+        closestDistance: matchedTaskId ? 0 : closestDistance
+      })
+    }
+
+    return result
   }, [])
 
-  // 範囲内のタスクIDを取得
+  // 範囲内のタスクIDを取得（画面位置ベース）
   const getTaskIdsInRange = useCallback((startTaskId: string, endTaskId: string): string[] => {
-    const tasks = tasksRef.current
-    const startIndex = tasks.findIndex(task => task.id === startTaskId)
-    const endIndex = tasks.findIndex(task => task.id === endTaskId)
+    const startElement = rowElementsRef.current.get(startTaskId)
+    const endElement = rowElementsRef.current.get(endTaskId)
     
-    if (startIndex === -1 || endIndex === -1) return []
+    if (!startElement || !endElement) {
+      logger.warn('Range selection failed: Elements not found', {
+        startTaskId,
+        endTaskId,
+        startFound: !!startElement,
+        endFound: !!endElement
+      })
+      return [startTaskId]
+    }
+
+    const startRect = startElement.getBoundingClientRect()
+    const endRect = endElement.getBoundingClientRect()
     
-    const minIndex = Math.min(startIndex, endIndex)
-    const maxIndex = Math.max(startIndex, endIndex)
+    // Y座標の範囲を決定
+    const minY = Math.min(startRect.top, endRect.top)
+    const maxY = Math.max(startRect.bottom, endRect.bottom)
     
-    return tasks.slice(minIndex, maxIndex + 1).map(task => task.id)
+    // 範囲内にある全てのタスクIDを収集
+    const tasksInRange: string[] = []
+    
+    rowElementsRef.current.forEach((element, taskId) => {
+      const rect = element.getBoundingClientRect()
+      const elementCenterY = rect.top + rect.height / 2
+      
+      // 要素の中心が範囲内にあるかチェック
+      if (elementCenterY >= minY && elementCenterY <= maxY) {
+        tasksInRange.push(taskId)
+      }
+    })
+    
+    // Y座標順でソート
+    tasksInRange.sort((a, b) => {
+      const elementA = rowElementsRef.current.get(a)
+      const elementB = rowElementsRef.current.get(b)
+      if (!elementA || !elementB) return 0
+      
+      const rectA = elementA.getBoundingClientRect()
+      const rectB = elementB.getBoundingClientRect()
+      return rectA.top - rectB.top
+    })
+    
+    logger.debug('Range selection calculated', {
+      startTaskId,
+      endTaskId,
+      minY,
+      maxY,
+      tasksInRange: tasksInRange.length,
+      taskIds: tasksInRange
+    })
+    
+    return tasksInRange
   }, [])
 
   // タスク選択
@@ -298,34 +367,64 @@ export const useRowSelection = (): UseRowSelectionReturn => {
     }))
   }, [state.selectedTaskIds.size])
 
-  // ドラッグ選択開始
+  // マウスダウン処理（ドラッグ開始の準備）
   const handleDragStart = useCallback((event: React.MouseEvent, taskId: string, isAdditive: boolean) => {
     event.preventDefault()
     
-    logger.info('Drag selection started', { 
+    // ドラッグ開始位置を記録
+    dragStartPositionRef.current = {
+      x: event.clientX,
+      y: event.clientY
+    }
+    
+    logger.info('Mouse down on task row', { 
       taskId, 
       isAdditive,
+      startX: event.clientX,
       startY: event.clientY
     })
     
+    // まだドラッグは開始しない（移動が検知されてから開始）
     setState(prev => ({
       ...prev,
       dragSelection: {
-        isDragging: true,
+        ...initialDragState,
         startY: event.clientY,
         currentY: event.clientY,
         startTaskId: taskId,
-        previewTaskIds: new Set([taskId])
       },
-      selectionMode: 'drag'
+      selectionMode: 'single'
     }))
   }, [])
 
   // ドラッグ選択移動
   const handleDragMove = useCallback((event: MouseEvent) => {
     setState(prev => {
-      if (!prev.dragSelection.isDragging || !prev.dragSelection.startTaskId) {
+      const startPos = dragStartPositionRef.current
+      
+      // ドラッグ開始位置が記録されていない場合は何もしない
+      if (!startPos || !prev.dragSelection.startTaskId) {
         return prev
+      }
+
+      // ドラッグ距離を計算
+      const deltaX = Math.abs(event.clientX - startPos.x)
+      const deltaY = Math.abs(event.clientY - startPos.y)
+      const isDragThresholdExceeded = deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD
+
+      // しきい値を超えていない場合は何もしない
+      if (!isDragThresholdExceeded && !prev.dragSelection.isDragging) {
+        return prev
+      }
+
+      // 初回のドラッグ開始
+      if (!prev.dragSelection.isDragging && isDragThresholdExceeded) {
+        logger.info('Drag selection actually started', { 
+          taskId: prev.dragSelection.startTaskId,
+          deltaX,
+          deltaY,
+          startY: prev.dragSelection.startY
+        })
       }
 
       const currentTaskId = getTaskIdFromY(event.clientY)
@@ -339,9 +438,11 @@ export const useRowSelection = (): UseRowSelectionReturn => {
         ...prev,
         dragSelection: {
           ...prev.dragSelection,
+          isDragging: true, // 実際のドラッグが開始された
           currentY: event.clientY,
           previewTaskIds
-        }
+        },
+        selectionMode: 'drag'
       }
     })
   }, [getTaskIdFromY, getTaskIdsInRange])
@@ -349,27 +450,53 @@ export const useRowSelection = (): UseRowSelectionReturn => {
   // ドラッグ選択終了
   const handleDragEnd = useCallback(() => {
     setState(prev => {
-      if (!prev.dragSelection.isDragging) return prev
+      const wasDragging = prev.dragSelection.isDragging
+      const startTaskId = prev.dragSelection.startTaskId
+      
+      // ドラッグ開始位置をクリア
+      dragStartPositionRef.current = null
+      
+      if (wasDragging) {
+        // 実際にドラッグしていた場合：選択を確定
+        const newSelectedIds = new Set(prev.dragSelection.previewTaskIds)
+        const lastSelected = Array.from(newSelectedIds).pop() || null
+        
+        // ドラッグ終了時刻を記録（クリア防止用）
+        dragEndTimeRef.current = Date.now()
+        
+        logger.info('Drag selection ended', { 
+          selectedCount: newSelectedIds.size,
+          taskIds: Array.from(newSelectedIds),
+          lastSelectedTaskId: lastSelected,
+          dragEndTime: dragEndTimeRef.current
+        })
 
-      const newSelectedIds = new Set(prev.dragSelection.previewTaskIds)
-      const lastSelected = Array.from(newSelectedIds).pop() || null
-      
-      // ドラッグ終了時刻を記録（クリア防止用）
-      dragEndTimeRef.current = Date.now()
-      
-      logger.info('Drag selection ended', { 
-        selectedCount: newSelectedIds.size,
-        taskIds: Array.from(newSelectedIds),
-        lastSelectedTaskId: lastSelected,
-        dragEndTime: dragEndTimeRef.current
-      })
+        return {
+          ...prev,
+          selectedTaskIds: newSelectedIds,
+          lastSelectedTaskId: lastSelected,
+          isSelecting: newSelectedIds.size > 0,
+          selectionMode: newSelectedIds.size > 1 ? 'multiple' : 'single',
+          dragSelection: initialDragState
+        }
+      } else if (startTaskId) {
+        // 単純クリックの場合：そのタスクを選択
+        logger.info('Single click selection', { 
+          taskId: startTaskId
+        })
+        
+        return {
+          ...prev,
+          selectedTaskIds: new Set([startTaskId]),
+          lastSelectedTaskId: startTaskId,
+          isSelecting: true,
+          selectionMode: 'single',
+          dragSelection: initialDragState
+        }
+      }
 
       return {
         ...prev,
-        selectedTaskIds: newSelectedIds,
-        lastSelectedTaskId: lastSelected,
-        isSelecting: newSelectedIds.size > 0,
-        selectionMode: newSelectedIds.size > 1 ? 'multiple' : 'single',
         dragSelection: initialDragState
       }
     })
@@ -385,22 +512,30 @@ export const useRowSelection = (): UseRowSelectionReturn => {
     }))
   }, [])
 
-  // 行クリック処理
+  // 行クリック処理（キーボード修飾子対応）
   const handleRowClick = useCallback((event: React.MouseEvent, taskId: string) => {
     const isCtrlCmd = event.ctrlKey || event.metaKey
     const isShift = event.shiftKey
     
-    let mode: RowSelectionMode = 'single'
-    if (isCtrlCmd) {
-      mode = 'multiple'
-    } else if (isShift && state.lastSelectedTaskId) {
-      mode = 'range'
-      selectRange(state.lastSelectedTaskId, taskId, tasksRef.current)
-      return
-    }
+    logger.info('Row click with modifiers', {
+      taskId,
+      isCtrlCmd,
+      isShift,
+      currentSelected: Array.from(state.selectedTaskIds),
+      lastSelected: state.lastSelectedTaskId
+    })
     
-    toggleTaskSelection(taskId, mode)
-  }, [state.lastSelectedTaskId, selectRange, toggleTaskSelection])
+    if (isShift && state.lastSelectedTaskId) {
+      // Shift+クリック：範囲選択
+      selectRange(state.lastSelectedTaskId, taskId, tasksRef.current)
+    } else if (isCtrlCmd) {
+      // Ctrl/Cmd+クリック：複数選択（トグル）
+      toggleTaskSelection(taskId, 'multiple')
+    } else {
+      // 通常クリック：単一選択
+      selectTask(taskId, 'single')
+    }
+  }, [state.lastSelectedTaskId, state.selectedTaskIds, selectRange, toggleTaskSelection, selectTask])
 
   // 行マウスダウン処理
   const handleRowMouseDown = useCallback((event: React.MouseEvent, taskId: string) => {

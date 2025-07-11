@@ -112,26 +112,8 @@ export const SelectionBorder: React.FC<SelectionBorderProps> = ({
   }, [selectedTasks, taskPositions])
   
   if (selectionGroups.length === 0) {
-    // デバッグ情報
-    console.log('SelectionBorder: No groups to display', {
-      selectedTasksCount: selectedTasks.length,
-      taskPositionsSize: taskPositions.size,
-      selectedTaskIds: selectedTasks.map(t => t.id)
-    })
     return null
   }
-  
-  // デバッグ情報
-  console.log('SelectionBorder: Rendering groups', {
-    groupCount: selectionGroups.length,
-    selectedTasksCount: selectedTasks.length,
-    taskPositionsSize: taskPositions.size,
-    groups: selectionGroups.map(g => ({
-      id: g.id,
-      taskCount: g.tasks.length,
-      bounds: g.bounds
-    }))
-  })
   
   return (
     <>
