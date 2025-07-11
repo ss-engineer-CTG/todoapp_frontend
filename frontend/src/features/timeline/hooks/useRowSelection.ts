@@ -85,6 +85,7 @@ export const useRowSelection = (): UseRowSelectionReturn => {
   
   // クリック vs ドラッグ判定用
   const dragStartPositionRef = useRef<{ x: number; y: number } | null>(null)
+  const currentMousePositionRef = useRef<{ x: number; y: number } | null>(null)
   const DRAG_THRESHOLD = 5 // ピクセル
 
   const tasksRef = useRef<Task[]>([])
@@ -110,44 +111,60 @@ export const useRowSelection = (): UseRowSelectionReturn => {
     })
   }, [])
 
-  // Y座標から対象タスクIDを取得（精度向上版）
+  // Y座標から対象タスクIDを取得（DOM直接検索版）
   const getTaskIdFromY = useCallback((y: number): string | null => {
-    let matchedTaskId: string | null = null
+    // 現在のマウス位置を使用（利用可能な場合）
+    const mouseX = currentMousePositionRef.current?.x || window.innerWidth / 2
+    
+    // DOM要素を直接検索してXY座標に該当するタスク行を見つける
+    const elementsAtPoint = document.elementsFromPoint(mouseX, y)
+    
+    // data-task-row属性を持つ要素を探す
+    for (const element of elementsAtPoint) {
+      const taskRow = element.closest('[data-task-row]')
+      if (taskRow) {
+        const taskId = taskRow.getAttribute('data-task-row')
+        const projectId = taskRow.getAttribute('data-project-id')
+        
+        if (taskId && projectId) {
+          logger.debug('Task selected from Y coordinate (DOM search)', {
+            y,
+            mouseX,
+            taskId,
+            projectId,
+            elementTop: taskRow.getBoundingClientRect().top,
+            elementBottom: taskRow.getBoundingClientRect().bottom
+          })
+          return taskId
+        }
+      }
+    }
+
+    // フォールバック：従来の方式で最も近い要素を探す
     let closestTaskId: string | null = null
     let closestDistance = Infinity
 
     rowElementsRef.current.forEach((element, taskId) => {
       const rect = element.getBoundingClientRect()
-      
-      // 完全に範囲内の場合は優先的に選択
-      if (y >= rect.top && y <= rect.bottom) {
-        if (!matchedTaskId) {
-          matchedTaskId = taskId
-        }
-      }
-      
-      // フォールバック用に最も近い要素も記録
       const elementCenterY = rect.top + rect.height / 2
       const distance = Math.abs(y - elementCenterY)
+      
       if (distance < closestDistance) {
         closestDistance = distance
         closestTaskId = taskId
       }
     })
 
-    // 完全一致があればそれを返し、なければ最も近い要素を返す
-    const result = matchedTaskId || closestTaskId
-    
-    if (result) {
-      logger.debug('Task selected from Y coordinate', {
+    if (closestTaskId) {
+      logger.debug('Task selected from Y coordinate (fallback)', {
         y,
-        taskId: result,
-        isExactMatch: !!matchedTaskId,
-        closestDistance: matchedTaskId ? 0 : closestDistance
+        mouseX,
+        taskId: closestTaskId,
+        closestDistance
       })
     }
 
-    return result
+    return closestTaskId
   }, [])
 
   // 範囲内のタスクIDを取得（画面位置ベース）
@@ -371,11 +388,13 @@ export const useRowSelection = (): UseRowSelectionReturn => {
   const handleDragStart = useCallback((event: React.MouseEvent, taskId: string, isAdditive: boolean) => {
     event.preventDefault()
     
-    // ドラッグ開始位置を記録
-    dragStartPositionRef.current = {
+    // ドラッグ開始位置と現在のマウス位置を記録
+    const mousePos = {
       x: event.clientX,
       y: event.clientY
     }
+    dragStartPositionRef.current = mousePos
+    currentMousePositionRef.current = mousePos
     
     logger.info('Mouse down on task row', { 
       taskId, 
@@ -399,6 +418,12 @@ export const useRowSelection = (): UseRowSelectionReturn => {
 
   // ドラッグ選択移動
   const handleDragMove = useCallback((event: MouseEvent) => {
+    // 現在のマウス位置を更新
+    currentMousePositionRef.current = {
+      x: event.clientX,
+      y: event.clientY
+    }
+    
     setState(prev => {
       const startPos = dragStartPositionRef.current
       
@@ -453,8 +478,9 @@ export const useRowSelection = (): UseRowSelectionReturn => {
       const wasDragging = prev.dragSelection.isDragging
       const startTaskId = prev.dragSelection.startTaskId
       
-      // ドラッグ開始位置をクリア
+      // ドラッグ開始位置とマウス位置をクリア
       dragStartPositionRef.current = null
+      currentMousePositionRef.current = null
       
       if (wasDragging) {
         // 実際にドラッグしていた場合：選択を確定

@@ -139,12 +139,16 @@ export const TaskRow: React.FC<TaskRowProps> = ({
     }
   }, [task.id, onRowMouseDown])
 
-  // 行要素の登録と位置更新（throttle付き）
+  // 行要素の登録と位置更新（プロジェクト情報付き）
   const rowRef = useCallback((element: HTMLDivElement | null) => {
     if (element) {
       if (registerRowElement) {
         registerRowElement(task.id, element)
       }
+      
+      // プロジェクト情報をデータ属性として追加
+      element.setAttribute('data-project-id', project.id)
+      element.setAttribute('data-task-id', task.id)
       
       // 位置情報を更新（過度な更新を防ぐためタイマーを使用）
       if (updateTaskPosition) {
@@ -152,7 +156,9 @@ export const TaskRow: React.FC<TaskRowProps> = ({
           const rect = element.getBoundingClientRect()
           const containerRect = element.offsetParent?.getBoundingClientRect() || { top: 0, left: 0 }
           
-          updateTaskPosition(task.id, {
+          // プロジェクト情報を含むユニークキーで位置を更新
+          const uniqueKey = `${project.id}-${task.id}`
+          updateTaskPosition(uniqueKey, {
             top: rect.top - containerRect.top,
             left: rect.left - containerRect.left,
             width: rect.width,
@@ -161,7 +167,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
         }, 0)
       }
     }
-  }, [task.id, registerRowElement, updateTaskPosition])
+  }, [task.id, project.id, registerRowElement, updateTaskPosition])
 
   // チェックボックスクリック処理
   const handleCheckboxClick = useCallback((event: React.MouseEvent) => {

@@ -44,8 +44,39 @@ export const SelectionBorder: React.FC<SelectionBorderProps> = ({
       let maxBottom = -Infinity
       
       tasks.forEach(task => {
-        const pos = positions.get(task.id)
-        if (!pos) return
+        // プロジェクト情報を含むユニークキーで位置を取得
+        const uniqueKey = `${task.projectId}-${task.id}`
+        const pos = positions.get(uniqueKey)
+        
+        if (!pos) {
+          // フォールバック：元のタスクIDでも試行
+          const fallbackPos = positions.get(task.id)
+          
+          console.warn('SelectionBorder: Position not found', {
+            taskId: task.id,
+            projectId: task.projectId,
+            uniqueKey,
+            hasUniqueKey: positions.has(uniqueKey),
+            hasFallbackKey: positions.has(task.id),
+            availableKeys: Array.from(positions.keys()),
+            foundFallback: !!fallbackPos
+          })
+          
+          if (!fallbackPos) return
+          
+          minTop = Math.min(minTop, fallbackPos.top)
+          minLeft = Math.min(minLeft, fallbackPos.left)
+          maxRight = Math.max(maxRight, fallbackPos.left + fallbackPos.width)
+          maxBottom = Math.max(maxBottom, fallbackPos.top + fallbackPos.height)
+          return
+        }
+        
+        console.debug('SelectionBorder: Using unique key position', {
+          taskId: task.id,
+          projectId: task.projectId,
+          uniqueKey,
+          position: pos
+        })
         
         minTop = Math.min(minTop, pos.top)
         minLeft = Math.min(minLeft, pos.left)
