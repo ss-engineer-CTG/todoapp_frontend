@@ -49,21 +49,42 @@ export const getDatePosition = (
   cellWidth: number,
   viewUnit: 'day' | 'week' = 'week'
 ): number => {
+  // 日付を正規化（時刻を00:00:00に設定してずれを防ぐ）
+  const normalizeDate = (d: Date): Date => {
+    const normalized = new Date(d)
+    normalized.setHours(0, 0, 0, 0)
+    return normalized
+  }
+  
+  const normalizedDate = normalizeDate(date)
+  const normalizedStartDate = normalizeDate(startDate)
+  
   if (viewUnit === 'week') {
-    const startOfWeek = new Date(date)
-    while (startOfWeek.getDay() !== 1) {
-      startOfWeek.setDate(startOfWeek.getDate() - 1)
+    // 週の開始日（月曜日）を取得
+    const getMonday = (d: Date): Date => {
+      const monday = new Date(d)
+      const day = monday.getDay()
+      const diff = day === 0 ? -6 : 1 - day // 日曜日は-6、それ以外は1-day
+      monday.setDate(monday.getDate() + diff)
+      return monday
     }
     
-    const weeksDiff = Math.round(
-      (startOfWeek.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)
-    )
-    const daysInWeek = (date.getDay() + 6) % 7
+    const startOfWeek = getMonday(normalizedDate)
+    const normalizedStart = getMonday(normalizedStartDate)
     
-    return weeksDiff * cellWidth * 7 + daysInWeek * cellWidth
+    // 週数差分を計算
+    const weeksDiff = Math.floor(
+      (startOfWeek.getTime() - normalizedStart.getTime()) / (7 * 24 * 60 * 60 * 1000)
+    )
+    
+    // 週内での日数（月曜日=0, 火曜日=1, ..., 日曜日=6）
+    const dayOfWeek = (normalizedDate.getDay() + 6) % 7
+    
+    return weeksDiff * cellWidth * 7 + dayOfWeek * cellWidth
   } else {
-    const diffDays = Math.round(
-      (date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    // 日表示の場合は単純な日数差分
+    const diffDays = Math.floor(
+      (normalizedDate.getTime() - normalizedStartDate.getTime()) / (1000 * 60 * 60 * 24)
     )
     return diffDays * cellWidth
   }
@@ -75,22 +96,38 @@ export const calculateScrollPosition = (
   cellWidth: number,
   viewUnit: 'day' | 'week' = 'week'
 ): number => {
+  // getDatePositionと同じ正規化ロジックを使用
+  const normalizeDate = (d: Date): Date => {
+    const normalized = new Date(d)
+    normalized.setHours(0, 0, 0, 0)
+    return normalized
+  }
+  
+  const normalizedTarget = normalizeDate(targetDate)
+  const normalizedStart = normalizeDate(startDate)
   
   if (viewUnit === 'week') {
-    const startOfWeek = new Date(targetDate)
-    while (startOfWeek.getDay() !== 1) {
-      startOfWeek.setDate(startOfWeek.getDate() - 1)
+    // 週の開始日（月曜日）を取得
+    const getMonday = (d: Date): Date => {
+      const monday = new Date(d)
+      const day = monday.getDay()
+      const diff = day === 0 ? -6 : 1 - day
+      monday.setDate(monday.getDate() + diff)
+      return monday
     }
     
-    const weeksDiff = Math.round(
-      (startOfWeek.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)
-    )
-    const daysInWeek = (targetDate.getDay() + 6) % 7
+    const startOfWeek = getMonday(normalizedTarget)
+    const normalizedStartWeek = getMonday(normalizedStart)
     
-    return weeksDiff * cellWidth * 7 + daysInWeek * cellWidth
+    const weeksDiff = Math.floor(
+      (startOfWeek.getTime() - normalizedStartWeek.getTime()) / (7 * 24 * 60 * 60 * 1000)
+    )
+    const dayOfWeek = (normalizedTarget.getDay() + 6) % 7
+    
+    return weeksDiff * cellWidth * 7 + dayOfWeek * cellWidth
   } else {
-    const diffDays = Math.round(
-      (targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    const diffDays = Math.floor(
+      (normalizedTarget.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24)
     )
     return diffDays * cellWidth
   }

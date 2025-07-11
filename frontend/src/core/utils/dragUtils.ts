@@ -254,16 +254,31 @@ export const shouldCancelDrag = (
 }
 
 /**
- * 位置から日付を計算
+ * 位置から日付を計算（正規化版）
  */
 export const calculateDateFromPosition = (
   position: number,
   startDate: Date,
   cellWidth: number,
-  _viewUnit: 'day' | 'week' = 'week'
+  viewUnit: 'day' | 'week' = 'week'
 ): Date => {
-  const daysDiff = Math.round(position / cellWidth)
-  const resultDate = new Date(startDate)
-  resultDate.setDate(startDate.getDate() + daysDiff)
-  return resultDate
+  // 開始日を正規化（時刻を00:00:00に設定）
+  const normalizedStartDate = new Date(startDate)
+  normalizedStartDate.setHours(0, 0, 0, 0)
+  
+  if (viewUnit === 'week') {
+    // 週表示の場合は日単位での計算
+    const daysDiff = Math.round(position / cellWidth)
+    const resultDate = new Date(normalizedStartDate)
+    resultDate.setDate(normalizedStartDate.getDate() + daysDiff)
+    resultDate.setHours(0, 0, 0, 0) // 結果も正規化
+    return resultDate
+  } else {
+    // 日表示の場合
+    const daysDiff = Math.round(position / cellWidth)
+    const resultDate = new Date(normalizedStartDate)
+    resultDate.setDate(normalizedStartDate.getDate() + daysDiff)
+    resultDate.setHours(0, 0, 0, 0) // 結果も正規化
+    return resultDate
+  }
 }

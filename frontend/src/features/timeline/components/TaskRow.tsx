@@ -202,7 +202,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
     >
       {/* 選択チェックボックス */}
       <div 
-        className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-20 transition-all duration-200 ${
+        className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-30 transition-all duration-200 ${
           isSelected ? 'opacity-100 scale-100' : 
           isPreview ? 'opacity-80 scale-95' : 
           'opacity-0 scale-75 group-hover:opacity-70 group-hover:scale-90'
@@ -236,7 +236,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
       <DraggableTaskBar
         taskWithChildren={taskWithChildren}
         project={project}
-        startPos={startPos + 32} // チェックボックス分のスペースを確保
+        startPos={startPos} // 正確な日付位置に描画
         barWidth={barWidth}
         barHeight={barHeight}
         statusStyle={statusStyle}
@@ -265,7 +265,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
             }
           }}
           project={project}
-          startPos={getDatePosition(dragState.previewStartDate, timeRange.startDate, dimensions.cellWidth, viewUnit) + 32}
+          startPos={getDatePosition(dragState.previewStartDate, timeRange.startDate, dimensions.cellWidth, viewUnit)}
           barWidth={Math.max(80, 
             getDatePosition(dragState.previewDueDate, timeRange.startDate, dimensions.cellWidth, viewUnit) - 
             getDatePosition(dragState.previewStartDate, timeRange.startDate, dimensions.cellWidth, viewUnit) + 
