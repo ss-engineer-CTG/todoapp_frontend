@@ -54,3 +54,10 @@ class BatchTaskOperation(BaseModel):
     """タスク一括操作スキーマ"""
     operation: str = Field(..., pattern="^(complete|incomplete|delete|copy)$", description="操作種別")
     task_ids: List[str] = Field(..., min_items=1, description="対象タスクIDリスト")
+
+class BatchDateShiftOperation(BaseModel):
+    """タスク日付一括変更スキーマ"""
+    task_ids: List[str] = Field(..., min_items=1, description="対象タスクIDリスト")
+    shift_type: str = Field(..., pattern="^(start_only|due_only|both)$", description="変更対象日付")
+    direction: str = Field(..., pattern="^(forward|backward)$", description="変更方向")
+    days: int = Field(..., ge=1, le=999, description="変更日数")

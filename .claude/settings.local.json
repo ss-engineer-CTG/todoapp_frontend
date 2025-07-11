@@ -9,7 +9,10 @@
       "Bash(npm run type-check:*)",
       "Bash(npm run build:*)",
       "Bash(node:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(python3:*)",
+      "Bash(source:*)",
+      "Bash(pip install:*)"
     ],
     "deny": []
   }

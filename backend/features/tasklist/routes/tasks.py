@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from core.database import DatabaseManager
 from core.logger import get_logger
 from ..services.task_service import TaskService
-from ..schemas.task import TaskCreate, TaskUpdate, TaskResponse, BatchTaskOperation
+from ..schemas.task import TaskCreate, TaskUpdate, TaskResponse, BatchTaskOperation, BatchDateShiftOperation
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 logger = get_logger(__name__)
@@ -132,4 +132,33 @@ async def batch_update_tasks(
             
     except Exception as e:
         logger.error(f"Failed to execute batch operation '{operation.operation}': {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/batch-shift-dates")
+async def batch_shift_task_dates(
+    operation: BatchDateShiftOperation,
+    service: TaskService = Depends(get_task_service)
+):
+    """タスクの日付を一括でずらす"""
+    try:
+        result = service.batch_shift_dates(
+            operation.task_ids,
+            operation.shift_type,
+            operation.direction,
+            operation.days
+        )
+        
+        if result['success']:
+            logger.info(f"Batch date shift completed successfully for {len(operation.task_ids)} tasks")
+            return {
+                "message": result['message'],
+                "affected_count": result['affected_count'],
+                "task_ids": operation.task_ids
+            }
+        else:
+            logger.error(f"Batch date shift failed: {result.get('error', 'Unknown error')}")
+            raise HTTPException(status_code=400, detail=result.get('error', 'Batch date shift failed'))
+            
+    except Exception as e:
+        logger.error(f"Failed to execute batch date shift: {e}")
         raise HTTPException(status_code=400, detail=str(e))

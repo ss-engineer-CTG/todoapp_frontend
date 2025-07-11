@@ -225,6 +225,29 @@ class ApiService {
       task_ids: response.task_ids
     }
   }
+
+  async batchShiftTaskDates(taskIds: string[], shiftType: 'start-only' | 'due-only' | 'both', direction: 'forward' | 'backward', days: number): Promise<BatchOperationResult> {
+    const response = await this.request<{
+      message: string
+      affected_count: number
+      task_ids: string[]
+    }>(joinPath(APP_PATHS.API.TASKS, 'batch-shift-dates'), {
+      method: 'POST',
+      body: JSON.stringify({
+        task_ids: taskIds,
+        shift_type: shiftType.replace('-', '_'), // 'start-only' -> 'start_only'
+        direction,
+        days
+      }),
+    })
+
+    return {
+      success: true,
+      message: response.message,
+      affected_count: response.affected_count,
+      task_ids: response.task_ids
+    }
+  }
 }
 
 export const apiService = new ApiService()

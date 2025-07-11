@@ -1,15 +1,19 @@
 // システムプロンプト準拠：メインタイムラインビューコンポーネント（全プロジェクト対応版）
-// 🔧 修正内容：ドラッグ機能の統合、onTaskUpdateプロパティの追加
+// 🔧 修正内容：ドラッグ機能の統合、onTaskUpdateプロパティの追加、コンテキストメニュー統合
 
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { TimelineControls } from './TimelineControls'
 import { TimelineRenderer } from './TimelineRenderer'
+import { TimelineMenuBar } from './TimelineMenuBar'
+import { ContextMenu } from './ContextMenu'
+import { DateShiftDialog, DateShiftOptions } from './DateShiftDialog'
 import { TimelineViewProps, SelectionMode } from '../types'
 import { useTimeline } from '../hooks/useTimeline'
 import { useRowSelection } from '../hooks/useRowSelection'
 import { buildTaskRelationMap } from '@tasklist/utils/task'
 import { useTheme } from '@core/components/ThemeProvider'
 import { Task } from '@core/types'
+import { apiService } from '@core/services/api'
 import { 
   logger,
   getDateCellClass,
@@ -18,6 +22,7 @@ import {
   calculateDateHeaderFontSize
 } from '@core/utils'
 import { isFirstDayOfWeek, isFirstDayOfMonth } from '../utils'
+import { DateShiftType } from './ContextMenu'
 
 // 🔧 修正：onTaskUpdateプロパティを含むインターフェース
 interface ExtendedTimelineViewProps extends TimelineViewProps {
@@ -36,6 +41,11 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   onTaskUpdate // 🆕 追加
 }) => {
   const { theme } = useTheme()
+  
+  // コンテキストメニューとダイアログの状態管理
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false)
+  const [isDateShiftDialogOpen, setIsDateShiftDialogOpen] = useState(false)
+  const [currentShiftType, setCurrentShiftType] = useState<DateShiftType>('both')
   
   const {
     state,
@@ -219,6 +229,68 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     selectAll(tasks)
   }, [tasks, selectedCount, selectAll])
 
+  // 日付ずらし機能のハンドラー
+  const handleDateShift = useCallback((type: DateShiftType) => {
+    setCurrentShiftType(type)
+    setIsDateShiftDialogOpen(true)
+    setIsContextMenuOpen(false)
+  }, [])
+
+  const handleDateShiftConfirm = useCallback(async (options: DateShiftOptions) => {
+    const selectedTasks = getSelectedTasks(tasks)
+    const taskIds = selectedTasks.map(task => task.id)
+    
+    try {
+      logger.info('Batch date shift requested', {
+        taskIds,
+        shiftType: options.type,
+        direction: options.direction,
+        days: options.days
+      })
+      
+      const result = await apiService.batchShiftTaskDates(
+        taskIds,
+        options.type,
+        options.direction,
+        options.days
+      )
+      
+      logger.info('Batch date shift completed', {
+        result,
+        affectedCount: result.affected_count
+      })
+      
+      // タスクデータの再読み込み（onTaskUpdateがある場合）
+      if (onTaskUpdate) {
+        // 個別のタスクに対してonTaskUpdateを呼び出すのではなく、
+        // バッチ処理が完了したことを通知
+        await Promise.all(
+          selectedTasks.map(task => onTaskUpdate(task.id, {}))
+        )
+      }
+      
+      // 選択解除
+      clearSelection()
+      
+    } catch (error) {
+      logger.error('Batch date shift failed', {
+        error,
+        taskIds,
+        options
+      })
+      throw error
+    }
+  }, [tasks, getSelectedTasks, clearSelection, onTaskUpdate])
+
+  // 右クリックハンドラー（暫定的に無効化）
+  const handleContextMenu = useCallback((event: React.MouseEvent) => {
+    if (selectedCount > 0) {
+      event.preventDefault()
+      // setIsContextMenuOpen(true) // 暫定的にコメントアウト
+      console.log('Right-click detected with', selectedCount, 'tasks selected')
+    }
+  }, [selectedCount])
+
   // タスクリストの更新（行選択フックに通知）
   useEffect(() => {
     updateTasksRef(tasks)
@@ -354,24 +426,13 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
         onViewModeChange={onViewModeChange}
       />
       
-      {/* 複数選択状態インジケーター */}
-      {isSelecting && (
-        <div className={`px-4 py-2 border-b ${
-          theme === 'dark' ? 'bg-blue-900/20 border-blue-700 text-blue-200' : 'bg-blue-50 border-blue-200 text-blue-800'
-        }`}>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">
-              {selectedCount}個のタスクが選択されています
-            </span>
-            <button
-              onClick={clearSelection}
-              className="text-sm px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
-            >
-              選択解除
-            </button>
-          </div>
-        </div>
-      )}
+      {/* メニューバー（一括操作）*/}
+      <TimelineMenuBar
+        selectedTasks={getSelectedTasks(tasks)}
+        onDateShift={handleDateShift}
+        onClearSelection={clearSelection}
+        theme={theme}
+      />
       
       <main className="flex-1 flex flex-col overflow-hidden w-full min-w-0" style={{ height: 'calc(100vh - 114px)' }}>
         <div className={`${classes.dateHeader} border-b-2 overflow-hidden w-full`}>
@@ -552,6 +613,31 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
           />
         </div>
       </main>
+      
+      {/* コンテキストメニュー（右クリックメニュー）- 暫定的に無効化 */}
+      {/* {selectedCount > 0 && (
+        <ContextMenu
+          selectedTasks={getSelectedTasks(tasks)}
+          isOpen={isContextMenuOpen}
+          onOpenChange={setIsContextMenuOpen}
+          onDateShift={handleDateShift}
+          onClearSelection={clearSelection}
+        >
+          <div 
+            className="fixed inset-0 z-40 pointer-events-none"
+            onContextMenu={handleContextMenu}
+          />
+        </ContextMenu>
+      )} */}
+      
+      {/* 日付ずらしダイアログ */}
+      <DateShiftDialog
+        isOpen={isDateShiftDialogOpen}
+        onClose={() => setIsDateShiftDialogOpen(false)}
+        selectedTasks={getSelectedTasks(tasks)}
+        shiftType={currentShiftType}
+        onConfirm={handleDateShiftConfirm}
+      />
     </div>
   )
 }

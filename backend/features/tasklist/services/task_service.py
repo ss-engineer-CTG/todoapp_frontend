@@ -3,7 +3,7 @@
 システムプロンプト準拠：DRY原則、ビジネスロジック集約
 """
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from core.database import DatabaseManager
 from core.exceptions import NotFoundError, ValidationError, handle_date_conversion_error
@@ -278,3 +278,63 @@ class TaskService:
                 except ValueError as e:
                     logger.warn(f"Invalid date format in {field}: {task[field]}")
                     raise ValidationError(f"Invalid date format in {field}: {task[field]}")
+    
+    def batch_shift_dates(self, task_ids: List[str], shift_type: str, direction: str, days: int) -> Dict[str, Any]:
+        """タスクの日付を一括でずらす"""
+        try:
+            if not task_ids:
+                return {"success": False, "error": "No task IDs provided"}
+            
+            # 日付をずらす計算
+            days_delta = days if direction == 'forward' else -days
+            
+            # 更新するフィールドを決定
+            update_fields = []
+            if shift_type == 'start_only':
+                update_fields = ['start_date']
+            elif shift_type == 'due_only':
+                update_fields = ['due_date']
+            elif shift_type == 'both':
+                update_fields = ['start_date', 'due_date']
+            else:
+                raise ValidationError(f"Invalid shift_type: {shift_type}")
+            
+            # 各タスクの日付を更新
+            affected_count = 0
+            for task_id in task_ids:
+                try:
+                    # 現在のタスクデータを取得
+                    current_task = self.get_task_by_id(task_id)
+                    
+                    # 日付を更新
+                    updated_data = {}
+                    for field in update_fields:
+                        if field in current_task and current_task[field]:
+                            try:
+                                current_date = datetime.fromisoformat(current_task[field].replace('Z', '+00:00'))
+                                new_date = current_date + timedelta(days=days_delta)
+                                updated_data[field] = new_date.isoformat()
+                            except (ValueError, TypeError) as e:
+                                logger.warn(f"Failed to shift date for task {task_id}, field {field}: {e}")
+                                continue
+                    
+                    # タスクを更新
+                    if updated_data:
+                        self.update_task(task_id, updated_data)
+                        affected_count += 1
+                        logger.info(f"Task {task_id} dates shifted by {days_delta} days")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to shift dates for task {task_id}: {e}")
+                    continue
+            
+            logger.info(f"Batch date shift completed: {affected_count}/{len(task_ids)} tasks updated")
+            return {
+                "success": True,
+                "affected_count": affected_count,
+                "message": f"Successfully shifted dates for {affected_count} tasks"
+            }
+            
+        except Exception as e:
+            logger.error(f"Batch date shift failed: {e}")
+            return {"success": False, "error": str(e)}
