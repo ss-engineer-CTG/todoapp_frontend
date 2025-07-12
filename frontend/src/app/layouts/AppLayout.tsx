@@ -10,7 +10,7 @@ import {
   useKeyboard
 } from '@tasklist'
 import { TimelineView } from '@timeline'
-import { LoadingSpinner } from '@core/utils'
+import { LoadingSpinner } from '@core/components'
 import { logger } from '@core/utils'
 import { ViewSwitcher } from './ViewSwitcher'
 

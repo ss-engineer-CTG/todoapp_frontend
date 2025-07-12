@@ -1,10 +1,30 @@
 // システムプロンプト準拠: 統合型定義ファイル
 // 🔧 修正内容：types.tsの内容を統合、重複排除実施
 
-// UI関連型
+// UI関連型（型安全性向上）
 export type AreaType = "projects" | "tasks" | "details" | "timeline"
 export type BatchOperation = 'complete' | 'incomplete' | 'delete' | 'copy'
 export type AppViewMode = 'tasklist' | 'timeline'
+
+// より厳密な型制約（リテラル型の活用）
+export const AREA_TYPES = {
+  PROJECTS: 'projects',
+  TASKS: 'tasks', 
+  DETAILS: 'details',
+  TIMELINE: 'timeline'
+} as const
+
+export const BATCH_OPERATIONS = {
+  COMPLETE: 'complete',
+  INCOMPLETE: 'incomplete', 
+  DELETE: 'delete',
+  COPY: 'copy'
+} as const
+
+export const APP_VIEW_MODES = {
+  TASKLIST: 'tasklist',
+  TIMELINE: 'timeline'
+} as const
 
 // 基本エンティティ型
 export interface Project {
@@ -74,7 +94,7 @@ export interface TaskEditingState {
   canSave: boolean
 }
 
-// 選択状態管理型
+// 選択状態管理型（基本版）
 export interface SelectionState {
   selectedId: string | null
   selectedIds: string[]

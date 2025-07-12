@@ -1,22 +1,8 @@
 // システムプロンプト準拠：統一設定管理（ドラッグ制限設定追加版）
 // 🔧 修正内容：DRAG_RESTRICTIONS設定を追加、既存設定は完全保持
 
-// 基本型定義
-export interface ProjectColor {
-  name: string
-  value: string
-}
-
-export interface KeyboardShortcut {
-  key: string
-  description: string
-}
-
-// 🆕 追加：ドラッグ制限設定型
-export interface DragRestrictions {
-  PREVENT_PAST_DATES: boolean
-  ENFORCE_DATE_ORDER: boolean
-}
+// 型定義は core/types から使用（重複除去）
+import type { ProjectColor, KeyboardShortcut, DragRestrictions } from '@core/types'
 
 // パス管理統一
 export const APP_PATHS = {

@@ -17,21 +17,20 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
+      // 基本パス
       "@/*": ["./src/*"],
+      
+      // コアモジュール（統合エイリアス）
       "@core/*": ["./src/core/*"],
-      "@features/*": ["./src/features/*"],
+      
+      // 機能別モジュール
       "@tasklist": ["./src/features/tasklist"],
       "@tasklist/*": ["./src/features/tasklist/*"],
       "@timeline": ["./src/features/timeline"],
       "@timeline/*": ["./src/features/timeline/*"],
-      "@template/*": ["./src/features/template/*"],
       "@app/*": ["./src/app/*"],
-      "@components/*": ["./src/core/components/*"],
-      "@hooks/*": ["./src/features/tasklist/hooks/*"],
-      "@utils/*": ["./src/core/utils/*"],
-      "@config/*": ["./src/core/config/*"],
-      "@types/*": ["./src/core/types/*"],
-      "@services/*": ["./src/core/services/*"],
+      
+      // UIコンポーネント系（shadcn/ui 互換）
       "@/lib/utils": ["./src/core/utils"],
       "@/components/ui/*": ["./src/core/components/ui/*"]
     }

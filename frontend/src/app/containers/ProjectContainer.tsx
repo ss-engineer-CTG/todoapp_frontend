@@ -1,7 +1,7 @@
 // システムプロンプト準拠：プロジェクト関連ロジック統合（リファクタリング：責任分離）
 // リファクタリング対象：AppContainer.tsx からプロジェクト関連処理を抽出
 
-import { useCallback } from 'react'
+// React is not directly used in this container hook
 import { Project } from '@core/types'
 import { logger } from '@core/utils'
 
@@ -40,16 +40,16 @@ export const useProjectContainer = (props: ProjectContainerProps): ProjectContai
   } = props
 
   // ===== プロジェクト選択ハンドラー =====
-  const handleProjectSelect = useCallback((projectId: string) => {
+  const handleProjectSelect = (projectId: string) => {
     logger.info('Project selection requested', { 
       from: selectedProjectId, 
       to: projectId 
     })
     onProjectSelect(projectId)
-  }, [selectedProjectId, onProjectSelect])
+  }
 
   // ===== プロジェクト展開/縮小ハンドラー =====
-  const handleToggleProject = useCallback(async (projectId: string) => {
+  const handleToggleProject = async (projectId: string) => {
     const project = projects.find(p => p.id === projectId)
     if (!project) {
       logger.warn('Project not found for toggle', { projectId })
@@ -63,7 +63,7 @@ export const useProjectContainer = (props: ProjectContainerProps): ProjectContai
     })
     
     await onToggleProject(projectId)
-  }, [projects, onToggleProject])
+  }
 
   return {
     // プロジェクト操作ハンドラー

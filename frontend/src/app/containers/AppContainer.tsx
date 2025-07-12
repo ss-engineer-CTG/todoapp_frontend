@@ -1,7 +1,7 @@
 // システムプロンプト準拠：メインアプリロジック統合・軽量化版（リファクタリング：状態管理統合）
 // リファクタリング対象：TodoApp.tsx から状態管理とAPI呼び出し処理を抽出
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { AreaType, Task, AppViewMode, Project } from '@core/types'
 import { 
   useAppState,
@@ -145,7 +145,7 @@ export const AppContainer: React.FC = () => {
   })
 
   // ===== プロジェクト操作ハンドラー =====
-  const handleToggleProject = useCallback(async (projectId: string) => {
+  const handleToggleProject = async (projectId: string) => {
     try {
       const project = managedProjects.find(p => p.id === projectId)
       if (!project) return
@@ -169,10 +169,10 @@ export const AppContainer: React.FC = () => {
         prev.map(p => p.id === projectId ? currentProjects.find(cp => cp.id === projectId) || p : p)
       )
     }
-  }, [managedProjects, updateProject, currentProjects])
+  }
 
   // ===== タスク操作ハンドラー =====
-  const handleToggleTask = useCallback(async (taskId: string) => {
+  const handleToggleTask = async (taskId: string) => {
     try {
       const task = managedTasks.find(t => t.id === taskId)
       if (!task || isDraftTask(task)) return
@@ -205,10 +205,10 @@ export const AppContainer: React.FC = () => {
         )
       }
     }
-  }, [managedTasks, updateTask, currentTasks])
+  }
 
   // ===== 一括操作ハンドラー =====
-  const handleExpandAll = useCallback(async () => {
+  const handleExpandAll = async () => {
     try {
       logger.info('Expanding all projects and tasks')
       
@@ -231,9 +231,9 @@ export const AppContainer: React.FC = () => {
     } catch (error) {
       logger.error('Expand all failed', { error })
     }
-  }, [managedProjects, managedTasks, updateProject, updateTask])
+  }
 
-  const handleCollapseAll = useCallback(async () => {
+  const handleCollapseAll = async () => {
     try {
       logger.info('Collapsing all projects and tasks')
       
@@ -256,10 +256,10 @@ export const AppContainer: React.FC = () => {
     } catch (error) {
       logger.error('Collapse all failed', { error })
     }
-  }, [managedProjects, managedTasks, updateProject, updateTask])
+  }
 
   // ===== ビューモード制御 =====
-  const handleViewModeChange = useCallback(async (newMode: AppViewMode) => {
+  const handleViewModeChange = async (newMode: AppViewMode) => {
     logger.info('View mode changing', { from: viewMode, to: newMode })
     setViewMode(newMode)
     
@@ -274,18 +274,18 @@ export const AppContainer: React.FC = () => {
         await loadTasks(selectedProjectId)
       }
     }
-  }, [viewMode, loadTasks, selectedProjectId])
+  }
 
   // ===== タイムライン制御 =====
-  const handleTimelineScrollToToday = useCallback(() => {
+  const handleTimelineScrollToToday = () => {
     logger.info('Timeline scroll to today requested from main app')
     if (timelineScrollToToday) {
       timelineScrollToToday()
     }
-  }, [timelineScrollToToday])
+  }
 
   // ===== タスク更新ハンドラー（ドラッグ経由） =====
-  const handleTaskUpdateViaDrag = useCallback(async (taskId: string, updates: Partial<Task>) => {
+  const handleTaskUpdateViaDrag = async (taskId: string, updates: Partial<Task>) => {
     try {
       logger.info('Task update via drag initiated', { 
         taskId, 
@@ -308,7 +308,7 @@ export const AppContainer: React.FC = () => {
       logger.error('Task update via drag failed', { taskId, updates, error })
       handleError(error, 'ドラッグによるタスク更新に失敗しました')
     }
-  }, [updateTask, loadTasks, selectedProjectId])
+  }
 
   // ===== 初期化処理 =====
   useEffect(() => {

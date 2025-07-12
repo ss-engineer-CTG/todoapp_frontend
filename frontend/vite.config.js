@@ -15,20 +15,18 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      // 基本パス
       "@": path.resolve(__dirname, "./src"),
+      
+      // コアモジュール（統合エイリアス）
       "@core": path.resolve(__dirname, "./src/core"),
-      "@features": path.resolve(__dirname, "./src/features"),
+      
+      // 機能別モジュール
       "@tasklist": path.resolve(__dirname, "./src/features/tasklist"),
       "@timeline": path.resolve(__dirname, "./src/features/timeline"),
-      "@template": path.resolve(__dirname, "./src/features/template"),
       "@app": path.resolve(__dirname, "./src/app"),
-      "@components": path.resolve(__dirname, "./src/core/components"),
-      "@hooks": path.resolve(__dirname, "./src/features/tasklist/hooks"),
-      "@utils": path.resolve(__dirname, "./src/core/utils"),
-      "@services": path.resolve(__dirname, "./src/core/services"),
-      "@config": path.resolve(__dirname, "./src/core/config"),
-      "@types": path.resolve(__dirname, "./src/core/types"),
-      // システムプロンプト準拠：UIコンポーネント用エイリアス追加
+      
+      // UIコンポーネント系（shadcn/ui 互換）
       "@/lib/utils": path.resolve(__dirname, "./src/core/utils"),
       "@/components/ui": path.resolve(__dirname, "./src/core/components/ui"),
     },

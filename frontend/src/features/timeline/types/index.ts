@@ -106,7 +106,8 @@ export interface TimelineControlsProps {
 export type SelectionMode = 'single' | 'multiple'
 export type RowSelectionMode = 'single' | 'multiple' | 'drag'
 
-export interface SelectionState {
+// Timeline固有の複数選択状態（core/typesのSelectionStateと区別）
+export interface TimelineSelectionState {
   selectedTaskIds: Set<string>
   lastSelectedTaskId: string | null
   selectionMode: SelectionMode
