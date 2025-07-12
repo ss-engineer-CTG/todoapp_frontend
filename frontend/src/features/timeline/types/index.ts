@@ -103,8 +103,8 @@ export interface TimelineControlsProps {
 }
 
 // 複数選択関連の型定義
-export type SelectionMode = 'single' | 'multiple' | 'range'
-export type RowSelectionMode = 'single' | 'multiple' | 'range' | 'drag'
+export type SelectionMode = 'single' | 'multiple'
+export type RowSelectionMode = 'single' | 'multiple' | 'drag'
 
 export interface SelectionState {
   selectedTaskIds: Set<string>
@@ -149,10 +149,14 @@ export interface TimelineRendererProps {
   previewTaskIds?: Set<string>
   onRowClick?: (event: React.MouseEvent, taskId: string) => void
   onRowMouseDown?: (event: React.MouseEvent, taskId: string) => void
-  onSelectionClear?: () => void
+  onSelectionClear?: (event: React.MouseEvent) => void
   registerRowElement?: (taskId: string, element: HTMLElement) => void
   taskPositions?: Map<string, { top: number; left: number; width: number; height: number }>
   updateTaskPosition?: (taskId: string, position: { top: number; left: number; width: number; height: number }) => void
+  // ドラッグ選択状態
+  isDragSelecting?: boolean
+  dragSelectionStartY?: number
+  dragSelectionCurrentY?: number
 }
 
 // 🔧 修正：ドラッグ可能なタスクバーのプロパティにモード対応追加

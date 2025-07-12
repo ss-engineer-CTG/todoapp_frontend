@@ -67,6 +67,8 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     isSelecting,
     isDragSelecting,
     previewTaskIds,
+    dragSelectionStartY,
+    dragSelectionCurrentY,
     selectAll,
     clearSelection,
     getSelectedTasks,
@@ -291,10 +293,14 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     }
   }, [selectedCount])
 
-  // タスクリストの更新（行選択フックに通知）
+  // 階層ソート済みタスクリストを行選択フックに通知
+  const hierarchicalTasks = useMemo(() => {
+    return tasks // TimelineRendererで階層ソートされるため、ここでは元の配列を使用
+  }, [tasks])
+
   useEffect(() => {
-    updateTasksRef(tasks)
-  }, [tasks, updateTasksRef])
+    updateTasksRef(hierarchicalTasks)
+  }, [hierarchicalTasks, updateTasksRef])
 
   const getAppClasses = useCallback(() => {
     return theme === 'dark' 
@@ -595,7 +601,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
             taskRelationMap={taskRelationMap}
             zoomLevel={state.zoomLevel}
             viewUnit={state.viewUnit}
-            theme={theme === 'system' ? 'light' : theme}
+            theme={theme === 'system' ? 'light' : theme as 'light' | 'dark'}
             timeRange={timeRange}
             visibleDates={visibleDates}
             scrollLeft={state.scrollLeft}
@@ -610,6 +616,9 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
             registerRowElement={registerRowElement}
             taskPositions={taskPositions}
             updateTaskPosition={updateTaskPosition}
+            isDragSelecting={isDragSelecting}
+            dragSelectionStartY={dragSelectionStartY}
+            dragSelectionCurrentY={dragSelectionCurrentY}
           />
         </div>
       </main>

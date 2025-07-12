@@ -10,6 +10,7 @@ import { TimelineRendererProps, TaskWithChildren } from '../types'
 import { DraggableTaskBar } from './DraggableTaskBar'
 import { TaskRow } from './TaskRow'
 import { SelectionBorder } from './SelectionBorder'
+import { DragSelectionRectangle } from './DragSelectionRectangle'
 import { useTaskDrag } from '../hooks/useTaskDrag'
 import { 
   calculateTimelineTaskStatus,
@@ -52,7 +53,11 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
   onSelectionClear,
   registerRowElement,
   taskPositions,
-  updateTaskPosition
+  updateTaskPosition,
+  // ドラッグ選択状態
+  isDragSelecting,
+  dragSelectionStartY,
+  dragSelectionCurrentY
 }) => {
   
   const today = new Date()
@@ -594,6 +599,16 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
           taskPositions={taskPositions}
           theme={theme}
           containerRef={{ current: null }}
+        />
+      )}
+      
+      {/* ドラッグ選択矩形 */}
+      {isDragSelecting && dragSelectionStartY !== undefined && dragSelectionCurrentY !== undefined && (
+        <DragSelectionRectangle
+          startY={dragSelectionStartY}
+          currentY={dragSelectionCurrentY}
+          isVisible={isDragSelecting}
+          theme={theme}
         />
       )}
     </div>

@@ -113,7 +113,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
       backgroundColor,
       borderColor,
       borderLeftWidth: isSelected ? '5px' : isPreview ? '3px' : '1px',
-      borderLeftStyle: 'solid'
+      borderLeftStyle: 'solid' as const
     }
   }, [isSelected, isPreview, theme])
 
@@ -200,13 +200,14 @@ export const TaskRow: React.FC<TaskRowProps> = ({
       onClick={handleRowClickLocal}
       onMouseDown={handleRowMouseDownLocal}
     >
-      {/* 選択チェックボックス */}
-      <div 
-        className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-30 transition-all duration-200 ${
-          isSelected ? 'opacity-100 scale-100' : 
-          isPreview ? 'opacity-80 scale-95' : 
-          'opacity-0 scale-75 group-hover:opacity-70 group-hover:scale-90'
-        }`}
+      {/* 選択チェックボックス（選択モード時のみ表示） */}
+      {(isSelected || isPreview) && (
+        <div 
+          className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-30 transition-all duration-200 ${
+            isSelected ? 'opacity-100 scale-100' : 
+            isPreview ? 'opacity-80 scale-95' : 
+            'opacity-0 scale-75'
+          }`}
         onClick={handleCheckboxClick}
       >
         <div 
@@ -231,7 +232,8 @@ export const TaskRow: React.FC<TaskRowProps> = ({
             />
           )}
         </div>
-      </div>
+        </div>
+      )}
       {/* DraggableTaskBarコンポーネントを使用 */}
       <DraggableTaskBar
         taskWithChildren={taskWithChildren}
