@@ -10,6 +10,7 @@ export interface TimelineContainerProps {
   activeArea: string
   projects: Project[]
   allTasksWithDrafts: Task[]
+  selectedProjectId: string
   timelineScrollToToday: (() => void) | null
   onViewModeChange: (mode: AppViewMode) => Promise<void>
   onToggleProject: (projectId: string) => Promise<void>
@@ -17,6 +18,7 @@ export interface TimelineContainerProps {
   onExpandAll: () => Promise<void>
   onCollapseAll: () => Promise<void>
   onTaskUpdateViaDrag: (taskId: string, updates: Partial<Task>) => Promise<void>
+  refreshTasks: () => Promise<void>
   setTimelineScrollToToday: (fn: (() => void) | null) => void
 }
 
@@ -52,6 +54,7 @@ export const useTimelineContainer = (props: TimelineContainerProps): TimelineCon
     activeArea,
     projects,
     allTasksWithDrafts,
+    selectedProjectId,
     timelineScrollToToday,
     onViewModeChange,
     onToggleProject,
@@ -59,6 +62,7 @@ export const useTimelineContainer = (props: TimelineContainerProps): TimelineCon
     onExpandAll,
     onCollapseAll,
     onTaskUpdateViaDrag,
+    refreshTasks,
     setTimelineScrollToToday
   } = props
 
@@ -167,6 +171,8 @@ export const useTimelineContainer = (props: TimelineContainerProps): TimelineCon
   const timelineProps = {
     projects,
     tasks: allTasksWithDrafts,
+    selectedProjectId,
+    refreshTasks,
     onViewModeChange: handleViewModeChange,
     onScrollToToday: setTimelineScrollToToday,
     onToggleProject: handleToggleProject,

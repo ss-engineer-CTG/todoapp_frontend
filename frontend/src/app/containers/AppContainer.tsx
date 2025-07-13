@@ -397,6 +397,7 @@ export const AppContainer: React.FC = () => {
     activeArea,
     projects: managedProjects,
     allTasksWithDrafts,
+    selectedProjectId,
     timelineScrollToToday,
     onViewModeChange: handleViewModeChange,
     onToggleProject: handleToggleProject,
@@ -404,6 +405,7 @@ export const AppContainer: React.FC = () => {
     onExpandAll: handleExpandAll,
     onCollapseAll: handleCollapseAll,
     onTaskUpdateViaDrag: handleTaskUpdateViaDrag,
+    refreshTasks: async () => { await loadTasks(); },
     setTimelineScrollToToday
   }
   const timelineContainer = useTimelineContainer(timelineContainerProps)

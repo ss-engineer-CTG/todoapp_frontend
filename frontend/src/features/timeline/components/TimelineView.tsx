@@ -5,11 +5,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { TimelineControls } from './TimelineControls'
 import { TimelineRenderer } from './TimelineRenderer'
 import { TimelineMenuBar } from './TimelineMenuBar'
-import { ContextMenu } from './ContextMenu'
 import { DateShiftDialog, DateShiftOptions } from './DateShiftDialog'
-import { TimelineViewProps, SelectionMode } from '../types'
+import { TaskNameDialog } from './TaskNameDialog'
+import { TimelineViewProps } from '../types'
 import { useTimeline } from '../hooks/useTimeline'
 import { useRowSelection } from '../hooks/useRowSelection'
+import { useTimelineKeyboard } from '../hooks/useTimelineKeyboard'
+import { useTimelineTaskOperations } from '../hooks/useTimelineTaskOperations'
 import { buildTaskRelationMap } from '@tasklist/utils/task'
 import { useTheme } from '@core/components/ThemeProvider'
 import { Task } from '@core/types'
@@ -24,9 +26,11 @@ import {
 import { isFirstDayOfWeek, isFirstDayOfMonth } from '../utils'
 import { DateShiftType } from './ContextMenu'
 
-// 🔧 修正：onTaskUpdateプロパティを含むインターフェース
+// 🔧 修正：onTaskUpdateプロパティとキーボード機能を含むインターフェース
 interface ExtendedTimelineViewProps extends TimelineViewProps {
   onTaskUpdate?: (taskId: string, updates: Partial<Task>) => Promise<void>
+  selectedProjectId?: string
+  refreshTasks?: () => Promise<void>
 }
 
 export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
@@ -38,14 +42,20 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   onToggleTask,
   onExpandAll,
   onCollapseAll,
-  onTaskUpdate // 🆕 追加
+  onTaskUpdate, // 🆕 追加
+  selectedProjectId, // 🆕 追加
+  refreshTasks // 🆕 追加
 }) => {
   const { theme } = useTheme()
   
-  // コンテキストメニューとダイアログの状態管理
-  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false)
+  // ダイアログの状態管理
   const [isDateShiftDialogOpen, setIsDateShiftDialogOpen] = useState(false)
   const [currentShiftType, setCurrentShiftType] = useState<DateShiftType>('both')
+  
+  // タスク名入力ダイアログの状態管理
+  const [isTaskNameDialogOpen, setIsTaskNameDialogOpen] = useState(false)
+  const [taskDialogType, setTaskDialogType] = useState<'task' | 'subtask'>('task')
+  const [taskDialogParentTask, setTaskDialogParentTask] = useState<Task | null>(null)
   
   const {
     state,
@@ -69,7 +79,6 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     previewTaskIds,
     dragSelectionStartY,
     dragSelectionCurrentY,
-    selectAll,
     clearSelection,
     getSelectedTasks,
     handleRowClick,
@@ -80,6 +89,107 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     updateTaskPosition,
     isRecentDragEnd
   } = useRowSelection()
+
+  // 🆕 プロジェクト選択状態（デフォルト値設定）
+  const currentSelectedProjectId = selectedProjectId || (projects.length > 0 ? projects[0].id : null)
+  
+  // 🆕 データ再読み込み関数（デフォルト実装）
+  const handleRefreshTasks = useCallback(async () => {
+    if (refreshTasks) {
+      await refreshTasks()
+    } else {
+      // デフォルト実装：何もしない（親コンポーネントが管理）
+      logger.info('Tasks refresh requested but no refresh function provided')
+    }
+  }, [refreshTasks])
+
+  // 🆕 タスク名ダイアログ制御
+  const handleShowTaskNameDialog = useCallback((taskType: 'task' | 'subtask', parentTask?: Task) => {
+    setTaskDialogType(taskType)
+    setTaskDialogParentTask(parentTask || null)
+    setIsTaskNameDialogOpen(true)
+    
+    logger.info('Task name dialog opened from keyboard shortcut', {
+      taskType,
+      parentTaskId: parentTask?.id,
+      parentTaskName: parentTask?.name
+    })
+  }, [])
+
+  const handleTaskNameDialogClose = useCallback(() => {
+    setIsTaskNameDialogOpen(false)
+    setTaskDialogParentTask(null)
+    
+    logger.info('Task name dialog closed')
+  }, [])
+
+  // 🆕 タイムライン用タスク操作
+  const {
+    createTaskWithName,
+    createSubTaskWithName,
+    toggleTaskCompletion,
+    deleteTask
+  } = useTimelineTaskOperations({
+    tasks,
+    selectedProjectId: currentSelectedProjectId,
+    onTaskUpdate,
+    refreshTasks: handleRefreshTasks
+  })
+
+  const handleTaskNameDialogConfirm = useCallback(async (taskName: string) => {
+    try {
+      if (taskDialogType === 'subtask' && taskDialogParentTask) {
+        // サブタスク作成
+        await createSubTaskWithName(
+          taskDialogParentTask.id,
+          taskDialogParentTask.level + 1,
+          taskName
+        )
+        
+        logger.info('Sub task created from dialog', {
+          taskName,
+          parentTaskId: taskDialogParentTask.id,
+          parentTaskName: taskDialogParentTask.name
+        })
+      } else {
+        // 通常タスク作成
+        const parentId = taskDialogParentTask?.parentId || null
+        const level = taskDialogParentTask?.level || 0
+        
+        await createTaskWithName(parentId, level, taskName)
+        
+        logger.info('Task created from dialog', {
+          taskName,
+          parentId,
+          level
+        })
+      }
+    } catch (error) {
+      logger.error('Task creation from dialog failed', {
+        taskName,
+        taskDialogType,
+        parentTaskId: taskDialogParentTask?.id,
+        error
+      })
+      throw error
+    }
+  }, [taskDialogType, taskDialogParentTask, createTaskWithName, createSubTaskWithName])
+
+  // 🆕 タイムライン用キーボードショートカット
+  const keyboardState = useTimelineKeyboard({
+    tasks,
+    selectedTaskIds,
+    selectedCount,
+    isSelecting,
+    getSelectedTasks,
+    onCreateTaskWithName: createTaskWithName,
+    onCreateSubTaskWithName: createSubTaskWithName,
+    onToggleCompletion: toggleTaskCompletion,
+    onDeleteTask: deleteTask,
+    clearSelection,
+    onShowTaskNameDialog: handleShowTaskNameDialog,
+    isTimelineActive: true // タイムラインビューがアクティブ
+  })
 
   const today = new Date()
   
@@ -222,20 +332,10 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     }
   }, [isSelecting, isDragSelecting, selectedCount, clearSelection, isRecentDragEnd])
 
-  // 全選択ハンドラー（Ctrl+A）
-  const handleSelectAll = useCallback(() => {
-    logger.info('Select all tasks requested', {
-      totalTasks: tasks.length,
-      currentSelectedCount: selectedCount
-    })
-    selectAll(tasks)
-  }, [tasks, selectedCount, selectAll])
-
   // 日付ずらし機能のハンドラー
   const handleDateShift = useCallback((type: DateShiftType) => {
     setCurrentShiftType(type)
     setIsDateShiftDialogOpen(true)
-    setIsContextMenuOpen(false)
   }, [])
 
   const handleDateShiftConfirm = useCallback(async (options: DateShiftOptions) => {
@@ -284,15 +384,6 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     }
   }, [tasks, getSelectedTasks, clearSelection, onTaskUpdate])
 
-  // 右クリックハンドラー（暫定的に無効化）
-  const handleContextMenu = useCallback((event: React.MouseEvent) => {
-    if (selectedCount > 0) {
-      event.preventDefault()
-      // setIsContextMenuOpen(true) // 暫定的にコメントアウト
-      console.log('Right-click detected with', selectedCount, 'tasks selected')
-    }
-  }, [selectedCount])
-
   // 階層ソート済みタスクリストを行選択フックに通知
   const hierarchicalTasks = useMemo(() => {
     return tasks // TimelineRendererで階層ソートされるため、ここでは元の配列を使用
@@ -325,6 +416,9 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
       taskCount: tasks.length,
       projectCount: projects.length,
       visibleDatesCount: visibleDates.length,
+      selectedProjectId: currentSelectedProjectId,
+      keyboardShortcutsActive: keyboardState.isActive,
+      selectedTasksCount: selectedCount,
       projectStats: projectTaskStats.reduce((summary, stat) => {
         summary[stat.projectId] = {
           name: stat.projectName,
@@ -334,7 +428,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
         return summary
       }, {} as { [key: string]: { name: string; tasks: number; completion: string } })
     })
-  }, [state.viewUnit, state.zoomLevel, tasks.length, projects.length, visibleDates.length, projectTaskStats])
+  }, [state.viewUnit, state.zoomLevel, tasks.length, projects.length, visibleDates.length, projectTaskStats, currentSelectedProjectId, keyboardState.isActive, selectedCount])
 
   if (projects.length === 0) {
     return (
@@ -437,7 +531,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
         selectedTasks={getSelectedTasks(tasks)}
         onDateShift={handleDateShift}
         onClearSelection={clearSelection}
-        theme={theme}
+        theme={theme === 'dark' ? 'dark' : 'light'}
       />
       
       <main className="flex-1 flex flex-col overflow-hidden w-full min-w-0" style={{ height: 'calc(100vh - 114px)' }}>
@@ -601,7 +695,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
             taskRelationMap={taskRelationMap}
             zoomLevel={state.zoomLevel}
             viewUnit={state.viewUnit}
-            theme={theme === 'system' ? 'light' : theme as 'light' | 'dark'}
+            theme={theme === 'dark' ? 'dark' : 'light'}
             timeRange={timeRange}
             visibleDates={visibleDates}
             scrollLeft={state.scrollLeft}
@@ -646,6 +740,15 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
         selectedTasks={getSelectedTasks(tasks)}
         shiftType={currentShiftType}
         onConfirm={handleDateShiftConfirm}
+      />
+      
+      {/* タスク名入力ダイアログ */}
+      <TaskNameDialog
+        isOpen={isTaskNameDialogOpen}
+        onClose={handleTaskNameDialogClose}
+        onConfirm={handleTaskNameDialogConfirm}
+        taskType={taskDialogType}
+        parentTaskName={taskDialogParentTask?.name}
       />
     </div>
   )
