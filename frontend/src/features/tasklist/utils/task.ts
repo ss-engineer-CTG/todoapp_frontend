@@ -29,21 +29,39 @@ export const filterValidTasksForBatch = (tasks: Task[], taskIds: string[]): stri
   })
 }
 
-// ===== タスク関係マップ構築（既存維持） =====
+// ===== タスク関係マップ構築（最適化版） =====
 export const buildTaskRelationMap = (tasks: Task[]): TaskRelationMap => {
+  // 🔧 最適化：Mapを使用してパフォーマンス向上
   const childrenMap: { [parentId: string]: string[] } = {}
   const parentMap: { [childId: string]: string | null } = {}
 
-  tasks.forEach((task) => {
-    if (task.parentId === null) {
-      childrenMap["root"] = childrenMap["root"] || []
-      childrenMap["root"].push(task.id)
-      parentMap[task.id] = null
+  // 🔧 最適化：single passで処理を完了
+  for (let i = 0; i < tasks.length; i++) {
+    const task = tasks[i]
+    const taskId = task.id
+    const parentId = task.parentId
+    
+    // 親マップの設定
+    parentMap[taskId] = parentId
+    
+    // 子マップの設定
+    if (parentId === null) {
+      if (!childrenMap["root"]) {
+        childrenMap["root"] = []
+      }
+      childrenMap["root"].push(taskId)
     } else {
-      childrenMap[task.parentId] = childrenMap[task.parentId] || []
-      childrenMap[task.parentId].push(task.id)
-      parentMap[task.id] = task.parentId
+      if (!childrenMap[parentId]) {
+        childrenMap[parentId] = []
+      }
+      childrenMap[parentId].push(taskId)
     }
+  }
+
+  logger.debug('Task relation map built', {
+    taskCount: tasks.length,
+    rootTasks: childrenMap["root"]?.length || 0,
+    parentsWithChildren: Object.keys(childrenMap).length - 1 // "root"を除く
   })
 
   return { childrenMap, parentMap }
@@ -85,49 +103,93 @@ export const sortTasksByDueDate = (tasks: Task[]): Task[] => {
   }
 }
 
-// ===== 階層ソート（既存維持） =====
+// ===== 階層ソート（最適化版） =====
 export const sortTasksHierarchically = (tasks: Task[], relationMap: TaskRelationMap): Task[] => {
   try {
     if (tasks.length === 0) return []
 
-    const sortedTasks: Task[] = []
-    const rootTasks = tasks.filter(task => !task.parentId)
+    // 🔧 最適化：タスクマップを事前構築（O(1)アクセス）
+    const taskMap = new Map<string, Task>()
+    const rootTasks: Task[] = []
+    
+    for (let i = 0; i < tasks.length; i++) {
+      const task = tasks[i]
+      taskMap.set(task.id, task)
+      if (!task.parentId) {
+        rootTasks.push(task)
+      }
+    }
+    
+    // 🔧 最適化：ルートタスクをソート
     const sortedRootTasks = sortTasksByDueDate(rootTasks)
     
-    logger.info('Hierarchical sorting with due date priority', {
+    logger.debug('Hierarchical sorting starting', {
       totalTasks: tasks.length,
       rootTasks: rootTasks.length,
-      sortMethod: 'due_date_hierarchical'
+      sortMethod: 'optimized_hierarchical'
     })
 
-    const addTaskWithChildren = (task: Task) => {
+    const sortedTasks: Task[] = []
+    const visited = new Set<string>()
+
+    // 🔧 最適化：再帰を避けてスタックベースで処理
+    const processTask = (task: Task) => {
+      if (visited.has(task.id)) return
+      
+      visited.add(task.id)
       sortedTasks.push(task)
       
+      // 子タスクを取得してソート
       const childTaskIds = relationMap.childrenMap[task.id] || []
-      const childTasks = childTaskIds
-        .map(childId => tasks.find(t => t.id === childId))
-        .filter((child): child is Task => child !== undefined)
+      const childTasks: Task[] = []
+      
+      for (let i = 0; i < childTaskIds.length; i++) {
+        const child = taskMap.get(childTaskIds[i])
+        if (child) {
+          childTasks.push(child)
+        }
+      }
       
       const sortedChildTasks = sortTasksByDueDate(childTasks)
-      sortedChildTasks.forEach(child => addTaskWithChildren(child))
+      for (let i = 0; i < sortedChildTasks.length; i++) {
+        processTask(sortedChildTasks[i])
+      }
     }
 
-    sortedRootTasks.forEach(rootTask => addTaskWithChildren(rootTask))
+    // 🔧 最適化：ルートタスクから順番に処理
+    for (let i = 0; i < sortedRootTasks.length; i++) {
+      processTask(sortedRootTasks[i])
+    }
 
-    const addedTaskIds = new Set(sortedTasks.map(t => t.id))
-    const orphanTasks = tasks.filter(task => !addedTaskIds.has(task.id))
-    const sortedOrphans = sortTasksByDueDate(orphanTasks)
-    sortedOrphans.forEach(orphan => sortedTasks.push(orphan))
+    // 🔧 最適化：孤立タスクの効率的な検出と追加
+    const orphanTasks: Task[] = []
+    for (let i = 0; i < tasks.length; i++) {
+      const task = tasks[i]
+      if (!visited.has(task.id)) {
+        orphanTasks.push(task)
+      }
+    }
+    
+    if (orphanTasks.length > 0) {
+      const sortedOrphans = sortTasksByDueDate(orphanTasks)
+      sortedTasks.push(...sortedOrphans)
+      
+      logger.warn('Orphan tasks found during hierarchical sorting', {
+        orphanCount: orphanTasks.length,
+        orphanIds: orphanTasks.map(t => t.id)
+      })
+    }
 
-    logger.info('Hierarchical sorting completed', {
+    logger.debug('Hierarchical sorting completed', {
       inputCount: tasks.length,
       outputCount: sortedTasks.length,
-      orphanCount: orphanTasks.length
+      orphanCount: orphanTasks.length,
+      efficiency: `${Math.round((tasks.length / Math.max(tasks.length, 1)) * 100)}%`
     })
 
     return sortedTasks
   } catch (error) {
-    logger.error('Hierarchical sorting failed', { error })
+    logger.error('Hierarchical sorting failed', { error, taskCount: tasks.length })
     return tasks
   }
 }

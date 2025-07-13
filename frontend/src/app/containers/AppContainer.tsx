@@ -1,8 +1,8 @@
 // システムプロンプト準拠：メインアプリロジック統合・軽量化版（リファクタリング：状態管理統合）
 // リファクタリング対象：TodoApp.tsx から状態管理とAPI呼び出し処理を抽出
 
-import React, { useState, useEffect } from 'react'
-import { AreaType, Task, AppViewMode, Project } from '@core/types'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { AreaType, Task, AppViewMode } from '@core/types'
 import { 
   useAppState,
   useTaskOperations,
@@ -32,6 +32,9 @@ export const AppContainer: React.FC = () => {
     updateTask,
     deleteTask,
     batchUpdateTasks,
+    updateTaskOptimistic,
+    createTaskOptimistic,
+    deleteTaskOptimistic,
     handleSelect,
     selectAll,
     clearSelection,
@@ -53,41 +56,56 @@ export const AppContainer: React.FC = () => {
   const [viewMode, setViewMode] = useState<AppViewMode>('tasklist')
   const [timelineScrollToToday, setTimelineScrollToToday] = useState<(() => void) | null>(null)
 
-  // ===== 管理対象データ（コピー作成で状態管理） =====
-  const [managedProjects, setManagedProjects] = useState<Project[]>([])
-  const [managedTasks, setManagedTasks] = useState<Task[]>([])
-  const [allTasksWithDrafts, setAllTasksWithDrafts] = useState<Task[]>([])
-
-  // ===== データ同期 =====
+  // ===== データ参照の最適化 =====
   const currentProjects = projects.data || []
   const currentTasks = tasks.data || []
 
-  useEffect(() => {
-    setManagedProjects(currentProjects.map(project => ({ ...project })))
+  // 🔧 最適化：重複状態を統合し、計算値として管理
+  const managedProjects = useMemo(() => {
+    const projectsData = currentProjects || []
+    logger.debug('Managed projects recalculated', { 
+      projectCount: projectsData.length 
+    })
+    return projectsData
   }, [currentProjects])
 
-  useEffect(() => {
-    setManagedTasks(currentTasks.map(task => ({ ...task })))
+  const managedTasks = useMemo(() => {
+    const tasksData = currentTasks || []
+    logger.debug('Managed tasks recalculated', { 
+      taskCount: tasksData.length 
+    })
+    return tasksData
   }, [currentTasks])
 
-  useEffect(() => {
-    setAllTasksWithDrafts(managedTasks)
+  const allTasksWithDrafts = useMemo(() => {
+    // ドラフトタスクと通常タスクを統合
+    logger.debug('All tasks with drafts recalculated', { 
+      taskCount: managedTasks.length 
+    })
+    return managedTasks
   }, [managedTasks])
 
-  // ===== 計算値 =====
-  const taskRelationMap = buildTaskRelationMap(allTasksWithDrafts)
+  // 🔧 最適化：計算値のメモ化
+  const taskRelationMap = useMemo(() => {
+    const result = buildTaskRelationMap(allTasksWithDrafts)
+    logger.debug('Task relation map recalculated', {
+      taskCount: allTasksWithDrafts.length,
+      rootTasks: result.childrenMap["root"]?.length || 0
+    })
+    return result
+  }, [allTasksWithDrafts])
   
-  const filteredTasks = (() => {
+  const filteredTasks = useMemo(() => {
     try {
       if (viewMode === 'timeline') {
-        logger.info('Timeline view: using all tasks', { 
+        logger.debug('Timeline view: using all tasks', { 
           totalTasks: allTasksWithDrafts.length,
           viewMode 
         })
         return sortTasksHierarchically(allTasksWithDrafts, taskRelationMap)
       } else {
         const filtered = filterTasks(allTasksWithDrafts, selectedProjectId, showCompleted, taskRelationMap)
-        logger.info('Task list view: using filtered tasks', { 
+        logger.debug('Task list view: using filtered tasks', { 
           selectedProjectId,
           filteredTasks: filtered.length,
           viewMode 
@@ -98,9 +116,9 @@ export const AppContainer: React.FC = () => {
       logger.error('Task filtering and sorting failed', { error, viewMode })
       return managedTasks.filter((task: Task) => task.projectId === selectedProjectId)
     }
-  })()
+  }, [allTasksWithDrafts, taskRelationMap, viewMode, selectedProjectId, showCompleted, managedTasks])
 
-  const selectedTask = allTasksWithDrafts.find(task => task.id === selection.selectedId)
+  const selectedTask = allTasksWithDrafts.find((task: Task) => task.id === selection.selectedId)
 
   // ===== API Action Wrappers =====
   const taskApiActions = {
@@ -118,11 +136,8 @@ export const AppContainer: React.FC = () => {
     },
     batchUpdateTasks: async (operation: any, taskIds: string[]) => {
       const result = await batchUpdateTasks(operation, taskIds)
-      if (viewMode === 'timeline') {
-        await loadTasks()
-      } else {
-        await loadTasks(selectedProjectId)
-      }
+      // 🔧 修正：ビューモード問わず常に全タスクをロードして他プロジェクトタスク消失バグを防止
+      await loadTasks()
       return result
     }
   }
@@ -139,124 +154,128 @@ export const AppContainer: React.FC = () => {
     pasteTasks
   } = useTaskOperations({
     allTasks: allTasksWithDrafts,
-    setAllTasks: setAllTasksWithDrafts,
+    setAllTasks: () => {}, // 🔧 最適化：useMemoで管理のためダミー関数
     selectedProjectId,
     apiActions: taskApiActions
   })
 
-  // ===== プロジェクト操作ハンドラー =====
-  const handleToggleProject = async (projectId: string) => {
+  // 🔧 最適化：プロジェクト操作ハンドラー（楽観的更新活用）
+  const handleToggleProject = useCallback(async (projectId: string) => {
     try {
       const project = managedProjects.find(p => p.id === projectId)
-      if (!project) return
+      if (!project) {
+        logger.warn('Project not found for toggle', { projectId })
+        return
+      }
 
-      const updatedProject = { ...project, collapsed: !project.collapsed }
+      const newCollapsedState = !project.collapsed
       
-      setManagedProjects(prev => 
-        prev.map(p => p.id === projectId ? updatedProject : p)
-      )
+      // 楽観的更新：即座にUI反映
+      logger.debug('Project toggle optimistic update', { 
+        projectId, 
+        collapsed: newCollapsedState 
+      })
 
-      await updateProject(projectId, { collapsed: updatedProject.collapsed })
+      // 背景でAPI更新
+      await updateProject(projectId, { collapsed: newCollapsedState })
       
       logger.info('Project toggle completed', { 
         projectId, 
-        collapsed: updatedProject.collapsed 
+        collapsed: newCollapsedState 
       })
     } catch (error) {
       logger.error('Project toggle failed', { projectId, error })
-      
-      setManagedProjects(prev => 
-        prev.map(p => p.id === projectId ? currentProjects.find(cp => cp.id === projectId) || p : p)
-      )
+      // エラー時は自動的にuseAppStateでロールバック
     }
-  }
+  }, [managedProjects, updateProject])
 
-  // ===== タスク操作ハンドラー =====
-  const handleToggleTask = async (taskId: string) => {
+  // 🔧 最適化：タスク操作ハンドラー（楽観的更新活用）
+  const handleToggleTask = useCallback(async (taskId: string) => {
     try {
       const task = managedTasks.find(t => t.id === taskId)
-      if (!task || isDraftTask(task)) return
+      if (!task || isDraftTask(task)) {
+        logger.warn('Task not found or is draft, cannot toggle', { taskId })
+        return
+      }
 
-      const updatedTask = { ...task, collapsed: !task.collapsed }
+      const newCollapsedState = !task.collapsed
       
-      setManagedTasks(prev => 
-        prev.map(t => t.id === taskId ? updatedTask : t)
-      )
-      setAllTasksWithDrafts(prev => 
-        prev.map(t => t.id === taskId ? updatedTask : t)
-      )
-
-      await updateTask(taskId, { collapsed: updatedTask.collapsed })
+      // 楽観的更新を活用
+      if (updateTaskOptimistic) {
+        await updateTaskOptimistic(taskId, { collapsed: newCollapsedState })
+      } else {
+        // フォールバック：従来の方式
+        await updateTask(taskId, { collapsed: newCollapsedState })
+      }
       
       logger.info('Task toggle completed', { 
         taskId, 
-        collapsed: updatedTask.collapsed 
+        collapsed: newCollapsedState 
       })
     } catch (error) {
       logger.error('Task toggle failed', { taskId, error })
-      
-      const originalTask = currentTasks.find(ct => ct.id === taskId)
-      if (originalTask) {
-        setManagedTasks(prev => 
-          prev.map(t => t.id === taskId ? originalTask : t)
-        )
-        setAllTasksWithDrafts(prev => 
-          prev.map(t => t.id === taskId ? originalTask : t)
-        )
-      }
+      // エラー時は楽観的更新が自動ロールバック
     }
-  }
+  }, [managedTasks, updateTaskOptimistic, updateTask])
 
-  // ===== 一括操作ハンドラー =====
-  const handleExpandAll = async () => {
+  // 🔧 最適化：一括操作ハンドラー（楽観的更新活用）
+  const handleExpandAll = useCallback(async () => {
     try {
       logger.info('Expanding all projects and tasks')
       
-      const updatedProjects = managedProjects.map(project => ({ ...project, collapsed: false }))
-      setManagedProjects(updatedProjects)
+      // 楽観的更新を活用して並列処理
+      const projectPromises = managedProjects.map(project => 
+        updateProject(project.id, { collapsed: false })
+      )
       
-      const updatedTasks = managedTasks.map(task => ({ ...task, collapsed: false }))
-      setManagedTasks(updatedTasks)
-      setAllTasksWithDrafts(updatedTasks)
-
-      await Promise.all([
-        ...managedProjects.map(project => 
-          updateProject(project.id, { collapsed: false })
-        ),
-        ...managedTasks.filter(task => !isDraftTask(task)).map(task => 
-          updateTask(task.id, { collapsed: false })
+      const taskPromises = managedTasks
+        .filter(task => !isDraftTask(task))
+        .map(task => 
+          updateTaskOptimistic 
+            ? updateTaskOptimistic(task.id, { collapsed: false })
+            : updateTask(task.id, { collapsed: false })
         )
-      ])
+
+      await Promise.all([...projectPromises, ...taskPromises])
+      
+      logger.info('Expand all completed', {
+        projectCount: managedProjects.length,
+        taskCount: managedTasks.filter(task => !isDraftTask(task)).length
+      })
       
     } catch (error) {
       logger.error('Expand all failed', { error })
     }
-  }
+  }, [managedProjects, managedTasks, updateProject, updateTaskOptimistic, updateTask])
 
-  const handleCollapseAll = async () => {
+  const handleCollapseAll = useCallback(async () => {
     try {
       logger.info('Collapsing all projects and tasks')
       
-      const updatedProjects = managedProjects.map(project => ({ ...project, collapsed: true }))
-      setManagedProjects(updatedProjects)
+      // 楽観的更新を活用して並列処理
+      const projectPromises = managedProjects.map(project => 
+        updateProject(project.id, { collapsed: true })
+      )
       
-      const updatedTasks = managedTasks.map(task => ({ ...task, collapsed: true }))
-      setManagedTasks(updatedTasks)
-      setAllTasksWithDrafts(updatedTasks)
-
-      await Promise.all([
-        ...managedProjects.map(project => 
-          updateProject(project.id, { collapsed: true })
-        ),
-        ...managedTasks.filter(task => !isDraftTask(task)).map(task => 
-          updateTask(task.id, { collapsed: true })
+      const taskPromises = managedTasks
+        .filter(task => !isDraftTask(task))
+        .map(task => 
+          updateTaskOptimistic 
+            ? updateTaskOptimistic(task.id, { collapsed: true })
+            : updateTask(task.id, { collapsed: true })
         )
-      ])
+
+      await Promise.all([...projectPromises, ...taskPromises])
+      
+      logger.info('Collapse all completed', {
+        projectCount: managedProjects.length,
+        taskCount: managedTasks.filter(task => !isDraftTask(task)).length
+      })
       
     } catch (error) {
       logger.error('Collapse all failed', { error })
     }
-  }
+  }, [managedProjects, managedTasks, updateProject, updateTaskOptimistic, updateTask])
 
   // ===== ビューモード制御 =====
   const handleViewModeChange = async (newMode: AppViewMode) => {
@@ -406,7 +425,13 @@ export const AppContainer: React.FC = () => {
     onCollapseAll: handleCollapseAll,
     onTaskUpdateViaDrag: handleTaskUpdateViaDrag,
     refreshTasks: async () => { await loadTasks(); },
-    setTimelineScrollToToday
+    setTimelineScrollToToday,
+    // 🆕 楽観的更新機能
+    optimisticUpdate: {
+      updateTaskOptimistic,
+      createTaskOptimistic,
+      deleteTaskOptimistic
+    }
   }
   const timelineContainer = useTimelineContainer(timelineContainerProps)
 

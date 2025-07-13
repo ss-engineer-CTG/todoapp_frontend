@@ -543,7 +543,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                   height: `${Math.max(20, Math.round(dimensions.rowHeight.project * 0.6))}px`,
                   minWidth: `${visibleDates.length * dimensions.cellWidth}px` 
                 }}>
-                  {(() => {
+                  {useMemo(() => {
                     const monthGroups: Array<{month: number, year: number, startIndex: number, width: number}> = []
                     let currentMonth: number | null = null
                     let monthStart = 0
@@ -576,6 +576,12 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                       }
                     })
                     
+                    logger.debug('Month groups calculated for timeline header', {
+                      groupCount: monthGroups.length,
+                      cellWidth: dimensions.cellWidth,
+                      visibleDatesCount: visibleDates.length
+                    })
+                    
                     return monthGroups.map((monthGroup) => (
                       <div 
                         key={`month-${monthGroup.year}-${monthGroup.month}`}
@@ -594,7 +600,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                         </div>
                       </div>
                     ))
-                  })()}
+                  }, [visibleDates, dimensions.cellWidth, getMonthName, theme])}
                 </div>
                 
                 <div className="flex" style={{ 

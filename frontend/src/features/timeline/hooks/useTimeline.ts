@@ -57,26 +57,51 @@ export const useTimeline = (
   // DOM参照
   const timelineRef = useRef<HTMLDivElement>(null)
 
-  // 今日の日付
-  const today = useMemo(() => new Date(), [])
+  // 🔧 最適化：今日の日付を安定化（日付変更まで固定）
+  const today = useMemo(() => {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0) // 時刻情報を削除して日付のみに
+    logger.debug('Today date calculated for timeline', { 
+      today: now.toISOString().split('T')[0]
+    })
+    return now
+  }, []) // 依存配列空で完全に固定
 
-  // 動的寸法計算
-  const dimensions = useMemo(() => 
-    calculateDynamicSizes(state.zoomLevel, state.viewUnit),
-    [state.zoomLevel, state.viewUnit]
-  )
+  // 🔧 最適化：動的寸法計算のメモ化強化
+  const dimensions = useMemo(() => {
+    const result = calculateDynamicSizes(state.zoomLevel, state.viewUnit)
+    logger.debug('Timeline dimensions calculated', {
+      zoomLevel: state.zoomLevel,
+      viewUnit: state.viewUnit,
+      cellWidth: result.cellWidth,
+      rowHeight: result.rowHeight
+    })
+    return result
+  }, [state.zoomLevel, state.viewUnit])
 
-  // 時間範囲計算
-  const timeRange = useMemo(() => 
-    calculateTimeRange(state.viewUnit, today),
-    [state.viewUnit, today]
-  )
+  // 🔧 最適化：時間範囲計算のメモ化強化
+  const timeRange = useMemo(() => {
+    const result = calculateTimeRange(state.viewUnit, today)
+    logger.debug('Timeline range calculated', {
+      viewUnit: state.viewUnit,
+      startDate: result.startDate.toISOString().split('T')[0],
+      endDate: result.endDate.toISOString().split('T')[0],
+      daysDiff: Math.ceil((result.endDate.getTime() - result.startDate.getTime()) / (24 * 60 * 60 * 1000))
+    })
+    return result
+  }, [state.viewUnit, today])
 
-  // 表示日付配列
-  const visibleDates = useMemo(() => 
-    generateVisibleDates(timeRange.startDate, timeRange.endDate, state.viewUnit),
-    [timeRange.startDate, timeRange.endDate, state.viewUnit]
-  )
+  // 🔧 最適化：表示日付配列の効率化
+  const visibleDates = useMemo(() => {
+    const result = generateVisibleDates(timeRange.startDate, timeRange.endDate, state.viewUnit)
+    logger.debug('Visible dates generated', {
+      dateCount: result.length,
+      viewUnit: state.viewUnit,
+      firstDate: result[0]?.toISOString().split('T')[0],
+      lastDate: result[result.length - 1]?.toISOString().split('T')[0]
+    })
+    return result
+  }, [timeRange.startDate, timeRange.endDate, state.viewUnit])
 
   // ズームレベル設定
   const setZoomLevel = useCallback((level: number) => {

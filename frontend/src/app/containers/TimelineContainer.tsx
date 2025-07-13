@@ -20,6 +20,12 @@ export interface TimelineContainerProps {
   onTaskUpdateViaDrag: (taskId: string, updates: Partial<Task>) => Promise<void>
   refreshTasks: () => Promise<void>
   setTimelineScrollToToday: (fn: (() => void) | null) => void
+  // 🆕 楽観的更新機能
+  optimisticUpdate?: {
+    updateTaskOptimistic: (taskId: string, updates: Partial<Task>) => Promise<void>
+    createTaskOptimistic: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Task>
+    deleteTaskOptimistic: (taskId: string) => Promise<void>
+  }
 }
 
 export interface TimelineContainerReturn {
@@ -45,6 +51,12 @@ export interface TimelineContainerReturn {
     onExpandAll: () => Promise<void>
     onCollapseAll: () => Promise<void>
     onTaskUpdate: (taskId: string, updates: Partial<Task>) => Promise<void>
+    // 🆕 楽観的更新機能
+    optimisticUpdate?: {
+      updateTaskOptimistic: (taskId: string, updates: Partial<Task>) => Promise<void>
+      createTaskOptimistic: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Task>
+      deleteTaskOptimistic: (taskId: string) => Promise<void>
+    }
   }
 }
 
@@ -63,7 +75,8 @@ export const useTimelineContainer = (props: TimelineContainerProps): TimelineCon
     onCollapseAll,
     onTaskUpdateViaDrag,
     refreshTasks,
-    setTimelineScrollToToday
+    setTimelineScrollToToday,
+    optimisticUpdate
   } = props
 
   // ===== タイムラインスクロール制御 =====
@@ -179,7 +192,9 @@ export const useTimelineContainer = (props: TimelineContainerProps): TimelineCon
     onToggleTask: handleToggleTask,
     onExpandAll: handleExpandAll,
     onCollapseAll: handleCollapseAll,
-    onTaskUpdate: handleTaskUpdateViaDrag
+    onTaskUpdate: handleTaskUpdateViaDrag,
+    // 🆕 楽観的更新機能
+    optimisticUpdate
   }
 
   return {

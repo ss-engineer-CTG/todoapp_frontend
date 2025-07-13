@@ -130,11 +130,12 @@ export const useTaskContainer = (props: TaskContainerProps): TaskContainerReturn
         setIsMultiSelectMode(false)
       }
       
-      if (viewMode === 'timeline') {
-        await apiActions.loadTasks()
-      } else {
-        await apiActions.loadTasks(selectedProjectId)
-      }
+      // 🔧 最適化：タスク削除後の自動再読み込みを削除（必要に応じて手動更新）
+      // if (viewMode === 'timeline') {
+      //   await apiActions.loadTasks()
+      // } else {
+      //   await apiActions.loadTasks(selectedProjectId)
+      // }
     }
   }, [taskOperations.deleteTask, selection, setSelectedTaskId, selectionOperations.clearSelection, setIsMultiSelectMode, apiActions.loadTasks, selectedProjectId, viewMode])
 
@@ -171,11 +172,12 @@ export const useTaskContainer = (props: TaskContainerProps): TaskContainerReturn
       selection.selectedIds
     )
     if (success) {
-      if (viewMode === 'timeline') {
-        await apiActions.loadTasks()
-      } else {
-        await apiActions.loadTasks(selectedProjectId)
-      }
+      // 🔧 最適化：AppContainerのbatchUpdateTasksで既に再読み込み済みのため削除
+      // if (viewMode === 'timeline') {
+      //   await apiActions.loadTasks()
+      // } else {
+      //   await apiActions.loadTasks(selectedProjectId)
+      // }
       logger.info('Task completion toggled', { taskId, multiSelect: selection.isMultiSelectMode })
     }
   }, [taskOperations.toggleTaskCompletion, selection, apiActions.loadTasks, selectedProjectId, viewMode])
@@ -203,11 +205,11 @@ export const useTaskContainer = (props: TaskContainerProps): TaskContainerReturn
         
         savedTask = await taskOperations.saveDraft(taskId, updates)
         
-        // データの再読み込みで確実に最新状態を反映
-        logger.info('Reloading tasks after draft save')
-        viewMode === 'timeline' 
-          ? await apiActions.loadTasks()
-          : await apiActions.loadTasks(selectedProjectId)
+        // 🔧 最適化：草稿保存後の自動再読み込みを削除（楽観的更新で対応）
+        // logger.info('Reloading tasks after draft save')
+        // viewMode === 'timeline' 
+        //   ? await apiActions.loadTasks()
+        //   : await apiActions.loadTasks(selectedProjectId)
         
         if (savedTask) {
           logger.info('Initiating post-save UI transition', { 
@@ -237,11 +239,11 @@ export const useTaskContainer = (props: TaskContainerProps): TaskContainerReturn
         
         await apiActions.updateTask(taskId, updates)
         
-        // 既存タスク更新時も同様にリロード
-        logger.info('Executing automatic reload for existing task update')
-        viewMode === 'timeline' 
-          ? await apiActions.loadTasks()
-          : await apiActions.loadTasks(selectedProjectId)
+        // 🔧 最適化：既存タスク更新後の自動再読み込みを削除（楽観的更新で対応）
+        // logger.info('Executing automatic reload for existing task update')
+        // viewMode === 'timeline' 
+        //   ? await apiActions.loadTasks()
+        //   : await apiActions.loadTasks(selectedProjectId)
         
         logger.info('Initiating post-update UI transition', { taskId })
         

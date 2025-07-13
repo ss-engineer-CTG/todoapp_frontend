@@ -17,6 +17,13 @@ interface UseTimelineTaskOperationsProps {
   
   // タスクデータの再読み込み
   refreshTasks: () => Promise<void>
+  
+  // 🆕 楽観的更新機能（オプショナル）
+  optimisticUpdate?: {
+    updateTaskOptimistic: (taskId: string, updates: Partial<Task>) => Promise<void>
+    createTaskOptimistic: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Task>
+    deleteTaskOptimistic: (taskId: string) => Promise<void>
+  }
 }
 
 interface UseTimelineTaskOperationsReturn {
@@ -44,7 +51,8 @@ export const useTimelineTaskOperations = (
     tasks,
     selectedProjectId,
     onTaskUpdate,
-    refreshTasks
+    refreshTasks,
+    optimisticUpdate
   } = props
 
   // 新規タスク作成（タスク名指定版）
@@ -81,16 +89,26 @@ export const useTimelineTaskOperations = (
         originalInput: taskName
       })
 
-      const createdTask = await apiService.createTask(newTaskData)
-      
-      // タスクリストを再読み込み
-      await refreshTasks()
-      
-      logger.info('Task created successfully in timeline with custom name', {
-        taskId: createdTask.id,
-        taskName: createdTask.name,
-        originalInput: taskName
-      })
+      // 🔧 最適化：楽観的更新の活用
+      if (optimisticUpdate?.createTaskOptimistic) {
+        const createdTask = await optimisticUpdate.createTaskOptimistic(newTaskData)
+        
+        logger.info('Task created with optimistic update', {
+          taskId: createdTask.id,
+          taskName: createdTask.name,
+          originalInput: taskName
+        })
+      } else {
+        // フォールバック：従来の方式
+        const createdTask = await apiService.createTask(newTaskData)
+        await refreshTasks() // 楽観的更新が利用できない場合のみ
+        
+        logger.info('Task created with fallback method', {
+          taskId: createdTask.id,
+          taskName: createdTask.name,
+          originalInput: taskName
+        })
+      }
 
     } catch (error) {
       logger.error('Task creation with custom name failed in timeline', {
@@ -149,17 +167,28 @@ export const useTimelineTaskOperations = (
         originalInput: taskName
       })
 
-      const createdTask = await apiService.createTask(newTaskData)
-      
-      // タスクリストを再読み込み
-      await refreshTasks()
-      
-      logger.info('Sub task created successfully in timeline with custom name', {
-        taskId: createdTask.id,
-        taskName: createdTask.name,
-        parentId,
-        originalInput: taskName
-      })
+      // 🔧 最適化：楽観的更新の活用
+      if (optimisticUpdate?.createTaskOptimistic) {
+        const createdTask = await optimisticUpdate.createTaskOptimistic(newTaskData)
+        
+        logger.info('Sub task created with optimistic update', {
+          taskId: createdTask.id,
+          taskName: createdTask.name,
+          parentId,
+          originalInput: taskName
+        })
+      } else {
+        // フォールバック：従来の方式
+        const createdTask = await apiService.createTask(newTaskData)
+        await refreshTasks() // 楽観的更新が利用できない場合のみ
+        
+        logger.info('Sub task created with fallback method', {
+          taskId: createdTask.id,
+          taskName: createdTask.name,
+          parentId,
+          originalInput: taskName
+        })
+      }
 
     } catch (error) {
       logger.error('Sub task creation with custom name failed in timeline', {
@@ -203,21 +232,25 @@ export const useTimelineTaskOperations = (
         newState: newCompletionState
       })
 
-      // onTaskUpdateが利用可能な場合は使用
-      if (onTaskUpdate) {
+      // 🔧 最適化：楽観的更新の活用
+      if (optimisticUpdate?.updateTaskOptimistic) {
+        await optimisticUpdate.updateTaskOptimistic(taskId, {
+          completed: newCompletionState,
+          completionDate
+        })
+      } else if (onTaskUpdate) {
+        // フォールバック：既存のonTaskUpdate使用
         await onTaskUpdate(taskId, {
           completed: newCompletionState,
           completionDate
         })
       } else {
-        // 直接API呼び出し
+        // フォールバック：直接API呼び出し + 再読み込み
         await apiService.updateTask(taskId, {
           completed: newCompletionState,
           completionDate
         })
-        
-        // タスクリストを再読み込み
-        await refreshTasks()
+        await refreshTasks() // 楽観的更新が利用できない場合のみ
       }
 
       logger.info('Task completion toggled successfully in timeline', {
@@ -256,15 +289,24 @@ export const useTimelineTaskOperations = (
         return
       }
 
-      // API経由で削除
-      await apiService.deleteTask(taskId)
-      
-      // タスクリストを再読み込み
-      await refreshTasks()
-      
-      logger.info('Task deleted successfully in timeline', {
-        taskId
-      })
+      // 🔧 最適化：楽観的削除の活用
+      if (optimisticUpdate?.deleteTaskOptimistic) {
+        await optimisticUpdate.deleteTaskOptimistic(taskId)
+        
+        logger.info('Task deleted with optimistic update', {
+          taskId,
+          taskName: task.name
+        })
+      } else {
+        // フォールバック：従来の方式
+        await apiService.deleteTask(taskId)
+        await refreshTasks() // 楽観的更新が利用できない場合のみ
+        
+        logger.info('Task deleted with fallback method', {
+          taskId,
+          taskName: task.name
+        })
+      }
 
     } catch (error) {
       logger.error('Task deletion failed in timeline', {

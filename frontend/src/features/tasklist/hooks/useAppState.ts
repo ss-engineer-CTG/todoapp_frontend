@@ -27,6 +27,9 @@ export const useAppState = () => {
     error: null
   })
 
+  // 🆕 楽観的更新用の状態管理
+  const [optimisticUpdates, setOptimisticUpdates] = useState<Map<string, Partial<Task>>>(new Map())
+
   // 選択状態管理
   const [selection, setSelection] = useState<SelectionState>({
     selectedId: null,
@@ -422,6 +425,162 @@ export const useAppState = () => {
     setSelection((prev: SelectionState) => ({ ...prev, isMultiSelectMode: mode }))
   }, [])
 
+  // 🆕 楽観的更新機能
+  const updateTaskOptimistic = useCallback(async (taskId: string, updates: Partial<Task>) => {
+    try {
+      // 1. 楽観的更新（即座にUI反映）
+      setTasks(prev => {
+        if (!prev.data) return prev
+        
+        const updatedTasks = prev.data.map(task => 
+          task.id === taskId ? { ...task, ...updates } : task
+        )
+        
+        logger.info('Optimistic task update applied', { 
+          taskId, 
+          updates: Object.keys(updates),
+          updateCount: Object.keys(updates).length
+        })
+        
+        return { ...prev, data: updatedTasks }
+      })
+
+      // 2. 楽観的更新の記録
+      setOptimisticUpdates(prev => {
+        const newMap = new Map(prev)
+        newMap.set(taskId, { ...prev.get(taskId), ...updates })
+        return newMap
+      })
+
+      // 3. 背景でAPI呼び出し
+      await apiService.updateTask(taskId, updates)
+      
+      // 4. 成功時は楽観的更新をクリア
+      setOptimisticUpdates(prev => {
+        const newMap = new Map(prev)
+        newMap.delete(taskId)
+        return newMap
+      })
+      
+      logger.info('Optimistic task update confirmed by server', { taskId })
+      
+    } catch (error) {
+      // 5. 失敗時はロールバック
+      logger.error('Optimistic task update failed, rolling back', { taskId, error })
+      
+      // 楽観的更新をクリア
+      setOptimisticUpdates(prev => {
+        const newMap = new Map(prev)
+        newMap.delete(taskId)
+        return newMap
+      })
+      
+      // 元の状態に戻すため最新データを再取得
+      await loadTasks()
+      
+      handleError(error, 'タスク更新に失敗しました')
+      throw error
+    }
+  }, [loadTasks])
+
+  const createTaskOptimistic = useCallback(async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    
+    try {
+      // 1. 楽観的更新（一時IDで即座追加）
+      const optimisticTask: Task = {
+        ...taskData,
+        id: tempId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        _isDraft: false
+      }
+      
+      setTasks(prev => {
+        if (!prev.data) return prev
+        
+        const updatedTasks = [...prev.data, optimisticTask]
+        
+        logger.info('Optimistic task creation applied', { 
+          tempId,
+          taskName: taskData.name,
+          projectId: taskData.projectId
+        })
+        
+        return { ...prev, data: updatedTasks }
+      })
+
+      // 2. 背景でAPI呼び出し
+      const createdTask = await apiService.createTask(taskData)
+      
+      // 3. 成功時は一時IDを実際のIDに置換
+      setTasks(prev => {
+        if (!prev.data) return prev
+        
+        const updatedTasks = prev.data.map(task => 
+          task.id === tempId ? createdTask : task
+        )
+        
+        logger.info('Optimistic task creation confirmed, ID updated', { 
+          tempId,
+          realId: createdTask.id,
+          taskName: createdTask.name
+        })
+        
+        return { ...prev, data: updatedTasks }
+      })
+      
+      return createdTask
+      
+    } catch (error) {
+      // 4. 失敗時は一時タスクを削除
+      logger.error('Optimistic task creation failed, removing temp task', { tempId, error })
+      
+      setTasks(prev => {
+        if (!prev.data) return prev
+        
+        const updatedTasks = prev.data.filter(task => task.id !== tempId)
+        return { ...prev, data: updatedTasks }
+      })
+      
+      handleError(error, 'タスク作成に失敗しました')
+      throw error
+    }
+  }, [])
+
+  const deleteTaskOptimistic = useCallback(async (taskId: string) => {
+    try {
+      // 1. 楽観的削除（即座にUI反映）
+      setTasks(prev => {
+        if (!prev.data) return prev
+        
+        const updatedTasks = prev.data.filter(task => task.id !== taskId)
+        
+        logger.info('Optimistic task deletion applied', { 
+          taskId,
+          remainingTasks: updatedTasks.length
+        })
+        
+        return { ...prev, data: updatedTasks }
+      })
+
+      // 2. 背景でAPI呼び出し
+      await apiService.deleteTask(taskId)
+      
+      logger.info('Optimistic task deletion confirmed by server', { taskId })
+      
+    } catch (error) {
+      // 3. 失敗時はロールバック
+      logger.error('Optimistic task deletion failed, rolling back', { taskId, error })
+      
+      // 元の状態に戻すため最新データを再取得
+      await loadTasks()
+      
+      handleError(error, 'タスク削除に失敗しました')
+      throw error
+    }
+  }, [loadTasks])
+
   return {
     // 状態
     projects,
@@ -440,6 +599,11 @@ export const useAppState = () => {
     updateTask,
     deleteTask,
     batchUpdateTasks,
+    
+    // 🆕 楽観的更新
+    updateTaskOptimistic,
+    createTaskOptimistic,
+    deleteTaskOptimistic,
     
     // 選択操作
     handleSelect,
