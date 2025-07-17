@@ -10,6 +10,7 @@ import {
   useKeyboard
 } from '@tasklist'
 import { TimelineView } from '@timeline'
+import { DailyFocusView } from '@daily-focus'
 import { LoadingSpinner } from '@core/components'
 import { logger } from '@core/utils'
 import { ViewSwitcher } from './ViewSwitcher'
@@ -198,17 +199,18 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
   // ===== メインレイアウト =====
   return (
     <div className="flex h-screen bg-background">
-      {/* ビュー切り替えボタン（リストビューのみ表示） */}
-      {viewMode === 'tasklist' && (
-        <ViewSwitcher 
-          viewMode={viewMode}
-          onViewModeChange={onViewModeChange}
-        />
-      )}
+      {/* ビュー切り替えボタン（全ビューに表示） */}
+      <ViewSwitcher 
+        viewMode={viewMode}
+        onViewModeChange={onViewModeChange}
+      />
 
       {viewMode === 'timeline' ? (
         // タイムラインビュー（Container経由props使用）
         <TimelineView {...timelineProps} />
+      ) : viewMode === 'daily-focus' ? (
+        // Daily Focus View
+        <DailyFocusView />
       ) : (
         // タスクリストビュー（Container経由ハンドラー使用）
         <>

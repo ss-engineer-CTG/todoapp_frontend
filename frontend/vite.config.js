@@ -24,6 +24,7 @@ export default defineConfig({
       // 機能別モジュール
       "@tasklist": path.resolve(__dirname, "./src/features/tasklist"),
       "@timeline": path.resolve(__dirname, "./src/features/timeline"),
+      "@daily-focus": path.resolve(__dirname, "./src/features/daily-focus"),
       "@app": path.resolve(__dirname, "./src/app"),
       
       // UIコンポーネント系（shadcn/ui 互換）

@@ -4,7 +4,7 @@
 // UI関連型（型安全性向上）
 export type AreaType = "projects" | "tasks" | "details" | "timeline"
 export type BatchOperation = 'complete' | 'incomplete' | 'delete' | 'copy'
-export type AppViewMode = 'tasklist' | 'timeline'
+export type AppViewMode = 'tasklist' | 'timeline' | 'daily-focus'
 
 // より厳密な型制約（リテラル型の活用）
 export const AREA_TYPES = {
@@ -23,7 +23,8 @@ export const BATCH_OPERATIONS = {
 
 export const APP_VIEW_MODES = {
   TASKLIST: 'tasklist',
-  TIMELINE: 'timeline'
+  TIMELINE: 'timeline',
+  DAILY_FOCUS: 'daily-focus'
 } as const
 
 // 基本エンティティ型

@@ -28,6 +28,8 @@
       "@tasklist/*": ["./src/features/tasklist/*"],
       "@timeline": ["./src/features/timeline"],
       "@timeline/*": ["./src/features/timeline/*"],
+      "@daily-focus": ["./src/features/daily-focus"],
+      "@daily-focus/*": ["./src/features/daily-focus/*"],
       "@app/*": ["./src/app/*"],
       
       // UIコンポーネント系（shadcn/ui 互換）

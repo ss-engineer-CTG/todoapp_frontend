@@ -3,7 +3,7 @@
 
 import React, { useEffect } from 'react'
 import { AppViewMode } from '@core/types'
-import { Calendar, List } from 'lucide-react'
+import { Calendar, List, Focus } from 'lucide-react'
 
 interface ViewSwitcherProps {
   viewMode: AppViewMode
@@ -23,6 +23,9 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({
       } else if (e.ctrlKey && e.key === 'l') {
         e.preventDefault()
         onViewModeChange('tasklist')
+      } else if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault()
+        onViewModeChange('daily-focus')
       }
     }
 
@@ -45,7 +48,7 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({
         <span>リスト</span>
       </button>
       <button
-        className={`px-3 py-2 text-sm font-medium rounded-none flex items-center space-x-2 transition-colors ${
+        className={`px-3 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center space-x-2 transition-colors ${
           viewMode === 'timeline'
             ? 'bg-blue-600 text-white' 
             : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -55,6 +58,18 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({
       >
         <Calendar size={16} />
         <span>タイムライン</span>
+      </button>
+      <button
+        className={`px-3 py-2 text-sm font-medium rounded-none flex items-center space-x-2 transition-colors ${
+          viewMode === 'daily-focus'
+            ? 'bg-blue-600 text-white' 
+            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+        }`}
+        onClick={() => onViewModeChange('daily-focus')}
+        title="Daily Focus View (Ctrl+F)"
+      >
+        <Focus size={16} />
+        <span>フォーカス</span>
       </button>
     </div>
   )

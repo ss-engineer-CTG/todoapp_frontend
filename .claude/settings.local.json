@@ -15,7 +15,9 @@
       "Bash(pip install:*)",
       "Bash(mkdir:*)",
       "Bash(npm run lint:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(curl:*)",
+      "Bash(ss:*)"
     ],
     "deny": []
   }
