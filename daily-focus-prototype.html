@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Focus View - プロトタイプ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: 'rgb(var(--background) / <alpha-value>)',
+                        foreground: 'rgb(var(--foreground) / <alpha-value>)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --background: 255 255 255;
+            --foreground: 0 0 0;
+        }
+        .dark {
+            --background: 15 23 42;
+            --foreground: 241 245 249;
+        }
+        
+        
+        /* エディタースタイル */
+        .markdown-editor {
+            min-height: 300px;
+            resize: vertical;
+        }
+        
+        /* チャートコンテナ */
+        .chart-container {
+            position: relative;
+            height: 200px;
+            width: 100%;
+        }
+        
+        /* リサイズハンドル */
+        .resize-handle {
+            width: 4px;
+            cursor: col-resize;
+            user-select: none;
+        }
+        
+        .resize-handle:hover {
+            background-color: #3b82f6;
+        }
+        
+        .resizing {
+            user-select: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground">
+    <!-- ViewSwitcher -->
+    <div class="absolute top-4 left-4 z-50 flex bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <button class="px-3 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center space-x-2 transition-colors bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+        </button>
+        <button class="px-3 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center space-x-2 transition-colors bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+        </button>
+        <button class="px-3 py-2 text-sm font-medium rounded-none flex items-center space-x-2 transition-colors bg-blue-600 text-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2 2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- ダークモード切り替えボタン -->
+    <button id="darkModeToggle" class="absolute top-4 right-4 z-50 p-2 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 shadow-lg transition-colors">
+        <!-- ライトモード時のアイコン（月） -->
+        <svg id="darkModeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dark:hidden">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <!-- ダークモード時のアイコン（太陽） -->
+        <svg id="lightModeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden dark:block">
+            <circle cx="12" cy="12" r="5"></circle>
+            <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+        </svg>
+    </button>
+
+
+    <!-- メインコンテナ -->
+    <div class="flex h-screen bg-gray-50 dark:bg-gray-900 pt-16">
+        <!-- 左パネル: 今月の目標 & 学習時間トラッキング -->
+        <div id="leftPanel" class="w-1/4 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
+            <!-- 今月の目標 -->
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold mb-2 flex items-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-2">
+                        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"></polygon>
+                    </svg>
+                    今月の目標
+                </h2>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">2024年12月</p>
+                
+                <!-- 目標リスト -->
+                <div class="space-y-3">
+                    <div class="goal-item p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 cursor-pointer transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/40" data-goal-id="programming">
+                        <h3 class="font-medium text-blue-900 dark:text-blue-100">プログラミングスキル向上</h3>
+                        <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">React + TypeScriptを使った実践的なアプリケーション開発をマスターする</p>
+                    </div>
+                    <div class="goal-item p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 cursor-pointer transition-colors hover:bg-green-100 dark:hover:bg-green-900/40" data-goal-id="english">
+                        <h3 class="font-medium text-green-900 dark:text-green-100">英語学習</h3>
+                        <p class="text-sm text-green-700 dark:text-green-300 mt-1">TOEIC 800点を目指して毎日30分の学習を継続する</p>
+                    </div>
+                    <div class="goal-item p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 cursor-pointer transition-colors hover:bg-purple-100 dark:hover:bg-purple-900/40" data-goal-id="health">
+                        <h3 class="font-medium text-purple-900 dark:text-purple-100">健康管理</h3>
+                        <p class="text-sm text-purple-700 dark:text-purple-300 mt-1">週3回の運動習慣を身につけて体力向上を図る</p>
+                    </div>
+                </div>
+                
+                <!-- 新しい目標追加 -->
+                <button class="w-full mt-4 p-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
+                    + 新しい目標を追加
+                </button>
+            </div>
+            
+            <!-- 学習時間トラッキング -->
+            <div class="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h3 class="text-md font-semibold mb-3 flex items-center text-blue-900 dark:text-blue-100">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    学習時間トラッキング
+                </h3>
+                
+                <!-- 現在のセッション状態 -->
+                <div class="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">現在のセッション</span>
+                        <span id="currentSessionTime" class="text-lg font-bold text-blue-600">00:00:00</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">今日の累計</span>
+                        <span id="todayTotalTime" class="text-sm font-medium text-gray-800 dark:text-gray-200">2時間 34分</span>
+                    </div>
+                </div>
+                
+                <!-- カテゴリ選択と制御ボタン -->
+                <div class="space-y-3">
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">カテゴリ:</label>
+                        <select id="learningCategory" class="flex-1 px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800">
+                            <option value="programming">📚 プログラミング</option>
+                            <option value="english">🗣️ 英語学習</option>
+                            <option value="reading">📖 読書</option>
+                            <option value="exercise">🏃 運動</option>
+                            <option value="other">📝 その他</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex space-x-2">
+                        <button id="startLearningBtn" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium">
+                            ▶️ 学習開始
+                        </button>
+                        <button id="pauseLearningBtn" class="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium" disabled>
+                            ⏸️ 一時停止
+                        </button>
+                        <button id="stopLearningBtn" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium" disabled>
+                            ⏹️ 終了
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 今日のカテゴリ別学習時間 -->
+                <div class="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">今日のカテゴリ別時間</h4>
+                    <div class="space-y-1 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600 dark:text-gray-400">📚 プログラミング</span>
+                            <span class="font-medium">1時間 25分</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600 dark:text-gray-400">🗣️ 英語学習</span>
+                            <span class="font-medium">45分</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600 dark:text-gray-400">📖 読書</span>
+                            <span class="font-medium">24分</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- リサイズハンドル1 -->
+        <div id="resizer1" class="w-1 bg-gray-300 dark:bg-gray-600 cursor-col-resize hover:bg-blue-500 transition-colors"></div>
+
+        <!-- 中央パネル: 今日のToDoリスト -->
+        <div id="centerPanel" class="w-1/2 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
+            
+            <div class="mb-4">
+                <h2 class="text-lg font-semibold mb-2 flex items-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-2">
+                        <polyline points="9,11 12,14 22,4"></polyline>
+                        <path d="M21,12v7a2,2 0 0,1 -2,2H5a2,2 0 0,1 -2,-2V5a2,2 0 0,1 2,-2h11"></path>
+                    </svg>
+                    今日のToDo
+                </h2>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">2024年12月16日 (月)</p>
+                
+                
+                <!-- ToDoリスト -->
+                <div class="space-y-2">
+                    <div class="todo-item flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-600" id="existing-todo-1" data-todo-id="existing-1">
+                        <input type="checkbox" class="mr-3 w-4 h-4 text-blue-600 rounded">
+                        <span class="flex-1">React Hooksの復習（useEffect編）</span>
+                        <span class="text-xs text-gray-500 bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">プログラミング</span>
+                    </div>
+                    <div class="todo-item flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-600" id="existing-todo-2" data-todo-id="existing-2">
+                        <input type="checkbox" checked class="mr-3 w-4 h-4 text-blue-600 rounded">
+                        <span class="flex-1 line-through text-gray-500">英語リスニング30分</span>
+                        <span class="text-xs text-gray-500 bg-green-100 dark:bg-green-900 px-2 py-1 rounded">英語</span>
+                    </div>
+                    <div class="todo-item flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-600" id="existing-todo-3" data-todo-id="existing-3">
+                        <input type="checkbox" class="mr-3 w-4 h-4 text-blue-600 rounded">
+                        <span class="flex-1">ランニング（5km）</span>
+                        <span class="text-xs text-gray-500 bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded">運動</span>
+                    </div>
+                    <div class="todo-item flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-600" id="existing-todo-4" data-todo-id="existing-4">
+                        <input type="checkbox" class="mr-3 w-4 h-4 text-blue-600 rounded">
+                        <span class="flex-1">TypeScript型定義の実践</span>
+                        <span class="text-xs text-gray-500 bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">プログラミング</span>
+                    </div>
+                    <div class="todo-item flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-600" id="existing-todo-5" data-todo-id="existing-5">
+                        <input type="checkbox" class="mr-3 w-4 h-4 text-blue-600 rounded">
+                        <span class="flex-1">技術書読書（Clean Code）</span>
+                        <span class="text-xs text-gray-500 bg-orange-100 dark:bg-orange-900 px-2 py-1 rounded">読書</span>
+                    </div>
+                </div>
+                
+                <!-- 新しいToDo追加 -->
+                <div class="mt-4 space-y-2">
+                    <div class="flex">
+                        <input id="newTodoInput" type="text" placeholder="新しいToDoを追加..." class="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-l-lg bg-white dark:bg-gray-800">
+                        <button id="addTodoBtn" class="px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors">追加</button>
+                    </div>
+                    
+                    <!-- タグ選択モーダル -->
+                    <div id="tagSelectionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" tabindex="-1">
+                        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 w-80 max-w-full mx-4" onclick="event.stopPropagation()">
+                            <h3 class="text-md font-semibold mb-3 text-gray-900 dark:text-gray-100">タスクにタグを選択</h3>
+                            <p id="taskPreview" class="text-xs text-gray-600 dark:text-gray-400 mb-3 p-2 bg-gray-100 dark:bg-gray-700 rounded"></p>
+                            
+                            <div class="space-y-1" id="tagOptions">
+                                <!-- 目標タグ -->
+                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">今月の目標</div>
+                                <div class="tag-option cursor-pointer p-2 rounded border-2 border-transparent hover:border-blue-300 transition-colors bg-blue-50 dark:bg-blue-900/20" data-value="programming">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-3 h-3 rounded-full bg-gradient-to-r from-blue-200 to-blue-500"></div>
+                                        <span class="text-xs text-blue-800 dark:text-blue-200">📚 プログラミングスキル向上</span>
+                                    </div>
+                                </div>
+                                <div class="tag-option cursor-pointer p-2 rounded border-2 border-transparent hover:border-green-300 transition-colors bg-green-50 dark:bg-green-900/20" data-value="english">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-3 h-3 rounded-full bg-gradient-to-r from-green-200 to-green-500"></div>
+                                        <span class="text-xs text-green-800 dark:text-green-200">🗣️ 英語学習</span>
+                                    </div>
+                                </div>
+                                <div class="tag-option cursor-pointer p-2 rounded border-2 border-transparent hover:border-purple-300 transition-colors bg-purple-50 dark:bg-purple-900/20" data-value="health">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-3 h-3 rounded-full bg-gradient-to-r from-purple-200 to-purple-500"></div>
+                                        <span class="text-xs text-purple-800 dark:text-purple-200">🏃 健康管理</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 mt-2">カスタムタグ</div>
+                                <div class="tag-option cursor-pointer p-2 rounded border-2 border-transparent hover:border-orange-300 transition-colors bg-orange-50 dark:bg-orange-900/20" data-value="custom1">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-3 h-3 rounded-full bg-gradient-to-r from-orange-200 to-orange-500"></div>
+                                            <span class="text-xs text-orange-800 dark:text-orange-200" id="custom1Label">📚 読書</span>
+                                        </div>
+                                        <button class="edit-tag-btn text-xs text-gray-500 hover:text-orange-600 px-1" data-tag="custom1" onclick="event.stopPropagation(); startEditTag('custom1')">✏️</button>
+                                    </div>
+                                </div>
+                                <div class="tag-option cursor-pointer p-2 rounded border-2 border-transparent hover:border-teal-300 transition-colors bg-teal-50 dark:bg-teal-900/20" data-value="custom2">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-3 h-3 rounded-full bg-gradient-to-r from-teal-200 to-teal-500"></div>
+                                            <span class="text-xs text-teal-800 dark:text-teal-200" id="custom2Label">🏠 家事</span>
+                                        </div>
+                                        <button class="edit-tag-btn text-xs text-gray-500 hover:text-teal-600 px-1" data-tag="custom2" onclick="event.stopPropagation(); startEditTag('custom2')">✏️</button>
+                                    </div>
+                                </div>
+                                <div class="tag-option cursor-pointer p-2 rounded border-2 border-transparent hover:border-rose-300 transition-colors bg-rose-50 dark:bg-rose-900/20" data-value="custom3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-3 h-3 rounded-full bg-gradient-to-r from-rose-200 to-rose-500"></div>
+                                            <span class="text-xs text-rose-800 dark:text-rose-200" id="custom3Label">🎨 趣味</span>
+                                        </div>
+                                        <button class="edit-tag-btn text-xs text-gray-500 hover:text-rose-600 px-1" data-tag="custom3" onclick="event.stopPropagation(); startEditTag('custom3')">✏️</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-end space-x-2 mt-4">
+                                <button id="cancelTagSelection" class="px-3 py-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors">キャンセル</button>
+                                <button id="skipTagSelection" class="px-3 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">タグなしで追加</button>
+                            </div>
+                            
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">↑↓ 矢印キーで選択、Enterで決定、✏️クリックでカスタムタグ編集</div>
+                        </div>
+                    </div>
+                    
+                    <!-- タグ編集モーダル -->
+                    <div id="tagEditModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-60 flex items-center justify-center" tabindex="-1">
+                        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 w-72 max-w-full mx-4" onclick="event.stopPropagation()">
+                            <h3 class="text-md font-semibold mb-3 text-gray-900 dark:text-gray-100">カスタムタグ編集</h3>
+                            
+                            <div class="space-y-3">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-orange-200 to-orange-500"></div>
+                                    <input type="text" id="editCustom1Input" class="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800" placeholder="カスタムタグ1">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-teal-200 to-teal-500"></div>
+                                    <input type="text" id="editCustom2Input" class="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800" placeholder="カスタムタグ2">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-rose-200 to-rose-500"></div>
+                                    <input type="text" id="editCustom3Input" class="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800" placeholder="カスタムタグ3">
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-end space-x-2 mt-4">
+                                <button id="cancelTagEdit" class="px-3 py-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors">キャンセル</button>
+                                <button id="saveTagEdit" class="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">保存</button>
+                            </div>
+                            
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">絵文字を含めて設定できます</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- リサイズハンドル2 -->
+        <div id="resizer2" class="w-1 bg-gray-300 dark:bg-gray-600 cursor-col-resize hover:bg-blue-500 transition-colors"></div>
+
+        <!-- 右パネル: 今日のアウトプットメモ & 成長可視化 -->
+        <div id="rightPanel" class="w-1/4 bg-white dark:bg-gray-800 p-4 overflow-y-auto">
+            <!-- アウトプットメモ -->
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold mb-2 flex items-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14,2 14,8 20,8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10,9 9,9 8,9"></polyline>
+                    </svg>
+                    学習メモ
+                </h2>
+                
+                
+                <!-- メモエディタ -->
+                <textarea 
+                    class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 markdown-editor"
+                    placeholder="# 今日の学習内容
+
+## React Hooks - useEffect
+
+### 学んだこと
+- useEffectの基本的な使い方
+- 依存配列の重要性
+- クリーンアップ関数の必要性
+
+### 実践例
+```javascript
+useEffect(() => {
+  // サイドエフェクトの処理
+  return () => {
+    // クリーンアップ処理
+  };
+}, [dependencies]);
+```
+
+### 疑問・課題
+- カスタムフックでの使い分け
+- パフォーマンス最適化のベストプラクティス"
+                ></textarea>
+                
+            </div>
+            
+            <!-- 成長可視化ダッシュボード -->
+            <div class="mb-6">
+                <h3 class="text-md font-semibold mb-3 flex items-center">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <rect x="7" y="8" width="2" height="8"></rect>
+                        <rect x="11" y="12" width="2" height="4"></rect>
+                        <rect x="15" y="6" width="2" height="10"></rect>
+                    </svg>
+                    成長トラッキング
+                </h3>
+                
+                <!-- 活動ヒートマップ -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
+                    <!-- ヒートマップヘッダー -->
+                    <div class="mb-3">
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">アクティビティ</h4>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">過去365日</div>
+                    </div>
+                    
+                    <!-- 日単位ビュー -->
+                    <div id="dailyView" class="space-y-1">
+                        <!-- 月ラベル（横軸） -->
+                        <div id="monthLabels" class="flex text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            <div class="w-8"></div>
+                            <div class="flex-1 overflow-hidden" id="monthLabelsScrollContainer">
+                                <div id="monthLabelsContainer" class="relative">
+                                    <!-- 動的生成 -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- ヒートマップコンテナ -->
+                        <div class="flex">
+                            <!-- 曜日ラベル（縦軸：日曜日始まり） -->
+                            <div class="w-8 flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400 mr-2">
+                                <div class="h-3 flex items-center">Sun</div>
+                                <div class="h-3 flex items-center">Mon</div>
+                                <div class="h-3 flex items-center">Tue</div>
+                                <div class="h-3 flex items-center">Wed</div>
+                                <div class="h-3 flex items-center">Thu</div>
+                                <div class="h-3 flex items-center">Fri</div>
+                                <div class="h-3 flex items-center">Sat</div>
+                            </div>
+                            
+                            <!-- 日単位ヒートマップグリッド（スクロール可能） -->
+                            <div id="heatmapScrollContainer" class="flex-1 overflow-x-auto">
+                                <div id="dailyHeatmapGrid" class="min-w-max">
+                                    <!-- 動的生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ヒートマップ凡例 -->
+                    <div class="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
+                        <span>Less</span>
+                        <div class="flex items-center space-x-1">
+                            <div class="w-2 h-2 bg-gray-100 dark:bg-gray-600 rounded-sm"></div>
+                            <div class="w-2 h-2 bg-green-100 dark:bg-green-900/30 rounded-sm"></div>
+                            <div class="w-2 h-2 bg-green-200 dark:bg-green-800/50 rounded-sm"></div>
+                            <div class="w-2 h-2 bg-green-300 dark:bg-green-700/70 rounded-sm"></div>
+                            <div class="w-2 h-2 bg-green-400 dark:bg-green-600 rounded-sm"></div>
+                            <div class="w-2 h-2 bg-green-500 dark:bg-green-500 rounded-sm"></div>
+                            <div class="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-sm"></div>
+                        </div>
+                        <span>More</span>
+                    </div>
+                </div>
+                
+                <!-- カスタムツールチップ -->
+                <div id="heatmapTooltip" class="fixed bg-gray-900 text-white text-xs rounded px-2 py-1 pointer-events-none z-50 opacity-0 transition-opacity duration-200 shadow-lg">
+                    <div id="tooltipContent"></div>
+                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
+                        <div class="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 学習時間トラッキング
+        let learningSession = {
+            startTime: null,
+            pausedTime: 0,
+            isActive: false,
+            isPaused: false,
+            currentCategory: 'programming',
+            timer: null
+        };
+
+
+        // 学習時間の管理
+        function startLearning() {
+            learningSession.startTime = new Date();
+            learningSession.isActive = true;
+            learningSession.isPaused = false;
+            learningSession.currentCategory = document.getElementById('learningCategory').value;
+            
+            updateButtons();
+            startTimer();
+            console.log('学習開始:', learningSession.currentCategory);
+        }
+
+        function pauseLearning() {
+            learningSession.isPaused = true;
+            learningSession.pausedTime += new Date() - learningSession.startTime;
+            
+            updateButtons();
+            stopTimer();
+            console.log('学習一時停止');
+        }
+
+        function resumeLearning() {
+            learningSession.startTime = new Date();
+            learningSession.isPaused = false;
+            
+            updateButtons();
+            startTimer();
+            console.log('学習再開');
+        }
+
+        function stopLearning() {
+            if (!learningSession.isPaused) {
+                learningSession.pausedTime += new Date() - learningSession.startTime;
+            }
+            
+            const totalTime = learningSession.pausedTime;
+            console.log('学習終了。総時間:', Math.floor(totalTime / 1000 / 60), '分');
+            
+            // リセット
+            learningSession = {
+                startTime: null,
+                pausedTime: 0,
+                isActive: false,
+                isPaused: false,
+                currentCategory: 'programming',
+                timer: null
+            };
+            
+            updateButtons();
+            stopTimer();
+            document.getElementById('currentSessionTime').textContent = '00:00:00';
+        }
+
+        function updateButtons() {
+            const startBtn = document.getElementById('startLearningBtn');
+            const pauseBtn = document.getElementById('pauseLearningBtn');
+            const stopBtn = document.getElementById('stopLearningBtn');
+            
+            if (!learningSession.isActive) {
+                startBtn.disabled = false;
+                startBtn.textContent = '▶️ 学習開始';
+                startBtn.onclick = startLearning;
+                pauseBtn.disabled = true;
+                stopBtn.disabled = true;
+            } else if (learningSession.isPaused) {
+                startBtn.disabled = false;
+                startBtn.textContent = '▶️ 再開';
+                startBtn.onclick = resumeLearning;
+                pauseBtn.disabled = true;
+                stopBtn.disabled = false;
+            } else {
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                stopBtn.disabled = false;
+            }
+        }
+
+        function startTimer() {
+            learningSession.timer = setInterval(updateCurrentTime, 1000);
+        }
+
+        function stopTimer() {
+            if (learningSession.timer) {
+                clearInterval(learningSession.timer);
+                learningSession.timer = null;
+            }
+        }
+
+        function updateCurrentTime() {
+            if (learningSession.isActive && !learningSession.isPaused) {
+                const currentTime = new Date() - learningSession.startTime + learningSession.pausedTime;
+                const hours = Math.floor(currentTime / 1000 / 60 / 60);
+                const minutes = Math.floor((currentTime / 1000 / 60) % 60);
+                const seconds = Math.floor((currentTime / 1000) % 60);
+                
+                document.getElementById('currentSessionTime').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // PCロック検知による自動一時停止
+        function handleVisibilityChange() {
+            if (document.hidden && learningSession.isActive && !learningSession.isPaused) {
+                console.log('PCロック検知: 自動一時停止');
+                pauseLearning();
+            }
+        }
+
+        // アウトプット連続日数の計算
+        function calculateOutputStreak() {
+            // 実際の実装では、過去の日次データを確認
+            // 現在は固定値でデモ
+            return 7;
+        }
+
+        function hasOutputToday(memoContent) {
+            const hasText = memoContent.length >= 100;
+            const hasImages = (memoContent.match(/!\[.*?\]/g) || []).length > 0;
+            return hasText || hasImages;
+        }
+        
+        
+        
+        // パネルリサイズ機能
+        let isResizing = false;
+        let currentResizer = null;
+        
+        function initPanelResize() {
+            const resizer1 = document.getElementById('resizer1');
+            const resizer2 = document.getElementById('resizer2');
+            const leftPanel = document.getElementById('leftPanel');
+            const centerPanel = document.getElementById('centerPanel');
+            const rightPanel = document.getElementById('rightPanel');
+            const container = leftPanel.parentElement;
+            
+            // リサイザー1（左パネルと中央パネルの境界）
+            resizer1.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                currentResizer = 'resizer1';
+                document.body.classList.add('resizing');
+                e.preventDefault();
+            });
+            
+            // リサイザー2（中央パネルと右パネルの境界）
+            resizer2.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                currentResizer = 'resizer2';
+                document.body.classList.add('resizing');
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (!isResizing) return;
+                
+                const containerRect = container.getBoundingClientRect();
+                const containerWidth = containerRect.width;
+                const mouseX = e.clientX - containerRect.left;
+                
+                if (currentResizer === 'resizer1') {
+                    // 左パネルのリサイズ
+                    const leftWidthPercent = (mouseX / containerWidth) * 100;
+                    const centerWidthPercent = parseFloat(centerPanel.style.width || '50') || 50;
+                    const rightWidthPercent = 100 - leftWidthPercent - centerWidthPercent;
+                    
+                    if (leftWidthPercent >= 15 && leftWidthPercent <= 60 && rightWidthPercent >= 15) {
+                        leftPanel.style.width = leftWidthPercent + '%';
+                        rightPanel.style.width = rightWidthPercent + '%';
+                    }
+                } else if (currentResizer === 'resizer2') {
+                    // 中央パネルのリサイズ
+                    const leftWidthPercent = parseFloat(leftPanel.style.width) || 25;
+                    const rightEdgeX = containerWidth - mouseX;
+                    const rightWidthPercent = (rightEdgeX / containerWidth) * 100;
+                    const centerWidthPercent = 100 - leftWidthPercent - rightWidthPercent;
+                    
+                    if (centerWidthPercent >= 20 && rightWidthPercent >= 15 && rightWidthPercent <= 60) {
+                        centerPanel.style.width = centerWidthPercent + '%';
+                        rightPanel.style.width = rightWidthPercent + '%';
+                    }
+                }
+            });
+            
+            document.addEventListener('mouseup', function() {
+                isResizing = false;
+                currentResizer = null;
+                document.body.classList.remove('resizing');
+            });
+        }
+        
+        // タグカラーマッピング
+        const tagColors = {
+            programming: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-800 dark:text-blue-200', border: 'border-blue-200 dark:border-blue-700' },
+            english: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-800 dark:text-green-200', border: 'border-green-200 dark:border-green-700' },
+            health: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-800 dark:text-purple-200', border: 'border-purple-200 dark:border-purple-700' },
+            custom1: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-800 dark:text-orange-200', border: 'border-orange-200 dark:border-orange-700' },
+            custom2: { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-800 dark:text-teal-200', border: 'border-teal-200 dark:border-teal-700' },
+            custom3: { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-800 dark:text-rose-200', border: 'border-rose-200 dark:border-rose-700' }
+        };
+        
+        // ToDo管理機能
+        let currentTodoText = '';
+        let selectedTagIndex = 0;
+        let selectedTodoItem = null;
+        let selectedGoalItem = null;
+        let todoIdCounter = 0;
+        
+        function startTodoCreation() {
+            console.log('startTodoCreation called'); // デバッグ用
+            const input = document.getElementById('newTodoInput');
+            if (!input) {
+                console.error('newTodoInput element not found');
+                return;
+            }
+            
+            const todoText = input.value.trim();
+            console.log('Todo text:', todoText); // デバッグ用
+            
+            if (todoText === '') {
+                console.log('Empty todo text, returning');
+                return;
+            }
+            
+            currentTodoText = todoText;
+            console.log('Calling showTagSelectionModal'); // デバッグ用
+            showTagSelectionModal();
+        }
+        
+        function showTagSelectionModal() {
+            console.log('showTagSelectionModal called'); // デバッグ用
+            const modal = document.getElementById('tagSelectionModal');
+            const preview = document.getElementById('taskPreview');
+            
+            if (!modal) {
+                console.error('tagSelectionModal not found');
+                return;
+            }
+            
+            if (!preview) {
+                console.error('taskPreview not found');
+                return;
+            }
+            
+            console.log('Setting preview text and showing modal'); // デバッグ用
+            preview.textContent = `タスク: "${currentTodoText}"`;
+            modal.classList.remove('hidden');
+            
+            // キーボードナビゲーションの初期化
+            selectedTagIndex = 0;
+            updateTagSelection();
+            
+            // モーダルにフォーカスを設定し、キーイベントをキャプチャ
+            setTimeout(() => {
+                modal.focus();
+            }, 10);
+            
+            // 背景スクロールを防止
+            document.body.style.overflow = 'hidden';
+            console.log('Modal should be visible now'); // デバッグ用
+        }
+        
+        function hideTagSelectionModal() {
+            const modal = document.getElementById('tagSelectionModal');
+            modal.classList.add('hidden');
+            currentTodoText = '';
+            selectedTagIndex = 0;
+            
+            // 背景スクロールを復元
+            document.body.style.overflow = '';
+            
+            // 入力フィールドにフォーカスを戻す
+            setTimeout(() => {
+                document.getElementById('newTodoInput').focus();
+            }, 10);
+        }
+        
+        function updateTagSelection() {
+            const options = document.querySelectorAll('.tag-option');
+            options.forEach((option, index) => {
+                if (index === selectedTagIndex) {
+                    option.classList.add('ring-2', 'ring-blue-400', 'border-blue-400');
+                    option.classList.remove('border-transparent');
+                    // 選択された要素が見えるようにスクロール
+                    option.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    option.classList.remove('ring-2', 'ring-blue-400', 'border-blue-400');
+                    option.classList.add('border-transparent');
+                }
+            });
+        }
+        
+        function selectTag(categoryValue) {
+            if (categoryValue) {
+                const colors = tagColors[categoryValue];
+                const categoryText = getTagText(categoryValue);
+                createTodoWithTag(currentTodoText, categoryValue, categoryText, colors);
+            } else {
+                // タグなしで追加
+                createTodoWithoutTag(currentTodoText);
+            }
+            
+            // 入力フィールドをクリア
+            document.getElementById('newTodoInput').value = '';
+            hideTagSelectionModal();
+        }
+        
+        function createTodoWithTag(todoText, categoryValue, categoryText, colors) {
+            todoIdCounter++;
+            const todoItem = document.createElement('div');
+            todoItem.id = `todo-item-${todoIdCounter}`;
+            todoItem.className = 'todo-item flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-600';
+            todoItem.setAttribute('data-todo-id', todoIdCounter);
+            todoItem.innerHTML = `
+                <input type="checkbox" class="mr-3 w-4 h-4 text-blue-600 rounded">
+                <span class="flex-1">${todoText}</span>
+                <span class="text-xs px-2 py-1 rounded ${colors.bg} ${colors.text} ${colors.border} border">${categoryText}</span>
+            `;
+            
+            // クリック選択機能を追加
+            todoItem.addEventListener('click', function(e) {
+                console.log('ToDo item clicked:', todoItem);
+                if (e.target.type !== 'checkbox') { // チェックボックス以外をクリックした場合
+                    selectTodoItem(todoItem);
+                }
+            });
+            
+            const todoList = document.querySelector('.space-y-2');
+            todoList.appendChild(todoItem);
+        }
+        
+        function createTodoWithoutTag(todoText) {
+            todoIdCounter++;
+            const todoItem = document.createElement('div');
+            todoItem.id = `todo-item-${todoIdCounter}`;
+            todoItem.className = 'todo-item flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-600';
+            todoItem.setAttribute('data-todo-id', todoIdCounter);
+            todoItem.innerHTML = `
+                <input type="checkbox" class="mr-3 w-4 h-4 text-blue-600 rounded">
+                <span class="flex-1">${todoText}</span>
+            `;
+            
+            // クリック選択機能を追加
+            todoItem.addEventListener('click', function(e) {
+                console.log('ToDo item clicked:', todoItem);
+                if (e.target.type !== 'checkbox') { // チェックボックス以外をクリックした場合
+                    selectTodoItem(todoItem);
+                }
+            });
+            
+            const todoList = document.querySelector('.space-y-2');
+            todoList.appendChild(todoItem);
+        }
+        
+        function getTagText(categoryValue) {
+            const tagLabels = {
+                programming: '📚 プログラミングスキル向上',
+                english: '🗣️ 英語学習',
+                health: '🏃 健康管理',
+                custom1: document.getElementById('custom1Label').textContent,
+                custom2: document.getElementById('custom2Label').textContent,
+                custom3: document.getElementById('custom3Label').textContent
+            };
+            return tagLabels[categoryValue] || categoryValue;
+        }
+        
+        function handleTagModalKeydown(e) {
+            const options = document.querySelectorAll('.tag-option');
+            
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    selectedTagIndex = Math.min(selectedTagIndex + 1, options.length - 1);
+                    updateTagSelection();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    selectedTagIndex = Math.max(selectedTagIndex - 1, 0);
+                    updateTagSelection();
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    const selectedOption = options[selectedTagIndex];
+                    if (selectedOption) {
+                        const categoryValue = selectedOption.getAttribute('data-value');
+                        selectTag(categoryValue);
+                    }
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    hideTagSelectionModal();
+                    break;
+            }
+        }
+        
+        // カスタムタグ編集機能
+        let editingFromTagSelection = false;
+        
+        function startEditTag(tagId) {
+            editingFromTagSelection = true;
+            showTagEditModal();
+            
+            // 現在の値をモーダルに設定
+            const currentValues = {
+                custom1: document.getElementById('custom1Label').textContent,
+                custom2: document.getElementById('custom2Label').textContent,
+                custom3: document.getElementById('custom3Label').textContent
+            };
+            
+            document.getElementById('editCustom1Input').value = currentValues.custom1;
+            document.getElementById('editCustom2Input').value = currentValues.custom2;
+            document.getElementById('editCustom3Input').value = currentValues.custom3;
+            
+            // 編集対象のフィールドにフォーカス
+            setTimeout(() => {
+                document.getElementById(`edit${tagId.charAt(0).toUpperCase() + tagId.slice(1)}Input`).focus();
+            }, 100);
+        }
+        
+        function showTagEditModal() {
+            const modal = document.getElementById('tagEditModal');
+            modal.classList.remove('hidden');
+            
+            setTimeout(() => {
+                modal.focus();
+            }, 10);
+        }
+        
+        function hideTagEditModal() {
+            const modal = document.getElementById('tagEditModal');
+            modal.classList.add('hidden');
+            
+            if (editingFromTagSelection) {
+                // タグ選択モーダルに戻る
+                setTimeout(() => {
+                    document.getElementById('tagSelectionModal').focus();
+                }, 10);
+                editingFromTagSelection = false;
+            }
+        }
+        
+        function saveCustomTagEdits() {
+            const newValues = {
+                custom1: document.getElementById('editCustom1Input').value.trim(),
+                custom2: document.getElementById('editCustom2Input').value.trim(),
+                custom3: document.getElementById('editCustom3Input').value.trim()
+            };
+            
+            // ラベルを更新（モーダル内と外部編集エリアの両方）
+            Object.keys(newValues).forEach(tagId => {
+                const value = newValues[tagId];
+                if (value) {
+                    // モーダル内のラベル更新
+                    document.getElementById(`${tagId}Label`).textContent = value;
+                    
+                    // 外部編集エリアの値も更新
+                    const externalInput = document.getElementById(`${tagId}Input`);
+                    if (externalInput) {
+                        externalInput.value = value.replace(/^[\u{1F300}-\u{1F9FF}]\s*/u, ''); // 絵文字を除去して設定
+                    }
+                }
+            });
+            
+            hideTagEditModal();
+        }
+        
+        function updateCustomTag(tagId, newValue) {
+            const label = document.getElementById(`${tagId}Label`);
+            
+            if (newValue.trim() === '') {
+                return;
+            }
+            
+            // 絵文字が含まれていない場合、デフォルトを追加
+            let newText = newValue.trim();
+            if (!/^[\u{1F300}-\u{1F9FF}]/u.test(newText)) {
+                const defaultEmojis = { custom1: '📚', custom2: '🏠', custom3: '🎨' };
+                newText = `${defaultEmojis[tagId]} ${newText}`;
+            }
+            
+            label.textContent = newText;
+        }
+        
+        // ヒートマップ機能
+        
+        function generateSampleData() {
+            const data = {};
+            const today = new Date();
+            
+            // 過去365日のサンプルデータを生成
+            for (let i = 0; i < 365; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                
+                // ランダムな学習時間（0-8時間、週末は少なめ）
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                const maxHours = isWeekend ? 4 : 8;
+                const hours = Math.random() < 0.15 ? 0 : Math.floor(Math.random() * maxHours) + 1;
+                
+                data[dateStr] = hours;
+            }
+            
+            return data;
+        }
+        
+        function getIntensityClass(hours) {
+            if (hours === 0) return 'bg-gray-100 dark:bg-gray-600';
+            if (hours <= 1) return 'bg-green-100 dark:bg-green-900/30';
+            if (hours <= 2) return 'bg-green-200 dark:bg-green-800/50';
+            if (hours <= 3) return 'bg-green-300 dark:bg-green-700/70';
+            if (hours <= 4) return 'bg-green-400 dark:bg-green-600';
+            if (hours <= 5) return 'bg-green-500 dark:bg-green-500';
+            return 'bg-green-600 dark:bg-green-400';
+        }
+        
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+            const dayName = dayNames[date.getDay()];
+            
+            return `${year}年${month}月${day}日 (${dayName})`;
+        }
+        
+        
+        function generateDailyHeatmap() {
+            const heatmapData = generateSampleData();
+            const grid = document.getElementById('dailyHeatmapGrid');
+            const monthContainer = document.getElementById('monthLabelsContainer');
+            grid.innerHTML = '';
+            monthContainer.innerHTML = '';
+            
+            const today = new Date();
+            const oneYearAgo = new Date(today);
+            oneYearAgo.setFullYear(today.getFullYear() - 1);
+            
+            // 開始日を日曜日に調整（GitHubスタイル）
+            const startDate = new Date(oneYearAgo);
+            startDate.setDate(startDate.getDate() - startDate.getDay());
+            
+            // 週数を計算
+            const totalDays = Math.ceil((today - startDate) / (1000 * 60 * 60 * 24));
+            const totalWeeks = Math.ceil(totalDays / 7);
+            
+            // 月ラベルを生成
+            generateMonthLabels(startDate, totalWeeks, monthContainer);
+            
+            // ヒートマップグリッドを生成（縦7行 × 横週数列）
+            grid.className = 'flex gap-0.5';
+            
+            for (let week = 0; week < totalWeeks; week++) {
+                const weekColumn = document.createElement('div');
+                weekColumn.className = 'flex flex-col gap-0.5';
+                
+                for (let day = 0; day < 7; day++) {
+                    const date = new Date(startDate);
+                    date.setDate(date.getDate() + (week * 7 + day));
+                    
+                    // 未来の日付や1年以上前はスキップ
+                    if (date > today || date < oneYearAgo) {
+                        const emptyCell = document.createElement('div');
+                        emptyCell.className = 'w-3 h-3';
+                        weekColumn.appendChild(emptyCell);
+                        continue;
+                    }
+                    
+                    const dateStr = date.toISOString().split('T')[0];
+                    const hours = heatmapData[dateStr] || 0;
+                    
+                    const dayCell = document.createElement('div');
+                    dayCell.className = `w-3 h-3 ${getIntensityClass(hours)} rounded-sm cursor-pointer transition-all duration-200 hover:scale-125 border border-gray-200 dark:border-gray-600`;
+                    
+                    // 今日の分にアニメーション
+                    if (dateStr === today.toISOString().split('T')[0]) {
+                        dayCell.classList.add('animate-pulse');
+                    }
+                    
+                    // ツールチップデータ
+                    dayCell.setAttribute('data-date', dateStr);
+                    dayCell.setAttribute('data-hours', hours);
+                    dayCell.setAttribute('data-formatted-date', formatDate(date));
+                    
+                    weekColumn.appendChild(dayCell);
+                }
+                
+                grid.appendChild(weekColumn);
+            }
+            
+            // 今日の日付が見えるように初期スクロール位置を設定（一番右）
+            setTimeout(() => {
+                const scrollContainer = document.getElementById('heatmapScrollContainer');
+                const monthScrollContainer = document.getElementById('monthLabelsScrollContainer');
+                
+                if (scrollContainer && monthScrollContainer) {
+                    // 一番右端（今日の日付）にスクロール
+                    const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+                    
+                    scrollContainer.scrollLeft = maxScroll;
+                    monthScrollContainer.scrollLeft = maxScroll;
+                    
+                    // 月ラベルとヒートマップのスクロール同期
+                    scrollContainer.addEventListener('scroll', function() {
+                        monthScrollContainer.scrollLeft = scrollContainer.scrollLeft;
+                    });
+                    
+                    monthScrollContainer.addEventListener('scroll', function() {
+                        scrollContainer.scrollLeft = monthScrollContainer.scrollLeft;
+                    });
+                }
+            }, 100);
+        }
+        
+        function generateMonthLabels(startDate, totalWeeks, container) {
+            const monthPositions = [];
+            let currentMonth = -1;
+            
+            // 各週の最初の日の月を確認（最低3週間のスペースが必要）
+            for (let week = 0; week < totalWeeks; week++) {
+                const weekStart = new Date(startDate);
+                weekStart.setDate(weekStart.getDate() + week * 7);
+                
+                if (weekStart.getMonth() !== currentMonth) {
+                    currentMonth = weekStart.getMonth();
+                    
+                    // 前の月から十分な距離があるかチェック
+                    const lastPos = monthPositions[monthPositions.length - 1];
+                    if (!lastPos || week - lastPos.week >= 3) {
+                        monthPositions.push({
+                            week: week,
+                            month: currentMonth,
+                            name: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][currentMonth]
+                        });
+                    }
+                }
+            }
+            
+            // 月ラベルコンテナを作成
+            container.className = 'relative flex';
+            // セル幅12px（w-3）+ gap-0.5（2px）= 14px per week
+            const cellWidth = 14;
+            container.style.width = `${totalWeeks * cellWidth}px`;
+            container.style.height = '14px'; // ラベル用の十分な高さ
+            
+            monthPositions.forEach(pos => {
+                const monthLabel = document.createElement('div');
+                monthLabel.className = 'absolute text-xs text-gray-500 dark:text-gray-400';
+                monthLabel.style.left = `${pos.week * cellWidth}px`;
+                monthLabel.style.top = '0px';
+                monthLabel.textContent = pos.name;
+                container.appendChild(monthLabel);
+            });
+        }
+        
+        function initHeatmapTooltip() {
+            const tooltip = document.getElementById('heatmapTooltip');
+            const tooltipContent = document.getElementById('tooltipContent');
+            
+            // イベント委任でホバーイベントを処理
+            document.addEventListener('mouseover', function(e) {
+                if (e.target.hasAttribute('data-date')) {
+                    const date = e.target.getAttribute('data-formatted-date');
+                    const hours = e.target.getAttribute('data-hours');
+                    
+                    tooltipContent.textContent = `${date}: ${hours}時間`;
+                    
+                    // ツールチップの位置を計算
+                    const rect = e.target.getBoundingClientRect();
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    
+                    tooltip.style.left = `${rect.left + rect.width / 2 - tooltipRect.width / 2}px`;
+                    tooltip.style.top = `${rect.top - tooltipRect.height - 8}px`;
+                    tooltip.classList.remove('opacity-0');
+                    tooltip.classList.add('opacity-100');
+                }
+            });
+            
+            document.addEventListener('mouseout', function(e) {
+                if (e.target.hasAttribute('data-date')) {
+                    tooltip.classList.remove('opacity-100');
+                    tooltip.classList.add('opacity-0');
+                }
+            });
+        }
+        
+        
+        // ToDo選択と削除機能
+        function selectTodoItem(todoItem) {
+            // 既存の選択状態をクリア
+            if (selectedTodoItem) {
+                selectedTodoItem.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+            }
+            
+            // 目標の選択もクリア
+            clearGoalSelection();
+            
+            // 新しいアイテムを選択
+            selectedTodoItem = todoItem;
+            todoItem.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+            
+            console.log('ToDo item selected:', todoItem);
+        }
+        
+        function deleteTodoItem() {
+            if (selectedTodoItem) {
+                console.log('Deleting todo item:', selectedTodoItem);
+                selectedTodoItem.remove();
+                selectedTodoItem = null;
+            } else {
+                console.log('No todo item selected for deletion');
+            }
+        }
+        
+        function clearTodoSelection() {
+            if (selectedTodoItem) {
+                selectedTodoItem.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+                selectedTodoItem = null;
+            }
+        }
+        
+        // 目標選択と削除機能
+        function selectGoalItem(goalItem) {
+            // 既存の選択状態をクリア
+            if (selectedGoalItem) {
+                selectedGoalItem.classList.remove('ring-2', 'ring-blue-500');
+            }
+            
+            // ToDoの選択もクリア
+            clearTodoSelection();
+            
+            // 新しいアイテムを選択
+            selectedGoalItem = goalItem;
+            goalItem.classList.add('ring-2', 'ring-blue-500');
+            
+            console.log('Goal item selected:', goalItem);
+        }
+        
+        function deleteGoalItem() {
+            if (selectedGoalItem) {
+                console.log('Deleting goal item:', selectedGoalItem);
+                selectedGoalItem.remove();
+                selectedGoalItem = null;
+            } else {
+                console.log('No goal item selected for deletion');
+            }
+        }
+        
+        function clearGoalSelection() {
+            if (selectedGoalItem) {
+                selectedGoalItem.classList.remove('ring-2', 'ring-blue-500');
+                selectedGoalItem = null;
+            }
+        }
+        
+        // 初期化
+        // ダークモード切り替え機能
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const isDark = html.classList.contains('dark');
+            
+            if (isDark) {
+                html.classList.remove('dark');
+                localStorage.setItem('darkMode', 'false');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('darkMode', 'true');
+            }
+        }
+        
+        // ダークモードの初期状態を設定
+        function initDarkMode() {
+            const savedMode = localStorage.getItem('darkMode');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedMode === 'true' || (savedMode === null && prefersDark)) {
+                document.documentElement.classList.add('dark');
+            }
+        }
+        
+        // ページ読み込み時にダークモードを初期化
+        initDarkMode();
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM fully loaded');
+            
+            updateButtons();
+            initPanelResize();
+            
+            // ダークモード切り替えボタンのイベントリスナー
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            if (darkModeToggle) {
+                darkModeToggle.addEventListener('click', toggleDarkMode);
+            }
+            
+            // ヒートマップ初期化
+            generateDailyHeatmap();
+            initHeatmapTooltip();
+            
+            // デバッグ：すべての必要な要素の存在確認
+            console.log('Checking for required elements:');
+            console.log('addTodoBtn:', document.getElementById('addTodoBtn'));
+            console.log('newTodoInput:', document.getElementById('newTodoInput'));
+            console.log('tagSelectionModal:', document.getElementById('tagSelectionModal'));
+            console.log('taskPreview:', document.getElementById('taskPreview'));
+            
+            // ToDo追加イベントリスナー
+            const addBtn = document.getElementById('addTodoBtn');
+            const todoInput = document.getElementById('newTodoInput');
+            
+            if (addBtn) {
+                console.log('Adding click event listener to addTodoBtn');
+                addBtn.addEventListener('click', function() {
+                    console.log('Add button clicked'); // デバッグ用
+                    startTodoCreation();
+                });
+            } else {
+                console.error('addTodoBtn not found');
+            }
+            
+            if (todoInput) {
+                console.log('Adding keypress event listener to newTodoInput');
+                todoInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        console.log('Enter key pressed'); // デバッグ用
+                        startTodoCreation();
+                    }
+                });
+            } else {
+                console.error('newTodoInput not found');
+            }
+            
+            // タグ選択モーダルイベントリスナー
+            const tagModal = document.getElementById('tagSelectionModal');
+            if (tagModal) {
+                console.log('Adding keydown event listener to tagModal');
+                tagModal.addEventListener('keydown', handleTagModalKeydown);
+            } else {
+                console.error('tagSelectionModal not found');
+            }
+            
+            // グローバルキーイベントをキャプチャ（モーダル表示中のみ）
+            document.addEventListener('keydown', function(e) {
+                if (tagModal && !tagModal.classList.contains('hidden') && document.getElementById('tagEditModal') && document.getElementById('tagEditModal').classList.contains('hidden')) {
+                    // タグ選択モーダルが表示中かつ編集モーダルが非表示の場合
+                    if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleTagModalKeydown(e);
+                    }
+                }
+            }, true);
+            
+            const cancelBtn = document.getElementById('cancelTagSelection');
+            const skipBtn = document.getElementById('skipTagSelection');
+            
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', hideTagSelectionModal);
+            } else {
+                console.error('cancelTagSelection button not found');
+            }
+            
+            if (skipBtn) {
+                skipBtn.addEventListener('click', () => selectTag(null));
+            } else {
+                console.error('skipTagSelection button not found');
+            }
+            
+            // タグオプションのクリックイベント
+            document.querySelectorAll('.tag-option').forEach((option, index) => {
+                option.addEventListener('click', function() {
+                    const categoryValue = this.getAttribute('data-value');
+                    selectTag(categoryValue);
+                });
+            });
+            
+            // モーダル背景クリックで閉じる
+            if (tagModal) {
+                tagModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        hideTagSelectionModal();
+                    }
+                });
+            }
+            
+            // タグ編集モーダルイベントリスナー
+            const editModal = document.getElementById('tagEditModal');
+            const cancelEditBtn = document.getElementById('cancelTagEdit');
+            
+            if (cancelEditBtn) {
+                cancelEditBtn.addEventListener('click', hideTagEditModal);
+            } else {
+                console.error('cancelTagEdit button not found');
+            }
+            const saveEditBtn = document.getElementById('saveTagEdit');
+            if (saveEditBtn) {
+                saveEditBtn.addEventListener('click', saveCustomTagEdits);
+            } else {
+                console.error('saveTagEdit button not found');
+            }
+            
+            // 編集モーダル背景クリックで閉じる
+            if (editModal) {
+                editModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        hideTagEditModal();
+                    }
+                });
+            }
+            
+            // 編集モーダルでEnterキーで保存
+            if (editModal) {
+                editModal.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+                        e.preventDefault();
+                        saveCustomTagEdits();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        hideTagEditModal();
+                    }
+                });
+            }
+            
+            // カスタムタグ編集はモーダル経由で行うため、個別の入力フィールドは不要
+            
+            // PCロック検知イベントリスナー
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            
+            // 目標カードのイベントリスナーを追加
+            document.querySelectorAll('.goal-item').forEach(goalItem => {
+                goalItem.addEventListener('click', function(e) {
+                    console.log('Goal item clicked:', goalItem);
+                    selectGoalItem(goalItem);
+                });
+            });
+            
+            // 既存のToDoカードのイベントリスナーを追加
+            document.querySelectorAll('.todo-item').forEach(todoItem => {
+                todoItem.addEventListener('click', function(e) {
+                    console.log('Existing ToDo item clicked:', todoItem);
+                    if (e.target.type !== 'checkbox') { // チェックボックス以外をクリックした場合
+                        selectTodoItem(todoItem);
+                    }
+                });
+            });
+            
+            // グローバルキーボードショートカット（ToDo・目標削除）
+            document.addEventListener('keydown', function(e) {
+                // モーダルが開いている場合はスキップ
+                if (!document.getElementById('tagSelectionModal').classList.contains('hidden') || 
+                    !document.getElementById('tagEditModal').classList.contains('hidden')) {
+                    return;
+                }
+                
+                // Delete または Backspace キーで選択されたアイテムを削除
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    e.preventDefault();
+                    if (selectedTodoItem) {
+                        deleteTodoItem();
+                    } else if (selectedGoalItem) {
+                        deleteGoalItem();
+                    }
+                }
+                
+                // Escapeキーで選択をクリア
+                if (e.key === 'Escape') {
+                    clearTodoSelection();
+                    clearGoalSelection();
+                }
+            });
+            
+            // ToDo領域外クリックで選択をクリア
+            document.addEventListener('click', function(e) {
+                // ToDo項目またはその子要素をクリックした場合はスキップ
+                if (e.target.closest('.todo-item') || e.target.closest('.goal-item')) {
+                    return;
+                }
+                
+                // ToDo入力フィールドやボタンをクリックした場合はスキップ
+                if (e.target.closest('#newTodoInput') || e.target.closest('#addTodoBtn')) {
+                    return;
+                }
+                
+                // モーダル内のクリックはスキップ
+                if (e.target.closest('#tagSelectionModal') || e.target.closest('#tagEditModal')) {
+                    return;
+                }
+                
+                // その他の場所をクリックした場合は選択をクリア
+                clearTodoSelection();
+                clearGoalSelection();
+            });
+        });
+        
+    </script>
+</body>
+</html>

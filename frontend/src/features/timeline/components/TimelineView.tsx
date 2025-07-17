@@ -198,6 +198,51 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     calculateDateHeaderFontSize(dimensions.cellWidth, state.viewUnit, state.zoomLevel),
     [dimensions.cellWidth, state.viewUnit, state.zoomLevel]
   )
+
+  // 月グループ計算用のuseMemo（条件付きレンダリング外に移動）
+  const monthGroups = useMemo(() => {
+    if (state.viewUnit !== 'day') return []
+    
+    const groups: Array<{month: number, year: number, startIndex: number, width: number}> = []
+    let currentMonth: number | null = null
+    let monthStart = 0
+    let monthWidth = 0
+    
+    visibleDates.forEach((date, index) => {
+      if (currentMonth !== date.getMonth()) {
+        if (currentMonth !== null) {
+          groups.push({
+            month: currentMonth,
+            year: visibleDates[monthStart].getFullYear(),
+            startIndex: monthStart,
+            width: monthWidth * dimensions.cellWidth
+          })
+        }
+        currentMonth = date.getMonth()
+        monthStart = index
+        monthWidth = 1
+      } else {
+        monthWidth++
+      }
+      
+      if (index === visibleDates.length - 1) {
+        groups.push({
+          month: currentMonth!,
+          year: date.getFullYear(),
+          startIndex: monthStart,
+          width: monthWidth * dimensions.cellWidth
+        })
+      }
+    })
+    
+    logger.debug('Month groups calculated for timeline header', {
+      groupCount: groups.length,
+      cellWidth: dimensions.cellWidth,
+      visibleDatesCount: visibleDates.length
+    })
+    
+    return groups
+  }, [state.viewUnit, visibleDates, dimensions.cellWidth])
   
   const taskRelationMap = useMemo(() => {
     logger.info('Building task relation map for all projects', {
@@ -235,6 +280,11 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     return stats
   }, [projects, tasks])
 
+  // 階層ソート済みタスクリストを行選択フックに通知
+  const hierarchicalTasks = useMemo(() => {
+    return tasks // TimelineRendererで階層ソートされるため、ここでは元の配列を使用
+  }, [tasks])
+
   const handleFitToScreen = useCallback(() => {
     if (timelineRef.current) {
       fitToScreen(timelineRef.current.clientWidth)
@@ -246,13 +296,6 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     const scrollPosition = scrollToToday()
     return scrollPosition
   }, [scrollToToday])
-
-  useEffect(() => {
-    if (onScrollToToday) {
-      logger.info('Registering scroll to today function with parent component (all projects mode)')
-      onScrollToToday(handleScrollToToday)
-    }
-  }, [onScrollToToday, handleScrollToToday])
 
   const handleTimelineScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const newScrollLeft = e.currentTarget.scrollLeft
@@ -384,15 +427,6 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     }
   }, [tasks, getSelectedTasks, clearSelection, onTaskUpdate])
 
-  // 階層ソート済みタスクリストを行選択フックに通知
-  const hierarchicalTasks = useMemo(() => {
-    return tasks // TimelineRendererで階層ソートされるため、ここでは元の配列を使用
-  }, [tasks])
-
-  useEffect(() => {
-    updateTasksRef(hierarchicalTasks)
-  }, [hierarchicalTasks, updateTasksRef])
-
   const getAppClasses = useCallback(() => {
     return theme === 'dark' 
       ? {
@@ -407,7 +441,17 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
 
   const classes = getAppClasses()
 
-  // 重複関数削除：utils/index.tsからインポート済み
+  // すべてのEffect hookを早期returnの前に配置
+  useEffect(() => {
+    if (onScrollToToday) {
+      logger.info('Registering scroll to today function with parent component (all projects mode)')
+      onScrollToToday(handleScrollToToday)
+    }
+  }, [onScrollToToday, handleScrollToToday])
+
+  useEffect(() => {
+    updateTasksRef(hierarchicalTasks)
+  }, [hierarchicalTasks, updateTasksRef])
 
   useEffect(() => {
     logger.info('Timeline view state changed (all projects mode)', {
@@ -430,21 +474,26 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     })
   }, [state.viewUnit, state.zoomLevel, tasks.length, projects.length, visibleDates.length, projectTaskStats, currentSelectedProjectId, keyboardState.isActive, selectedCount])
 
-  if (projects.length === 0) {
-    return (
-      <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
-        <TimelineControls
-          zoomLevel={state.zoomLevel}
-          onZoomChange={setZoomLevel}
-          viewUnit={state.viewUnit}
-          onViewUnitChange={setViewUnit}
-          onTodayClick={handleScrollToToday}
-          onFitToScreen={handleFitToScreen}
-          onExpandAll={handleExpandAll}
-          onCollapseAll={handleCollapseAll}
-          onViewModeChange={onViewModeChange}
-        />
-        
+  // 条件付きレンダリング用の変数
+  const hasNoProjects = projects.length === 0
+  const hasNoTasks = tasks.length === 0
+
+  return (
+    <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
+      <TimelineControls
+        zoomLevel={state.zoomLevel}
+        onZoomChange={setZoomLevel}
+        viewUnit={state.viewUnit}
+        onViewUnitChange={setViewUnit}
+        onTodayClick={handleScrollToToday}
+        onFitToScreen={handleFitToScreen}
+        onExpandAll={handleExpandAll}
+        onCollapseAll={handleCollapseAll}
+        onViewModeChange={onViewModeChange}
+      />
+      
+      {/* プロジェクトがない場合の表示 */}
+      {hasNoProjects && (
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="text-6xl mb-4">📅</div>
@@ -460,25 +509,10 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
             </button>
           </div>
         </main>
-      </div>
-    )
-  }
-
-  if (tasks.length === 0) {
-    return (
-      <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
-        <TimelineControls
-          zoomLevel={state.zoomLevel}
-          onZoomChange={setZoomLevel}
-          viewUnit={state.viewUnit}
-          onViewUnitChange={setViewUnit}
-          onTodayClick={handleScrollToToday}
-          onFitToScreen={handleFitToScreen}
-          onExpandAll={handleExpandAll}
-          onCollapseAll={handleCollapseAll}
-          onViewModeChange={onViewModeChange}
-        />
-        
+      )}
+      
+      {/* タスクがない場合の表示 */}
+      {!hasNoProjects && hasNoTasks && (
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="text-6xl mb-4">📋</div>
@@ -508,33 +542,20 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
             </button>
           </div>
         </main>
-      </div>
-    )
-  }
-
-  return (
-    <div className={`h-screen flex flex-col ${classes.app} overflow-hidden`}>
-      <TimelineControls
-        zoomLevel={state.zoomLevel}
-        onZoomChange={setZoomLevel}
-        viewUnit={state.viewUnit}
-        onViewUnitChange={setViewUnit}
-        onTodayClick={handleScrollToToday}
-        onFitToScreen={handleFitToScreen}
-        onExpandAll={handleExpandAll}
-        onCollapseAll={handleCollapseAll}
-        onViewModeChange={onViewModeChange}
-      />
+      )}
       
-      {/* メニューバー（一括操作）*/}
-      <TimelineMenuBar
-        selectedTasks={getSelectedTasks(tasks)}
-        onDateShift={handleDateShift}
-        onClearSelection={clearSelection}
-        theme={theme === 'dark' ? 'dark' : 'light'}
-      />
-      
-      <main className="flex-1 flex flex-col overflow-hidden w-full min-w-0" style={{ height: 'calc(100vh - 114px)' }}>
+      {/* 通常のタイムライン表示 */}
+      {!hasNoProjects && !hasNoTasks && (
+        <>
+          {/* メニューバー（一括操作）*/}
+          <TimelineMenuBar
+            selectedTasks={getSelectedTasks(tasks)}
+            onDateShift={handleDateShift}
+            onClearSelection={clearSelection}
+            theme={theme === 'dark' ? 'dark' : 'light'}
+          />
+          
+          <main className="flex-1 flex flex-col overflow-hidden w-full min-w-0" style={{ height: 'calc(100vh - 114px)' }}>
         <div className={`${classes.dateHeader} border-b-2 overflow-hidden w-full`}>
           <div className="w-full overflow-x-hidden timeline-date-header">
             {state.viewUnit === 'day' ? (
@@ -543,64 +564,24 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                   height: `${Math.max(20, Math.round(dimensions.rowHeight.project * 0.6))}px`,
                   minWidth: `${visibleDates.length * dimensions.cellWidth}px` 
                 }}>
-                  {useMemo(() => {
-                    const monthGroups: Array<{month: number, year: number, startIndex: number, width: number}> = []
-                    let currentMonth: number | null = null
-                    let monthStart = 0
-                    let monthWidth = 0
-                    
-                    visibleDates.forEach((date, index) => {
-                      if (currentMonth !== date.getMonth()) {
-                        if (currentMonth !== null) {
-                          monthGroups.push({
-                            month: currentMonth,
-                            year: visibleDates[monthStart].getFullYear(),
-                            startIndex: monthStart,
-                            width: monthWidth * dimensions.cellWidth
-                          })
-                        }
-                        currentMonth = date.getMonth()
-                        monthStart = index
-                        monthWidth = 1
-                      } else {
-                        monthWidth++
-                      }
-                      
-                      if (index === visibleDates.length - 1) {
-                        monthGroups.push({
-                          month: currentMonth!,
-                          year: date.getFullYear(),
-                          startIndex: monthStart,
-                          width: monthWidth * dimensions.cellWidth
-                        })
-                      }
-                    })
-                    
-                    logger.debug('Month groups calculated for timeline header', {
-                      groupCount: monthGroups.length,
-                      cellWidth: dimensions.cellWidth,
-                      visibleDatesCount: visibleDates.length
-                    })
-                    
-                    return monthGroups.map((monthGroup) => (
-                      <div 
-                        key={`month-${monthGroup.year}-${monthGroup.month}`}
-                        className={`text-center font-bold border-r-2 ${classes.dateHeader} flex items-center justify-center`}
-                        style={{ 
-                          width: `${monthGroup.width}px`,
-                          minWidth: `${monthGroup.width}px`,
-                          borderRightWidth: '3px',
-                          borderRightColor: theme === 'dark' ? '#6366f1' : '#4f46e5',
-                          fontSize: `${dynamicFontSizes.base}px`,
-                          backgroundColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(79, 70, 229, 0.05)'
-                        }}
-                      >
-                        <div className="text-indigo-700 dark:text-indigo-300 font-bold">
-                          {monthGroup.year}年{getMonthName(monthGroup.month)}
-                        </div>
+                  {monthGroups.map((monthGroup) => (
+                    <div 
+                      key={`month-${monthGroup.year}-${monthGroup.month}`}
+                      className={`text-center font-bold border-r-2 ${classes.dateHeader} flex items-center justify-center`}
+                      style={{ 
+                        width: `${monthGroup.width}px`,
+                        minWidth: `${monthGroup.width}px`,
+                        borderRightWidth: '3px',
+                        borderRightColor: theme === 'dark' ? '#6366f1' : '#4f46e5',
+                        fontSize: `${dynamicFontSizes.base}px`,
+                        backgroundColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(79, 70, 229, 0.05)'
+                      }}
+                    >
+                      <div className="text-indigo-700 dark:text-indigo-300 font-bold">
+                        {monthGroup.year}年{getMonthName(monthGroup.month)}
                       </div>
-                    ))
-                  }, [visibleDates, dimensions.cellWidth, getMonthName, theme])}
+                    </div>
+                  ))}
                 </div>
                 
                 <div className="flex" style={{ 
@@ -720,8 +701,10 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
             dragSelectionStartY={dragSelectionStartY}
             dragSelectionCurrentY={dragSelectionCurrentY}
           />
-        </div>
-      </main>
+          </div>
+        </main>
+        </>
+      )}
       
       {/* コンテキストメニュー（右クリックメニュー）- 暫定的に無効化 */}
       {/* {selectedCount > 0 && (
