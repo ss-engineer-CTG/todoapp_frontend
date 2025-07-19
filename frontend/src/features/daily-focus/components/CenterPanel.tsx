@@ -7,7 +7,7 @@ import { useSelection } from '../hooks/useSelection'
 import { TagSelectionModal } from './modals/TagSelectionModal'
 import { TagEditModal } from './modals/TagEditModal'
 import { FocusTodo, LearningCategory } from '../types'
-import { todoStorage } from '../utils/storage'
+import { todoStorage, initializeStorage } from '../utils/storage'
 import { 
   getColorClasses, 
   getNeutralClasses, 
@@ -24,6 +24,16 @@ export const CenterPanel: React.FC = () => {
   const { tags } = useCustomTags()
   const { selection, getSelectableProps } = useSelection()
   
+  // デバッグ用：goals と tags の状態確認
+  useEffect(() => {
+    console.log('Goals and tags updated:', {
+      goalsLength: goals.length,
+      tagsLength: tags.length,
+      goals: goals,
+      tags: tags
+    })
+  }, [goals, tags])
+  
   // 統一テーマシステムを使用
   const themeMode = theme as ThemeMode
   const neutralClasses = getNeutralClasses(themeMode)
@@ -36,13 +46,22 @@ export const CenterPanel: React.FC = () => {
   const [pendingTodoText, setPendingTodoText] = useState('')
   const [loading, setLoading] = useState(true)
 
-  // ToDo読み込み
+  // ストレージ初期化とToDo読み込み
   useEffect(() => {
     const loadTodos = async () => {
       try {
         setLoading(true)
+        // ストレージ初期化を確実に実行
+        initializeStorage()
         const loadedTodos = todoStorage.getAll()
         setTodos(loadedTodos)
+        
+        // デバッグ用：初期化後のデータ確認
+        console.log('CenterPanel initialized:', {
+          goals: goals.length,
+          tags: tags.length,
+          todos: loadedTodos.length
+        })
       } catch (error) {
         console.error('Failed to load todos:', error)
       } finally {
@@ -71,11 +90,21 @@ export const CenterPanel: React.FC = () => {
   // 統一されたToDo追加フロー（プロトタイプ風）
   const handleAddTodo = useCallback(() => {
     if (newTodoText.trim()) {
+      // デバッグ用ログ
+      console.log('handleAddTodo called:', { 
+        goalsLength: goals.length, 
+        tagsLength: tags.length,
+        goals: goals,
+        tags: tags
+      })
+      
       // 目標またはカスタムタグが存在する場合はタグ選択モーダルを表示
       if (goals.length > 0 || tags.length > 0) {
+        console.log('Opening tag selection modal')
         setPendingTodoText(newTodoText.trim())
         setIsTagSelectionOpen(true)
       } else {
+        console.log('Adding todo directly without tags')
         // タグがない場合は直接追加
         const newTodo: FocusTodo = {
           id: `todo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -390,6 +419,7 @@ export const CenterPanel: React.FC = () => {
       <TagSelectionModal
         isOpen={isTagSelectionOpen}
         onClose={() => {
+          console.log('TagSelectionModal closed')
           setIsTagSelectionOpen(false)
           setPendingTodoText('')
         }}
@@ -397,6 +427,25 @@ export const CenterPanel: React.FC = () => {
         onSkipTag={handleSkipTag}
         todoText={pendingTodoText}
       />
+      
+      {/* デバッグ用：モーダルの状態表示 */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{ 
+          position: 'fixed', 
+          top: '10px', 
+          right: '10px', 
+          background: 'rgba(0,0,0,0.8)', 
+          color: 'white', 
+          padding: '10px',
+          fontSize: '12px',
+          zIndex: 9999
+        }}>
+          Modal Open: {isTagSelectionOpen ? 'YES' : 'NO'}<br/>
+          Goals: {goals.length}<br/>
+          Tags: {tags.length}<br/>
+          Pending: {pendingTodoText}
+        </div>
+      )}
       
       {/* タグ編集モーダル */}
       <TagEditModal

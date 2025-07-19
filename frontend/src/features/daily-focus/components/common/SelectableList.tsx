@@ -32,6 +32,11 @@ interface SelectableListProps {
   allowKeyboardNavigation?: boolean
   orientation?: 'vertical' | 'horizontal'
   size?: 'sm' | 'md' | 'lg'
+  // アクセシビリティ関連
+  ariaLabel?: string
+  ariaDescribedBy?: string
+  multiSelect?: boolean
+  role?: 'listbox' | 'radiogroup' | 'menu'
 }
 
 export const SelectableList: React.FC<SelectableListProps> = ({
@@ -44,17 +49,22 @@ export const SelectableList: React.FC<SelectableListProps> = ({
   showCheckmark = true,
   allowKeyboardNavigation = true,
   orientation = 'vertical',
-  size = 'md'
+  size = 'md',
+  ariaLabel,
+  ariaDescribedBy,
+  multiSelect = false,
+  role = 'listbox'
 }) => {
   const { theme } = useTheme()
   const [internalSelectedIndex, setInternalSelectedIndex] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const listId = useId()
-  const activeDescendantId = selectedIndex !== undefined && items[selectedIndex] 
-    ? `${listId}-item-${selectedIndex}` : undefined
 
   // 制御されたコンポーネントか内部状態か
   const selectedIndex = controlledSelectedIndex !== undefined ? controlledSelectedIndex : internalSelectedIndex
+  
+  const activeDescendantId = selectedIndex !== undefined && items[selectedIndex] 
+    ? `${listId}-item-${selectedIndex}` : undefined
 
   // サイズに応じたクラス
   const getSizeClasses = () => {

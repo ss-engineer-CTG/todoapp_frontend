@@ -54,7 +54,10 @@ const safeJSONStringify = (value: any): string => {
 export const goalStorage = {
   getAll: (): Goal[] => {
     const stored = localStorage.getItem(STORAGE_KEYS.GOALS)
-    return safeJSONParse(stored, DEFAULT_GOALS)
+    console.log('goalStorage.getAll: stored data:', stored)
+    const result = safeJSONParse(stored, DEFAULT_GOALS)
+    console.log('goalStorage.getAll: parsed result:', result)
+    return result
   },
 
   save: (goals: Goal[]): void => {
@@ -96,7 +99,10 @@ export const goalStorage = {
 export const tagStorage = {
   getAll: (): CustomTag[] => {
     const stored = localStorage.getItem(STORAGE_KEYS.CUSTOM_TAGS)
-    return safeJSONParse(stored, DEFAULT_CUSTOM_TAGS)
+    console.log('tagStorage.getAll: stored data:', stored)
+    const result = safeJSONParse(stored, DEFAULT_CUSTOM_TAGS)
+    console.log('tagStorage.getAll: parsed result:', result)
+    return result
   },
 
   save: (tags: CustomTag[]): void => {
@@ -342,26 +348,45 @@ export const generateHeatmapData = (stats: DailyStats[]): LearningHeatmapData[] 
 
 // データ初期化
 export const initializeStorage = (): void => {
+  console.log('initializeStorage: Starting initialization...')
+  
   // 初回起動時にデフォルトデータを設定
   if (!localStorage.getItem(STORAGE_KEYS.GOALS)) {
+    console.log('initializeStorage: Initializing goals with default data')
     goalStorage.save(DEFAULT_GOALS)
+  } else {
+    console.log('initializeStorage: Goals already exist')
   }
   
   if (!localStorage.getItem(STORAGE_KEYS.CUSTOM_TAGS)) {
+    console.log('initializeStorage: Initializing tags with default data')
     tagStorage.save(DEFAULT_CUSTOM_TAGS)
+  } else {
+    console.log('initializeStorage: Tags already exist')
   }
   
   if (!localStorage.getItem(STORAGE_KEYS.FOCUS_TODOS)) {
+    console.log('initializeStorage: Initializing todos')
     todoStorage.save([])
+  } else {
+    console.log('initializeStorage: Todos already exist')
   }
   
   if (!localStorage.getItem(STORAGE_KEYS.LEARNING_SESSIONS)) {
+    console.log('initializeStorage: Initializing sessions')
     sessionStorage.save([])
+  } else {
+    console.log('initializeStorage: Sessions already exist')
   }
   
   if (!localStorage.getItem(STORAGE_KEYS.DAILY_STATS)) {
+    console.log('initializeStorage: Initializing stats')
     statsStorage.save([])
+  } else {
+    console.log('initializeStorage: Stats already exist')
   }
+  
+  console.log('initializeStorage: Initialization complete')
 }
 
 // データクリア（デバッグ用）

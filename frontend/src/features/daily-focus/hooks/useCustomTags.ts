@@ -12,7 +12,9 @@ export const useCustomTags = () => {
     try {
       setLoading(true)
       setError(null)
+      console.log('useCustomTags: Loading tags...')
       const loadedTags = tagStorage.getAll()
+      console.log('useCustomTags: Loaded tags:', loadedTags)
       setTags(loadedTags)
     } catch (err) {
       setError('タグの読み込みに失敗しました')

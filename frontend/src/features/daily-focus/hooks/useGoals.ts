@@ -12,7 +12,9 @@ export const useGoals = () => {
     try {
       setLoading(true)
       setError(null)
+      console.log('useGoals: Loading goals...')
       const loadedGoals = goalStorage.getAll()
+      console.log('useGoals: Loaded goals:', loadedGoals)
       setGoals(loadedGoals)
     } catch (err) {
       setError('目標の読み込みに失敗しました')

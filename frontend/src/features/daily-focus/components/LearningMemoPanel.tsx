@@ -35,6 +35,11 @@ export const LearningMemoPanel: React.FC = () => {
     exportMemo
   } = useLearningMemo()
 
+  // 統一テーマシステムを使用
+  const themeMode = theme as ThemeMode
+  const neutralClasses = getNeutralClasses(themeMode)
+  const interactionClasses = getInteractionClasses(themeMode)
+
   const [newGoal, setNewGoal] = useState('')
   const [newAchievement, setNewAchievement] = useState('')
   const [newChallenge, setNewChallenge] = useState('')

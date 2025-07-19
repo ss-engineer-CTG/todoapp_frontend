@@ -10,6 +10,7 @@ import {
   getColorClasses, 
   getNeutralClasses, 
   getInteractionClasses,
+  getSelectionClasses,
   getButtonStyles,
   getInputStyles,
   getColorIndicator,
