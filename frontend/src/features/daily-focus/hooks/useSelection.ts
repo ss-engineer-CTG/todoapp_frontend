@@ -1,6 +1,11 @@
 import { useState, useCallback, useEffect } from 'react'
 import { SelectionState, SelectionType } from '../types'
 
+interface KeyboardNavigationState {
+  isNavigatingWithKeyboard: boolean
+  lastNavigationTime: number
+}
+
 export const useSelection = () => {
   const [selection, setSelection] = useState<SelectionState>({
     selectedGoalId: null,
@@ -8,23 +13,38 @@ export const useSelection = () => {
     selectedType: null
   })
 
+  const [keyboardNav, setKeyboardNav] = useState<KeyboardNavigationState>({
+    isNavigatingWithKeyboard: false,
+    lastNavigationTime: 0
+  })
+
+  // キーボードナビゲーション状態の更新
+  const updateKeyboardNav = useCallback((isKeyboard: boolean = false) => {
+    setKeyboardNav({
+      isNavigatingWithKeyboard: isKeyboard,
+      lastNavigationTime: Date.now()
+    })
+  }, [])
+
   // 目標の選択
-  const selectGoal = useCallback((goalId: string) => {
+  const selectGoal = useCallback((goalId: string, isKeyboard: boolean = false) => {
     setSelection({
       selectedGoalId: goalId,
       selectedTodoId: null,
       selectedType: 'goal'
     })
-  }, [])
+    updateKeyboardNav(isKeyboard)
+  }, [updateKeyboardNav])
 
   // ToDoの選択
-  const selectTodo = useCallback((todoId: string) => {
+  const selectTodo = useCallback((todoId: string, isKeyboard: boolean = false) => {
     setSelection({
       selectedGoalId: null,
       selectedTodoId: todoId,
       selectedType: 'todo'
     })
-  }, [])
+    updateKeyboardNav(isKeyboard)
+  }, [updateKeyboardNav])
 
   // 選択をクリア
   const clearSelection = useCallback(() => {
@@ -90,10 +110,32 @@ export const useSelection = () => {
     ]
   }, [])
 
+  // 最初の項目を自動選択（キーボードナビゲーション開始時）
+  const selectFirst = useCallback(() => {
+    const items = getSelectableItems()
+    if (items.length === 0) return
+
+    const firstItem = items[0]
+    if (firstItem.type === 'goal') {
+      selectGoal(firstItem.id, true)
+    } else {
+      selectTodo(firstItem.id, true)
+    }
+
+    // 選択された要素をビューに表示
+    firstItem.element.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [getSelectableItems, selectGoal, selectTodo])
+
   // 次の項目を選択
   const selectNext = useCallback(() => {
     const items = getSelectableItems()
     if (items.length === 0) return
+
+    // 現在選択されていない場合は最初の項目を選択
+    if (!hasSelection()) {
+      selectFirst()
+      return
+    }
 
     const currentIndex = items.findIndex(item => {
       if (item.type === 'goal') {
@@ -107,19 +149,25 @@ export const useSelection = () => {
     const nextItem = items[nextIndex]
 
     if (nextItem.type === 'goal') {
-      selectGoal(nextItem.id)
+      selectGoal(nextItem.id, true)
     } else {
-      selectTodo(nextItem.id)
+      selectTodo(nextItem.id, true)
     }
 
     // 選択された要素をビューに表示
     nextItem.element.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [selection, getSelectableItems, selectGoal, selectTodo])
+  }, [selection, getSelectableItems, selectGoal, selectTodo, hasSelection, selectFirst])
 
   // 前の項目を選択
   const selectPrevious = useCallback(() => {
     const items = getSelectableItems()
     if (items.length === 0) return
+
+    // 現在選択されていない場合は最初の項目を選択
+    if (!hasSelection()) {
+      selectFirst()
+      return
+    }
 
     const currentIndex = items.findIndex(item => {
       if (item.type === 'goal') {
@@ -133,14 +181,14 @@ export const useSelection = () => {
     const prevItem = items[prevIndex]
 
     if (prevItem.type === 'goal') {
-      selectGoal(prevItem.id)
+      selectGoal(prevItem.id, true)
     } else {
-      selectTodo(prevItem.id)
+      selectTodo(prevItem.id, true)
     }
 
     // 選択された要素をビューに表示
     prevItem.element.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [selection, getSelectableItems, selectGoal, selectTodo])
+  }, [selection, getSelectableItems, selectGoal, selectTodo, hasSelection, selectFirst])
 
   // 選択された項目を削除
   const deleteSelected = useCallback(() => {
@@ -155,24 +203,38 @@ export const useSelection = () => {
     }
   }, [selection, hasSelection, getSelectedId])
 
+  // モーダルが開いているかチェック
+  const isModalOpen = useCallback(() => {
+    const modalSelectors = [
+      '[role="dialog"]',
+      '.modal',
+      '#tagSelectionModal:not(.hidden)',
+      '#tagEditModal:not(.hidden)',
+      '#goalEditModal:not(.hidden)'
+    ]
+    
+    return modalSelectors.some(selector => {
+      const element = document.querySelector(selector)
+      return element && !element.classList.contains('hidden') && 
+             getComputedStyle(element).display !== 'none'
+    })
+  }, [])
+
+  // テキスト入力中かチェック
+  const isTextInputActive = useCallback(() => {
+    const activeElement = document.activeElement
+    return activeElement?.tagName === 'INPUT' || 
+           activeElement?.tagName === 'TEXTAREA' ||
+           activeElement?.contentEditable === 'true'
+  }, [])
+
   // キーボードイベントハンドラー
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     // モーダルが開いている場合は処理をスキップ
-    const modalElements = document.querySelectorAll('[role="dialog"], .modal')
-    const isModalOpen = Array.from(modalElements).some(modal => 
-      !modal.classList.contains('hidden') && 
-      getComputedStyle(modal).display !== 'none'
-    )
-    
-    if (isModalOpen) return
+    if (isModalOpen()) return
 
     // フォーカスされている要素がテキスト入力の場合はスキップ
-    const activeElement = document.activeElement
-    const isTextInput = activeElement?.tagName === 'INPUT' || 
-                       activeElement?.tagName === 'TEXTAREA' ||
-                       activeElement?.contentEditable === 'true'
-    
-    if (isTextInput) return
+    if (isTextInputActive()) return
 
     switch (event.key) {
       case 'ArrowUp':
@@ -197,8 +259,32 @@ export const useSelection = () => {
           deleteSelected()
         }
         break
+        
+      case 'Enter':
+        // 選択中の項目がある場合、編集モードに入る
+        if (hasSelection()) {
+          event.preventDefault()
+          const editEvent = new CustomEvent('editSelected', {
+            detail: {
+              type: selection.selectedType,
+              id: getSelectedId()
+            }
+          })
+          window.dispatchEvent(editEvent)
+        }
+        break
     }
-  }, [selection, hasSelection, clearSelection, selectNext, selectPrevious, deleteSelected])
+  }, [
+    isModalOpen, 
+    isTextInputActive, 
+    selectPrevious, 
+    selectNext, 
+    clearSelection, 
+    hasSelection, 
+    deleteSelected, 
+    selection.selectedType, 
+    getSelectedId
+  ])
 
   // グローバルキーボードイベントの設定
   useEffect(() => {
@@ -236,7 +322,7 @@ export const useSelection = () => {
     clearSelection()
   }, [clearSelection])
 
-  // 選択状態のCSSクラスを取得
+  // 選択状態のCSSクラスを取得（プロトタイプ品質の視覚効果）
   const getSelectionClasses = useCallback((
     itemId: string,
     itemType: 'goal' | 'todo'
@@ -246,10 +332,15 @@ export const useSelection = () => {
       : isTodoSelected(itemId)
     
     if (isSelected) {
-      return 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20'
+      // キーボードナビゲーション時は強調表示
+      const keyboardClass = keyboardNav.isNavigatingWithKeyboard ? 
+        'ring-2 ring-blue-400 ring-offset-2 ring-offset-white dark:ring-offset-gray-800' : 
+        'ring-2 ring-blue-500'
+      
+      return `${keyboardClass} bg-blue-50 dark:bg-blue-900/20 transition-all duration-200 ease-in-out`
     }
     return ''
-  }, [isGoalSelected, isTodoSelected])
+  }, [isGoalSelected, isTodoSelected, keyboardNav.isNavigatingWithKeyboard])
 
   // 選択可能な要素のプロパティを取得
   const getSelectableProps = useCallback((
@@ -264,9 +355,9 @@ export const useSelection = () => {
       event.stopPropagation()
       
       if (itemType === 'goal') {
-        selectGoal(itemId)
+        selectGoal(itemId, false) // マウスクリックの場合はキーボードフラグをfalseに
       } else {
-        selectTodo(itemId)
+        selectTodo(itemId, false)
       }
     }
 
@@ -287,17 +378,24 @@ export const useSelection = () => {
     getSelectedId,
     getSelectionInfo,
     
+    // キーボードナビゲーション状態
+    keyboardNav,
+    isNavigatingWithKeyboard: keyboardNav.isNavigatingWithKeyboard,
+    
     // 選択操作
     selectGoal,
     selectTodo,
     clearSelection,
     selectNext,
     selectPrevious,
+    selectFirst,
     deleteSelected,
     
     // チェック関数
     isGoalSelected,
     isTodoSelected,
+    isModalOpen,
+    isTextInputActive,
     
     // イベントハンドラー
     handleBackgroundClick,

@@ -2,6 +2,15 @@ import React, { useState, useCallback } from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
 import { Edit3, Save, Plus, X, Target, Trophy, AlertCircle, BookOpen, Calendar, Download, Eye } from 'lucide-react'
 import { useLearningMemo } from '../hooks/useLearningMemo'
+import { 
+  getColorClasses, 
+  getNeutralClasses, 
+  getInteractionClasses,
+  getButtonStyles,
+  getInputStyles,
+  combineClasses,
+  type ThemeMode 
+} from '../utils/themeUtils'
 
 export const LearningMemoPanel: React.FC = () => {
   const { theme } = useTheme()
@@ -31,6 +40,7 @@ export const LearningMemoPanel: React.FC = () => {
   const [newChallenge, setNewChallenge] = useState('')
   const [activeTab, setActiveTab] = useState<'content' | 'goals' | 'reflection'>('content')
   const [isPreviewMode, setIsPreviewMode] = useState(false)
+  const [isCompactMode, setIsCompactMode] = useState(false)
 
   // 目標を追加
   const handleAddGoal = useCallback(() => {
@@ -129,18 +139,44 @@ export const LearningMemoPanel: React.FC = () => {
   if (!memo) return null
 
   return (
-    <div className="space-y-4">
+    <section className="space-y-4" aria-labelledby="learning-memo-title">
       {/* ヘッダー */}
-      <div className="flex items-center justify-between">
-        <h3 className={`text-md font-semibold flex items-center ${
-          theme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-        }`}>
-          <BookOpen className="mr-2" size={18} />
+      <header className="flex items-center justify-between">
+        <h3 
+          id="learning-memo-title"
+          className={combineClasses(
+            'text-md font-semibold flex items-center',
+            neutralClasses.text
+          )}
+        >
+          <BookOpen className="mr-2" size={18} aria-hidden="true" />
           学習メモ
         </h3>
         
-        <div className="flex items-center space-x-2">
-          {activeTab === 'content' && (
+        <div className="flex items-center space-x-2" role="toolbar" aria-label="学習メモ操作">
+          {/* コンパクトモード切り替え */}
+          <button
+            onClick={() => setIsCompactMode(!isCompactMode)}
+            className={`p-1 rounded transition-colors ${
+              isCompactMode
+                ? 'bg-green-100 dark:bg-green-900/20 text-green-600'
+                : theme === 'dark' 
+                ? 'hover:bg-gray-700 text-gray-400' 
+                : 'hover:bg-gray-100 text-gray-600'
+            }`}
+            title={isCompactMode ? '詳細表示' : 'コンパクト表示'}
+            aria-label={isCompactMode ? '詳細表示に切り替え' : 'コンパクト表示に切り替え'}
+            aria-pressed={isCompactMode}
+            type="button"
+          >
+            <div className="w-4 h-4 flex flex-col space-y-0.5" aria-hidden="true">
+              <div className="h-0.5 bg-current rounded"></div>
+              <div className="h-0.5 bg-current rounded"></div>
+              <div className="h-0.5 bg-current rounded"></div>
+            </div>
+          </button>
+          
+          {activeTab === 'content' && !isCompactMode && (
             <button
               onClick={() => setIsPreviewMode(!isPreviewMode)}
               className={`p-1 rounded transition-colors ${
@@ -157,57 +193,78 @@ export const LearningMemoPanel: React.FC = () => {
           )}
           <button
             onClick={handleExport}
-            className={`p-1 rounded transition-colors ${
-              theme === 'dark' 
-                ? 'hover:bg-gray-700 text-gray-400' 
-                : 'hover:bg-gray-100 text-gray-600'
-            }`}
+            className={combineClasses(
+              'p-1 rounded transition-colors',
+              neutralClasses.textSecondary,
+              interactionClasses.hover
+            )}
             title="エクスポート"
+            aria-label="学習メモをテキストファイルとしてエクスポート"
+            type="button"
           >
             <Download size={16} />
           </button>
           <button
             onClick={toggleEditing}
-            className={`p-1 rounded transition-colors ${
-              theme === 'dark' 
-                ? 'hover:bg-gray-700 text-gray-400' 
-                : 'hover:bg-gray-100 text-gray-600'
-            }`}
+            className={combineClasses(
+              'p-1 rounded transition-colors',
+              neutralClasses.textSecondary,
+              interactionClasses.hover
+            )}
             title={isEditing ? '編集を終了' : '編集開始'}
+            aria-label={isEditing ? '編集を終了して保存' : '編集モードを開始'}
+            aria-pressed={isEditing}
+            type="button"
           >
             {isEditing ? <Save size={16} /> : <Edit3 size={16} />}
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* 統計情報 */}
-      {stats && (
+      {/* 統計情報（コンパクトモードでは非表示） */}
+      {stats && !isCompactMode && (
         <div className="grid grid-cols-2 gap-2">
-          <div className={`p-2 rounded border ${
-            theme === 'dark' 
-              ? 'bg-blue-900/20 border-blue-800' 
-              : 'bg-blue-50 border-blue-200'
-          }`}>
+          <div className={combineClasses(
+            'p-2 rounded border',
+            getColorClasses('blue', 'light', themeMode).background,
+            getColorClasses('blue', 'light', themeMode).border
+          )}>
             <div className="text-xs text-blue-600">達成率</div>
-            <div className={`text-lg font-bold ${
-              theme === 'dark' ? 'text-blue-100' : 'text-blue-900'
-            }`}>
+            <div className={combineClasses(
+              'text-lg font-bold',
+              getColorClasses('blue', 'light', themeMode).text
+            )}>
               {stats.totalGoals > 0 ? Math.round(stats.completionRate * 100) : 0}%
             </div>
           </div>
           
-          <div className={`p-2 rounded border ${
-            theme === 'dark' 
-              ? 'bg-green-900/20 border-green-800' 
-              : 'bg-green-50 border-green-200'
-          }`}>
+          <div className={combineClasses(
+            'p-2 rounded border',
+            getColorClasses('green', 'light', themeMode).background,
+            getColorClasses('green', 'light', themeMode).border
+          )}>
             <div className="text-xs text-green-600">総文字数</div>
-            <div className={`text-lg font-bold ${
-              theme === 'dark' ? 'text-green-100' : 'text-green-900'
-            }`}>
+            <div className={combineClasses(
+              'text-lg font-bold',
+              getColorClasses('green', 'light', themeMode).text
+            )}>
               {stats.wordCount}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* コンパクトモードの統計情報 */}
+      {stats && isCompactMode && (
+        <div className="flex items-center space-x-4 text-xs">
+          <span className={neutralClasses.textMuted}>
+            達成率: <span className="font-medium text-blue-600">
+              {stats.totalGoals > 0 ? Math.round(stats.completionRate * 100) : 0}%
+            </span>
+          </span>
+          <span className={neutralClasses.textMuted}>
+            文字数: <span className="font-medium text-green-600">{stats.wordCount}</span>
+          </span>
         </div>
       )}
 
@@ -221,13 +278,12 @@ export const LearningMemoPanel: React.FC = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as typeof activeTab)}
-            className={`px-3 py-1 text-xs rounded transition-colors flex items-center space-x-1 ${
+            className={combineClasses(
+              'px-3 py-1 text-xs rounded transition-colors flex items-center space-x-1',
               activeTab === tab.id
-                ? 'bg-blue-600 text-white'
-                : theme === 'dark'
-                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+                ? getButtonStyles('primary', 'blue', themeMode)
+                : getButtonStyles('secondary', 'blue', themeMode)
+            )}
           >
             <tab.icon size={12} />
             <span>{tab.label}</span>
@@ -240,19 +296,24 @@ export const LearningMemoPanel: React.FC = () => {
         {activeTab === 'content' && (
           <div className="space-y-3">
             <div>
-              <label className={`block text-sm font-medium mb-1 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-              }`}>
-                今日の学習内容 {isPreviewMode && <span className="text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-600 px-2 py-0.5 rounded">プレビュー</span>}
+              <label className={combineClasses(
+                'block text-sm font-medium mb-1',
+                neutralClasses.textSecondary
+              )}>
+                今日の学習内容 {isPreviewMode && <span className={combineClasses(
+                  'text-xs px-2 py-0.5 rounded text-blue-600',
+                  getColorClasses('blue', 'light', themeMode).background
+                )}>プレビュー</span>}
               </label>
               
               {isPreviewMode ? (
                 <div
-                  className={`w-full p-3 border rounded min-h-[200px] prose prose-sm max-w-none ${
-                    theme === 'dark' 
-                      ? 'border-gray-600 bg-gray-800 text-gray-200' 
-                      : 'border-gray-300 bg-white text-gray-900'
-                  }`}
+                  className={combineClasses(
+                    'w-full p-3 border rounded min-h-[200px] prose prose-sm max-w-none',
+                    neutralClasses.surface,
+                    neutralClasses.border,
+                    neutralClasses.text
+                  )}
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(memo.content || '') }}
                 />
               ) : (
@@ -274,12 +335,12 @@ Markdownをサポート:
 - [ ] チェックボックス
 - [x] 完了済み"
                   disabled={!isEditing}
-                  className={`w-full p-2 border rounded resize-none ${
-                    theme === 'dark' 
-                      ? 'border-gray-600 bg-gray-800 text-gray-200 placeholder-gray-400' 
-                      : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
-                  } ${!isEditing ? 'bg-opacity-50 cursor-not-allowed' : ''}`}
-                  rows={8}
+                  className={combineClasses(
+                    'w-full p-2 rounded resize-none',
+                    getInputStyles(themeMode),
+                    !isEditing && interactionClasses.disabled
+                  )}
+                  rows={isCompactMode ? 4 : 8}
                 />
               )}
             </div>
@@ -287,29 +348,31 @@ Markdownをサポート:
         )}
 
         {activeTab === 'goals' && (
-          <div className="space-y-4">
+          <div className={isCompactMode ? "space-y-2" : "space-y-4"}>
             {/* 目標セクション */}
             <div>
               <div className="flex items-center space-x-2 mb-2">
                 <Target size={16} className="text-blue-600" />
-                <span className={`text-sm font-medium ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>
+                <span className={combineClasses(
+                  isCompactMode ? 'text-xs' : 'text-sm',
+                  'font-medium',
+                  neutralClasses.textSecondary
+                )}>
                   今日の目標
                 </span>
               </div>
               
-              <div className="space-y-2">
+              <div className={isCompactMode ? "space-y-1" : "space-y-2"}>
                 {memo.goals.map((goal, index) => (
                   <div 
                     key={index}
-                    className={`flex items-center justify-between p-2 rounded border ${
+                    className={`flex items-center justify-between ${isCompactMode ? 'p-1' : 'p-2'} rounded border ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600' 
                         : 'bg-gray-50 border-gray-200'
                     }`}
                   >
-                    <span className="text-sm">{goal}</span>
+                    <span className={isCompactMode ? "text-xs" : "text-sm"}>{goal}</span>
                     {isEditing && (
                       <button
                         onClick={() => removeGoal(index)}
@@ -511,12 +574,13 @@ Markdownをサポート:
 
       {/* 最終保存時刻 */}
       {lastSaved && (
-        <div className={`text-xs text-center ${
-          theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-        }`}>
+        <div className={combineClasses(
+          'text-xs text-center',
+          neutralClasses.textMuted
+        )}>
           最終保存: {lastSaved.toLocaleTimeString()}
         </div>
       )}
-    </div>
+    </section>
   )
 }

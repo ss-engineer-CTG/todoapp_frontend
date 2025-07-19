@@ -8,12 +8,26 @@ import { TagSelectionModal } from './modals/TagSelectionModal'
 import { TagEditModal } from './modals/TagEditModal'
 import { FocusTodo, LearningCategory } from '../types'
 import { todoStorage } from '../utils/storage'
+import { 
+  getColorClasses, 
+  getNeutralClasses, 
+  getInteractionClasses,
+  getButtonStyles,
+  getInputStyles,
+  combineClasses,
+  type ThemeMode 
+} from '../utils/themeUtils'
 
 export const CenterPanel: React.FC = () => {
   const { theme } = useTheme()
   const { goals } = useGoals()
   const { tags } = useCustomTags()
   const { selection, getSelectableProps } = useSelection()
+  
+  // 統一テーマシステムを使用
+  const themeMode = theme as ThemeMode
+  const neutralClasses = getNeutralClasses(themeMode)
+  const interactionClasses = getInteractionClasses(themeMode)
   
   const [newTodoText, setNewTodoText] = useState('')
   const [todos, setTodos] = useState<FocusTodo[]>([])
@@ -54,31 +68,30 @@ export const CenterPanel: React.FC = () => {
     }
   }, [])
 
-  // 簡単なToDo追加（タグ選択なし）
-  const handleAddTodoSimple = useCallback(() => {
+  // 統一されたToDo追加フロー（プロトタイプ風）
+  const handleAddTodo = useCallback(() => {
     if (newTodoText.trim()) {
-      const newTodo: FocusTodo = {
-        id: `todo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        text: newTodoText.trim(),
-        completed: false,
-        category: 'other',
-        createdAt: new Date(),
-        updatedAt: new Date()
+      // 目標またはカスタムタグが存在する場合はタグ選択モーダルを表示
+      if (goals.length > 0 || tags.length > 0) {
+        setPendingTodoText(newTodoText.trim())
+        setIsTagSelectionOpen(true)
+      } else {
+        // タグがない場合は直接追加
+        const newTodo: FocusTodo = {
+          id: `todo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          text: newTodoText.trim(),
+          completed: false,
+          category: 'other',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+        
+        const updatedTodos = todoStorage.add(newTodo)
+        setTodos(updatedTodos)
+        setNewTodoText('')
       }
-      
-      const updatedTodos = todoStorage.add(newTodo)
-      setTodos(updatedTodos)
-      setNewTodoText('')
     }
-  }, [newTodoText])
-
-  // タグ選択モーダルを開く
-  const handleAddTodoWithTag = useCallback(() => {
-    if (newTodoText.trim()) {
-      setPendingTodoText(newTodoText.trim())
-      setIsTagSelectionOpen(true)
-    }
-  }, [newTodoText])
+  }, [newTodoText, goals.length, tags.length])
 
   // タグ選択完了
   const handleTagSelected = useCallback((tagId: string, tagType: 'goal' | 'custom') => {
@@ -155,18 +168,13 @@ export const CenterPanel: React.FC = () => {
     setTodos(updatedTodos)
   }, [])
 
-  // キーボード処理
+  // キーボード処理（統一フロー）
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      if (e.shiftKey) {
-        // Shift+Enterでタグ選択
-        handleAddTodoWithTag()
-      } else {
-        // Enterでシンプル追加
-        handleAddTodoSimple()
-      }
+      e.preventDefault()
+      handleAddTodo()
     }
-  }, [handleAddTodoSimple, handleAddTodoWithTag])
+  }, [handleAddTodo])
 
   // タグ表示の取得
   const getTodoTagDisplay = (todo: FocusTodo) => {
@@ -228,41 +236,64 @@ export const CenterPanel: React.FC = () => {
   }
   
   return (
-    <div className="mb-4">
-      <h2 className={`text-lg font-semibold mb-2 flex items-center ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-        <CheckSquare className="mr-2" size={20} />
-        今日のToDo
-      </h2>
-      <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-        {getCurrentDateString()}
-      </p>
+    <section className="mb-4" aria-labelledby="todo-section-title">
+      <header>
+        <h2 
+          id="todo-section-title"
+          className={`text-lg font-semibold mb-2 flex items-center ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}
+        >
+          <CheckSquare className="mr-2" size={20} aria-hidden="true" />
+          今日のToDo
+        </h2>
+        <time 
+          className={`text-sm mb-4 block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}
+          dateTime={new Date().toISOString().split('T')[0]}
+        >
+          {getCurrentDateString()}
+        </time>
+      </header>
       
       {/* ToDoリスト */}
-      <div className="space-y-2">
+      <div 
+        className="space-y-2"
+        role="list"
+        aria-label="今日のタスク一覧"
+      >
         {todos.map(todo => {
           const tagDisplay = getTodoTagDisplay(todo)
           return (
             <div 
               key={todo.id}
               {...getSelectableProps(todo.id, 'todo')}
-              className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
+              className={`flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200 ease-in-out hover:scale-[1.01] ${
                 theme === 'dark' 
                   ? 'bg-gray-700 hover:bg-gray-600' 
                   : 'bg-gray-50 hover:bg-gray-100'
               } ${getSelectableProps(todo.id, 'todo').className}`}
+              role="listitem"
+              aria-label={`タスク: ${todo.text}${todo.completed ? ' (完了済み)' : ''}`}
             >
               <input 
                 type="checkbox" 
                 checked={todo.completed}
                 onChange={() => handleToggleTodo(todo.id)}
                 className="mr-3 w-4 h-4 text-blue-600 rounded" 
+                aria-label={`${todo.text}を${todo.completed ? '未完了にする' : '完了にする'}`}
+                id={`todo-checkbox-${todo.id}`}
               />
               <div className="flex-1 flex items-center space-x-2">
-                <span className={`${todo.completed ? 'line-through text-gray-500' : ''}`}>
+                <label 
+                  htmlFor={`todo-checkbox-${todo.id}`}
+                  className={`cursor-pointer ${todo.completed ? 'line-through text-gray-500' : ''}`}
+                >
                   {todo.text}
-                </span>
+                </label>
                 {tagDisplay && (
-                  <span className={`text-xs px-2 py-1 rounded ${getTagColorClasses(tagDisplay.color)}`}>
+                  <span 
+                    className={`text-xs px-2 py-1 rounded ${getTagColorClasses(tagDisplay.color)}`}
+                    role="tag"
+                    aria-label={`タグ: ${tagDisplay.text}`}
+                  >
                     {tagDisplay.text}
                   </span>
                 )}
@@ -278,8 +309,10 @@ export const CenterPanel: React.FC = () => {
                     }}
                     className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 transition-colors"
                     title="削除"
+                    aria-label={`${todo.text}を削除`}
+                    type="button"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={14} aria-hidden="true" />
                   </button>
                 </div>
               )}
@@ -289,24 +322,38 @@ export const CenterPanel: React.FC = () => {
         
         {/* ToDoがない場合の表示 */}
         {todos.length === 0 && (
-          <div className={`text-center py-8 ${
-            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-          }`}>
+          <div 
+            className={`text-center py-8 ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+            }`}
+            role="status"
+            aria-live="polite"
+          >
             <p className="text-sm">今日のToDoはありません</p>
             <p className="text-xs mt-1">新しいToDoを追加してください</p>
           </div>
         )}
       </div>
       
-      {/* 新しいToDo追加 */}
-      <div className="mt-4 space-y-2">
+      {/* 新しいToDo追加（統一フロー） */}
+      <section className="mt-4" aria-labelledby="add-todo-label">
+        <h3 id="add-todo-label" className="sr-only">新しいタスクを追加</h3>
         <div className="flex">
+          <label htmlFor="new-todo-input" className="sr-only">
+            新しいタスクの内容
+          </label>
           <input 
+            id="new-todo-input"
             type="text" 
             value={newTodoText}
             onChange={(e) => setNewTodoText(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="新しいToDoを追加... (Enter: 追加, Shift+Enter: タグ選択)" 
+            placeholder={
+              goals.length > 0 || tags.length > 0 
+                ? "新しいToDoを追加... (Enterでタグ選択)" 
+                : "新しいToDoを追加... (Enter)"
+            }
+            aria-describedby="add-todo-help"
             className={`flex-1 p-2 border rounded-l-lg ${
               theme === 'dark' 
                 ? 'border-gray-600 bg-gray-800 text-gray-200 placeholder-gray-400' 
@@ -314,7 +361,7 @@ export const CenterPanel: React.FC = () => {
             }`}
           />
           <button 
-            onClick={handleAddTodoSimple}
+            onClick={handleAddTodo}
             disabled={!newTodoText.trim()}
             className={`px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors flex items-center ${
               !newTodoText.trim() ? 'opacity-50 cursor-not-allowed' : ''
@@ -325,20 +372,19 @@ export const CenterPanel: React.FC = () => {
           </button>
         </div>
         
-        {/* タグ付きで追加ボタン */}
-        <button 
-          onClick={handleAddTodoWithTag}
-          disabled={!newTodoText.trim()}
-          className={`w-full p-2 border border-dashed rounded-lg transition-colors flex items-center justify-center space-x-2 ${
-            theme === 'dark' 
-              ? 'border-gray-600 text-gray-400 hover:border-gray-500' 
-              : 'border-gray-300 text-gray-500 hover:border-gray-400'
-          } ${!newTodoText.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <Edit size={16} />
-          <span>タグを選択して追加</span>
-        </button>
-      </div>
+        {/* タグがある場合のヒント */}
+        {(goals.length > 0 || tags.length > 0) && (
+          <p 
+            id="add-todo-help"
+            className={`text-xs mt-2 ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+            }`}
+            role="note"
+          >
+            Enterキーで自動的にタグ選択画面が表示されます
+          </p>
+        )}
+      </section>
       
       {/* タグ選択モーダル */}
       <TagSelectionModal
@@ -358,6 +404,6 @@ export const CenterPanel: React.FC = () => {
         onClose={() => setIsTagEditOpen(false)}
         editingFromTagSelection={true}
       />
-    </div>
+    </section>
   )
 }

@@ -153,32 +153,57 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
     updateConfig({ startDate, endDate: now })
   }, [updateConfig])
 
-  // スクロール同期の設定
+  // プロトタイプ品質のスクロール同期
   useEffect(() => {
     const monthScroll = monthScrollRef.current
     const heatmapScroll = heatmapScrollRef.current
     
     if (!monthScroll || !heatmapScroll) return
 
+    let isScrolling = false
+
     const handleMonthScroll = () => {
-      if (heatmapScroll.scrollLeft !== monthScroll.scrollLeft) {
-        heatmapScroll.scrollLeft = monthScroll.scrollLeft
-      }
+      if (isScrolling) return
+      isScrolling = true
+      
+      requestAnimationFrame(() => {
+        if (heatmapScroll.scrollLeft !== monthScroll.scrollLeft) {
+          heatmapScroll.scrollLeft = monthScroll.scrollLeft
+        }
+        isScrolling = false
+      })
     }
 
     const handleHeatmapScroll = () => {
-      if (monthScroll.scrollLeft !== heatmapScroll.scrollLeft) {
-        monthScroll.scrollLeft = heatmapScroll.scrollLeft
-      }
+      if (isScrolling) return
+      isScrolling = true
+      
+      requestAnimationFrame(() => {
+        if (monthScroll.scrollLeft !== heatmapScroll.scrollLeft) {
+          monthScroll.scrollLeft = heatmapScroll.scrollLeft
+        }
+        isScrolling = false
+      })
     }
 
-    monthScroll.addEventListener('scroll', handleMonthScroll)
-    heatmapScroll.addEventListener('scroll', handleHeatmapScroll)
+    // パッシブリスナーを使用してパフォーマンス向上
+    monthScroll.addEventListener('scroll', handleMonthScroll, { passive: true })
+    heatmapScroll.addEventListener('scroll', handleHeatmapScroll, { passive: true })
 
-    // 初期位置を右端（今日の日付）に設定
-    const maxScroll = heatmapScroll.scrollWidth - heatmapScroll.clientWidth
-    heatmapScroll.scrollLeft = maxScroll
-    monthScroll.scrollLeft = maxScroll
+    // 初期位置を右端（今日の日付）にスムーズに設定
+    setTimeout(() => {
+      const maxScroll = heatmapScroll.scrollWidth - heatmapScroll.clientWidth
+      if (maxScroll > 0) {
+        heatmapScroll.scrollTo({
+          left: maxScroll,
+          behavior: 'smooth'
+        })
+        monthScroll.scrollTo({
+          left: maxScroll,
+          behavior: 'smooth'
+        })
+      }
+    }, 100)
 
     return () => {
       monthScroll.removeEventListener('scroll', handleMonthScroll)
@@ -325,7 +350,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
 
       {/* ヒートマップグリッド（GitHub風） */}
       <div className="space-y-2">
-        {/* 月ラベル（スクロール可能） */}
+        {/* 月ラベル（スクロール可能・動的生成） */}
         <div className="flex">
           <div className="w-8"></div>
           <div 
@@ -333,12 +358,35 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
             className="flex-1 overflow-x-auto scrollbar-hide"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            <div className="flex text-xs text-gray-500 mb-2 min-w-max">
-              {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, index) => (
-                <div key={month} className="w-14 text-center">
-                  {month}
-                </div>
-              ))}
+            <div className="relative h-6 min-w-max">
+              {/* 動的な月ラベルを週単位で配置 */}
+              {generateWeeklyHeatmapData().map((week, weekIndex) => {
+                const firstDayOfWeek = week[0]?.date
+                if (!firstDayOfWeek) return null
+                
+                const date = new Date(firstDayOfWeek)
+                const isFirstWeekOfMonth = date.getDate() <= 7
+                
+                if (!isFirstWeekOfMonth) return null
+                
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                const monthName = monthNames[date.getMonth()]
+                
+                return (
+                  <div
+                    key={`month-${weekIndex}`}
+                    className={`absolute text-xs ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    }`}
+                    style={{
+                      left: `${weekIndex * 14}px`, // セル幅12px + gap 2px = 14px
+                      top: '2px'
+                    }}
+                  >
+                    {monthName}
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>

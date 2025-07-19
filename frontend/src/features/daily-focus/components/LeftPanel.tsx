@@ -202,7 +202,7 @@ export const LeftPanel: React.FC = () => {
           {goals.map((goal) => (
             <div
               key={goal.id}
-              className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-opacity-80 ${
+              className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ease-in-out hover:bg-opacity-80 hover:scale-[1.01] ${
                 getGoalColorClasses(goal)
               } ${getSelectableProps(goal.id, 'goal').className}`}
               {...getSelectableProps(goal.id, 'goal')}

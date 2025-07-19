@@ -334,16 +334,36 @@ export const useLearningSession = () => {
     }
   }, [sessionState.elapsedTime, sessionState.todayTotal, sessionState.categoryTotals])
 
+  // 通知機能
+  const showNotification = useCallback((title: string, message: string, type: 'info' | 'warning' | 'success' = 'info') => {
+    // カスタムイベントで通知を送信
+    const notificationEvent = new CustomEvent('showNotification', {
+      detail: { title, message, type }
+    })
+    window.dispatchEvent(notificationEvent)
+  }, [])
+
   // PCロック検知の設定
   useEffect(() => {
     const handleVisible = () => {
       console.log('PCロック解除検知')
-      // 必要に応じて再開処理
+      if (sessionState.currentSession && sessionState.isPaused) {
+        showNotification(
+          '学習セッション',
+          'PCのロックが解除されました。学習を再開しますか？',
+          'info'
+        )
+      }
     }
     
     const handleHidden = () => {
       console.log('PCロック検知')
       if (sessionState.isActive && !sessionState.isPaused) {
+        showNotification(
+          '学習セッション',
+          'PCロックを検知しました。学習を自動的に一時停止します。',
+          'warning'
+        )
         pauseLearning()
       }
     }
@@ -355,7 +375,7 @@ export const useLearningSession = () => {
         visibilityHandlerRef.current()
       }
     }
-  }, [sessionState.isActive, sessionState.isPaused, pauseLearning])
+  }, [sessionState.isActive, sessionState.isPaused, sessionState.currentSession, pauseLearning, showNotification])
 
   // 初期化
   useEffect(() => {

@@ -4,6 +4,7 @@ import { useSelection } from '../hooks/useSelection'
 import { LeftPanel } from './LeftPanel'
 import { CenterPanel } from './CenterPanel'
 import { RightPanel } from './RightPanel'
+import { NotificationToast } from './NotificationToast'
 
 export const DailyFocusView: React.FC = () => {
   const { theme } = useTheme()
@@ -80,50 +81,55 @@ export const DailyFocusView: React.FC = () => {
   }, [isResizing, handleMouseMove, handleMouseUp])
   
   return (
-    <div 
-      ref={containerRef}
-      onClick={handleBackgroundClick}
-      className={`flex h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} pt-16 overflow-hidden`}
-    >
-      {/* 左パネル: 目標管理・学習時間トラッキング */}
+    <>
       <div 
-        className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} border-r ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-4 overflow-y-auto`}
-        style={{ width: `${leftPanelWidth}%` }}
+        ref={containerRef}
+        onClick={handleBackgroundClick}
+        className={`flex h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} pt-16 overflow-hidden`}
       >
-        <LeftPanel />
+        {/* 左パネル: 目標管理・学習時間トラッキング */}
+        <div 
+          className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} border-r ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-4 overflow-y-auto`}
+          style={{ width: `${leftPanelWidth}%` }}
+        >
+          <LeftPanel />
+        </div>
+        
+        {/* リサイズハンドル1 */}
+        <div 
+          className={`w-1 cursor-col-resize transition-colors ${
+            theme === 'dark' ? 'bg-gray-600 hover:bg-blue-500' : 'bg-gray-300 hover:bg-blue-500'
+          }`}
+          onMouseDown={handleResizerMouseDown('left')}
+        />
+        
+        {/* 中央パネル: ToDoリスト */}
+        <div 
+          className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} border-r ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-4 overflow-y-auto`}
+          style={{ width: `${centerPanelWidth}%` }}
+        >
+          <CenterPanel />
+        </div>
+        
+        {/* リサイズハンドル2 */}
+        <div 
+          className={`w-1 cursor-col-resize transition-colors ${
+            theme === 'dark' ? 'bg-gray-600 hover:bg-blue-500' : 'bg-gray-300 hover:bg-blue-500'
+          }`}
+          onMouseDown={handleResizerMouseDown('right')}
+        />
+        
+        {/* 右パネル: アウトプットメモ・成長可視化 */}
+        <div 
+          className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} p-4 overflow-y-auto`}
+          style={{ width: `${rightPanelWidth}%` }}
+        >
+          <RightPanel />
+        </div>
       </div>
       
-      {/* リサイズハンドル1 */}
-      <div 
-        className={`w-1 cursor-col-resize transition-colors ${
-          theme === 'dark' ? 'bg-gray-600 hover:bg-blue-500' : 'bg-gray-300 hover:bg-blue-500'
-        }`}
-        onMouseDown={handleResizerMouseDown('left')}
-      />
-      
-      {/* 中央パネル: ToDoリスト */}
-      <div 
-        className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} border-r ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-4 overflow-y-auto`}
-        style={{ width: `${centerPanelWidth}%` }}
-      >
-        <CenterPanel />
-      </div>
-      
-      {/* リサイズハンドル2 */}
-      <div 
-        className={`w-1 cursor-col-resize transition-colors ${
-          theme === 'dark' ? 'bg-gray-600 hover:bg-blue-500' : 'bg-gray-300 hover:bg-blue-500'
-        }`}
-        onMouseDown={handleResizerMouseDown('right')}
-      />
-      
-      {/* 右パネル: アウトプットメモ・成長可視化 */}
-      <div 
-        className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} p-4 overflow-y-auto`}
-        style={{ width: `${rightPanelWidth}%` }}
-      >
-        <RightPanel />
-      </div>
-    </div>
+      {/* 通知トースト */}
+      <NotificationToast />
+    </>
   )
 }
