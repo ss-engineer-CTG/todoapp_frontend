@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
-import { CheckSquare, Plus, Edit, Trash2 } from 'lucide-react'
+import { CheckSquare, Plus, Trash2 } from 'lucide-react'
 import { useGoals } from '../hooks/useGoals'
 import { useCustomTags } from '../hooks/useCustomTags'
 import { useSelection } from '../hooks/useSelection'
@@ -9,12 +9,8 @@ import { TagEditModal } from './modals/TagEditModal'
 import { FocusTodo, LearningCategory } from '../types'
 import { todoStorage, initializeStorage } from '../utils/storage'
 import { 
-  getColorClasses, 
   getNeutralClasses, 
   getInteractionClasses,
-  getButtonStyles,
-  getInputStyles,
-  combineClasses,
   type ThemeMode 
 } from '../utils/themeUtils'
 
@@ -45,6 +41,11 @@ export const CenterPanel: React.FC = () => {
   const [isTagEditOpen, setIsTagEditOpen] = useState(false)
   const [pendingTodoText, setPendingTodoText] = useState('')
   const [loading, setLoading] = useState(true)
+  
+  // デバッグ用：モーダル状態の追跡
+  useEffect(() => {
+    console.log('isTagSelectionOpen changed:', isTagSelectionOpen)
+  }, [isTagSelectionOpen])
 
   // ストレージ初期化とToDo読み込み
   useEffect(() => {
@@ -110,6 +111,7 @@ export const CenterPanel: React.FC = () => {
           id: `todo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           text: newTodoText.trim(),
           completed: false,
+          tagIds: [],
           category: 'other',
           createdAt: new Date(),
           updatedAt: new Date()
@@ -126,18 +128,21 @@ export const CenterPanel: React.FC = () => {
   const handleTagSelected = useCallback((tagId: string, tagType: 'goal' | 'custom') => {
     let goalId: string | undefined
     let selectedTagId: string | undefined
+    let tagIds: string[] = []
     let category: LearningCategory = 'other'
     
     if (tagType === 'goal') {
       const goal = goals.find(g => g.id === tagId)
       if (goal) {
         goalId = goal.id
+        tagIds = goal.tagIds || []
         category = goal.category as LearningCategory
       }
     } else {
       const tag = tags.find(t => t.id === tagId)
       if (tag) {
         selectedTagId = tag.id
+        tagIds = [tag.id]
         category = tag.category as LearningCategory
       }
     }
@@ -148,6 +153,7 @@ export const CenterPanel: React.FC = () => {
       completed: false,
       goalId,
       tagId: selectedTagId,
+      tagIds,
       category,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -166,6 +172,7 @@ export const CenterPanel: React.FC = () => {
       id: `todo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       text: pendingTodoText,
       completed: false,
+      tagIds: [],
       category: 'other',
       createdAt: new Date(),
       updatedAt: new Date()
@@ -198,38 +205,69 @@ export const CenterPanel: React.FC = () => {
   }, [])
 
   // キーボード処理（統一フロー）
-  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    console.log('handleKeyDown called:', { 
+      key: e.key, 
+      newTodoText,
+      defaultPrevented: e.defaultPrevented,
+      target: e.target 
+    })
+    
     if (e.key === 'Enter') {
+      console.log('Enter key detected - before preventDefault')
       e.preventDefault()
-      handleAddTodo()
+      console.log('Enter key - after preventDefault, before handleAddTodo')
+      
+      // 直接的にhandleAddTodoを呼び出す代わりに、少し遅延させる
+      setTimeout(() => {
+        console.log('Delayed handleAddTodo execution')
+        handleAddTodo()
+      }, 10)
     }
-  }, [handleAddTodo])
+  }, [handleAddTodo, newTodoText])
 
   // タグ表示の取得
   const getTodoTagDisplay = (todo: FocusTodo) => {
+    const displayTags: Array<{ text: string; color: string; type: 'goal' | 'custom' }> = []
+    
+    // ゴール表示
     if (todo.goalId) {
       const goal = goals.find(g => g.id === todo.goalId)
       if (goal) {
-        return {
+        displayTags.push({
           text: `📚 ${goal.title}`,
           color: goal.color,
           type: 'goal' as const
-        }
+        })
       }
     }
     
-    if (todo.tagId) {
+    // 新しいタグシステム: tagIds配列
+    if (todo.tagIds && todo.tagIds.length > 0) {
+      todo.tagIds.forEach(tagId => {
+        const tag = tags.find(t => t.id === tagId)
+        if (tag) {
+          displayTags.push({
+            text: `${tag.emoji} ${tag.name}`,
+            color: tag.color,
+            type: 'custom' as const
+          })
+        }
+      })
+    }
+    // 後方互換性: 単一tagId
+    else if (todo.tagId) {
       const tag = tags.find(t => t.id === todo.tagId)
       if (tag) {
-        return {
+        displayTags.push({
           text: `${tag.emoji} ${tag.name}`,
           color: tag.color,
           type: 'custom' as const
-        }
+        })
       }
     }
     
-    return null
+    return displayTags.length > 0 ? displayTags : null
   }
 
   // タグの色クラス取得
@@ -289,7 +327,7 @@ export const CenterPanel: React.FC = () => {
         aria-label="今日のタスク一覧"
       >
         {todos.map(todo => {
-          const tagDisplay = getTodoTagDisplay(todo)
+          const tagDisplays = getTodoTagDisplay(todo)
           return (
             <div 
               key={todo.id}
@@ -317,14 +355,19 @@ export const CenterPanel: React.FC = () => {
                 >
                   {todo.text}
                 </label>
-                {tagDisplay && (
-                  <span 
-                    className={`text-xs px-2 py-1 rounded ${getTagColorClasses(tagDisplay.color)}`}
-                    role="tag"
-                    aria-label={`タグ: ${tagDisplay.text}`}
-                  >
-                    {tagDisplay.text}
-                  </span>
+                {tagDisplays && tagDisplays.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {tagDisplays.map((tagDisplay, index) => (
+                      <span 
+                        key={index}
+                        className={`text-xs px-2 py-1 rounded ${getTagColorClasses(tagDisplay.color)}`}
+                        role="tag"
+                        aria-label={`タグ: ${tagDisplay.text}`}
+                      >
+                        {tagDisplay.text}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
               
@@ -376,7 +419,7 @@ export const CenterPanel: React.FC = () => {
             type="text" 
             value={newTodoText}
             onChange={(e) => setNewTodoText(e.target.value)}
-            onKeyDown={handleKeyPress}
+            onKeyDown={handleKeyDown}
             placeholder={
               goals.length > 0 || tags.length > 0 
                 ? "新しいToDoを追加... (Enterでタグ選択)" 
@@ -390,7 +433,10 @@ export const CenterPanel: React.FC = () => {
             }`}
           />
           <button 
-            onClick={handleAddTodo}
+            onClick={() => {
+              console.log('Add button clicked')
+              handleAddTodo()
+            }}
             disabled={!newTodoText.trim()}
             className={`px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors flex items-center ${
               !newTodoText.trim() ? 'opacity-50 cursor-not-allowed' : ''

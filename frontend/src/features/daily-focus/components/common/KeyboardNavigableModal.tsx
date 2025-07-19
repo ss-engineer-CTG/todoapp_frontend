@@ -152,7 +152,15 @@ export const KeyboardNavigableModal: React.FC<KeyboardNavigableModalProps> = ({
     }
   }
 
-  if (!isOpen) return null
+  // デバッグ用ログ
+  console.log('KeyboardNavigableModal render:', { isOpen, title })
+  
+  if (!isOpen) {
+    console.log('KeyboardNavigableModal not rendering because isOpen is false')
+    return null
+  }
+  
+  console.log('KeyboardNavigableModal rendering with isOpen=true')
 
   return (
     <div 

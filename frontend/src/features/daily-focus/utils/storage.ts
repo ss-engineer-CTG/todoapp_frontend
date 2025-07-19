@@ -8,7 +8,8 @@ import {
   DailyStats, 
   DEFAULT_GOALS, 
   DEFAULT_CUSTOM_TAGS,
-  LearningHeatmapData 
+  LearningHeatmapData,
+  createCategoryTags
 } from '../types'
 
 // ローカルストレージのキー定義
@@ -387,6 +388,145 @@ export const initializeStorage = (): void => {
   }
   
   console.log('initializeStorage: Initialization complete')
+  
+  // データ移行の実行
+  migrateCategoryToTags()
+}
+
+// カテゴリからタグへのデータ移行
+export const migrateCategoryToTags = (): void => {
+  console.log('migrateCategoryToTags: Starting migration...')
+  
+  try {
+    // 既存のタグデータを取得
+    const existingTags = tagStorage.getAll()
+    const categoryTags = createCategoryTags()
+    
+    // カテゴリタグが既に存在するかチェック
+    const hasCategoryTags = existingTags.some(tag => tag.isCategory)
+    
+    if (!hasCategoryTags) {
+      console.log('migrateCategoryToTags: Adding category tags...')
+      
+      // カテゴリタグを追加
+      const updatedTags = [...existingTags, ...categoryTags]
+      tagStorage.save(updatedTags)
+      
+      console.log('migrateCategoryToTags: Category tags added successfully')
+    } else {
+      console.log('migrateCategoryToTags: Category tags already exist')
+    }
+    
+    // 既存データの移行
+    migrateExistingData()
+    
+  } catch (error) {
+    console.error('migrateCategoryToTags: Migration failed:', error)
+  }
+}
+
+// 既存データ（Goals, Todos, Sessions）のカテゴリをタグに移行
+const migrateExistingData = (): void => {
+  console.log('migrateExistingData: Starting data migration...')
+  
+  try {
+    const categoryTags = tagStorage.getAll().filter(tag => tag.isCategory)
+    const categoryToTagMap = new Map<string, string>()
+    
+    // カテゴリ値からタグIDへのマッピングを作成
+    categoryTags.forEach(tag => {
+      if (tag.aliases && tag.aliases.length > 0) {
+        tag.aliases.forEach(alias => {
+          categoryToTagMap.set(alias, tag.id)
+        })
+      }
+    })
+    
+    // Goals の移行
+    migrateGoalsData(categoryToTagMap)
+    
+    // Todos の移行
+    migrateTodosData(categoryToTagMap)
+    
+    // Sessions の移行（実装は後で）
+    // migrateSessionsData(categoryToTagMap)
+    
+    console.log('migrateExistingData: Data migration completed')
+  } catch (error) {
+    console.error('migrateExistingData: Migration failed:', error)
+  }
+}
+
+// Goals データの移行
+const migrateGoalsData = (categoryToTagMap: Map<string, string>): void => {
+  try {
+    const goals = goalStorage.getAll()
+    let hasChanges = false
+    
+    const migratedGoals = goals.map(goal => {
+      // 既にtagIdsがある場合はスキップ
+      if (goal.tagIds && goal.tagIds.length > 0) {
+        return goal
+      }
+      
+      // categoryからtagIdsに移行
+      if (goal.category && categoryToTagMap.has(goal.category)) {
+        hasChanges = true
+        return {
+          ...goal,
+          tagIds: [categoryToTagMap.get(goal.category)!],
+          // categoryフィールドは互換性のため残す
+        }
+      }
+      
+      return goal
+    })
+    
+    if (hasChanges) {
+      goalStorage.save(migratedGoals)
+      console.log('migrateGoalsData: Goals migrated successfully')
+    } else {
+      console.log('migrateGoalsData: No goals to migrate')
+    }
+  } catch (error) {
+    console.error('migrateGoalsData: Failed to migrate goals:', error)
+  }
+}
+
+// Todos データの移行
+const migrateTodosData = (categoryToTagMap: Map<string, string>): void => {
+  try {
+    const todos = todoStorage.getAll()
+    let hasChanges = false
+    
+    const migratedTodos = todos.map(todo => {
+      // 既にtagIdsがある場合はスキップ
+      if (todo.tagIds && todo.tagIds.length > 0) {
+        return todo
+      }
+      
+      // categoryからtagIdsに移行
+      if (todo.category && categoryToTagMap.has(todo.category)) {
+        hasChanges = true
+        return {
+          ...todo,
+          tagIds: [categoryToTagMap.get(todo.category)!],
+          // categoryフィールドは互換性のため残す
+        }
+      }
+      
+      return todo
+    })
+    
+    if (hasChanges) {
+      todoStorage.save(migratedTodos)
+      console.log('migrateTodosData: Todos migrated successfully')
+    } else {
+      console.log('migrateTodosData: No todos to migrate')
+    }
+  } catch (error) {
+    console.error('migrateTodosData: Failed to migrate todos:', error)
+  }
 }
 
 // データクリア（デバッグ用）

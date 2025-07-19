@@ -261,8 +261,15 @@ export const useSelection = () => {
         break
         
       case 'Enter':
+        // 入力フィールドがアクティブな場合は処理をスキップ
+        if (isTextInputActive) {
+          console.log('Enter key skipped - text input is active')
+          return
+        }
+        
         // 選択中の項目がある場合、編集モードに入る
         if (hasSelection()) {
+          console.log('Enter key handled by useSelection - editing selected item')
           event.preventDefault()
           const editEvent = new CustomEvent('editSelected', {
             detail: {

@@ -5,20 +5,44 @@ export interface Goal {
   title: string
   description: string
   color: 'blue' | 'green' | 'purple' | 'orange' | 'teal' | 'rose'
-  category: 'programming' | 'english' | 'health' | 'reading' | 'exercise' | 'other'
+  tagIds?: string[]         // 新: 複数タグ対応
+  
+  // 移行期間中の互換性（段階的に削除予定）
+  category?: 'programming' | 'english' | 'health' | 'reading' | 'exercise' | 'other'
+  
   createdAt: Date
   updatedAt: Date
   isCompleted: boolean
   completedAt?: Date
 }
 
+// 従来のカテゴリタイプ（移行中の互換性のため）
+export type LearningCategory = 'programming' | 'english' | 'health' | 'reading' | 'exercise' | 'other'
+
+// 拡張されたCustomTag（カテゴリ統合版）
 export interface CustomTag {
   id: string
   name: string
   emoji: string
   color: 'blue' | 'green' | 'purple' | 'orange' | 'teal' | 'rose'
-  category: 'programming' | 'english' | 'health' | 'reading' | 'exercise' | 'other'
+  
+  // 新しいタグシステム機能
+  isCategory: boolean        // カテゴリタグかどうか
+  parentTagId?: string      // 親タグ（階層構造）
+  aliases: string[]         // エイリアス（従来のカテゴリ値を含む）
+  
+  // メタデータ
   isDefault: boolean
+  isSystem: boolean         // システム予約タグ
+  
+  // 統計用
+  usageCount: number        // 使用回数
+  lastUsed?: Date          // 最終使用日
+  
+  // 移行期間中の互換性（段階的に削除予定）
+  category?: LearningCategory
+  
+  // 既存フィールド
   createdAt: Date
   updatedAt: Date
 }
@@ -29,7 +53,11 @@ export interface FocusTodo {
   completed: boolean
   goalId?: string
   tagId?: string
-  category: 'programming' | 'english' | 'health' | 'reading' | 'exercise' | 'other'
+  tagIds?: string[]         // 新: 複数タグ対応
+  
+  // 移行期間中の互換性（段階的に削除予定）
+  category?: LearningCategory
+  
   createdAt: Date
   updatedAt: Date
   completedAt?: Date
@@ -37,7 +65,10 @@ export interface FocusTodo {
 
 export interface LearningSession {
   id: string
-  category: 'programming' | 'english' | 'reading' | 'exercise' | 'other'
+  tagIds?: string[]         // 新: 複数タグ対応
+  
+  // 移行期間中の互換性（段階的に削除予定）
+  category?: 'programming' | 'english' | 'reading' | 'exercise' | 'other'
   startTime: Date
   endTime?: Date
   pausedTime: number // 一時停止時間の累計（ミリ秒）
@@ -149,6 +180,12 @@ export const DEFAULT_CUSTOM_TAGS: CustomTag[] = [
     color: 'orange',
     category: 'reading',
     isDefault: false,
+    isCategory: false,
+    parentTagId: 'category-reading',
+    aliases: [],
+    isSystem: false,
+    usageCount: 0,
+    lastUsed: undefined,
     createdAt: new Date(),
     updatedAt: new Date()
   },
@@ -159,6 +196,12 @@ export const DEFAULT_CUSTOM_TAGS: CustomTag[] = [
     color: 'teal',
     category: 'other',
     isDefault: false,
+    isCategory: false,
+    parentTagId: 'category-other',
+    aliases: [],
+    isSystem: false,
+    usageCount: 0,
+    lastUsed: undefined,
     createdAt: new Date(),
     updatedAt: new Date()
   },
@@ -169,11 +212,18 @@ export const DEFAULT_CUSTOM_TAGS: CustomTag[] = [
     color: 'rose',
     category: 'other',
     isDefault: false,
+    isCategory: false,
+    parentTagId: 'category-other',
+    aliases: [],
+    isSystem: false,
+    usageCount: 0,
+    lastUsed: undefined,
     createdAt: new Date(),
     updatedAt: new Date()
   }
 ]
 
+// 従来のカテゴリ定義（移行期間中の互換性のため）
 export const LEARNING_CATEGORIES = [
   { value: 'programming', label: '📚 プログラミング', emoji: '📚' },
   { value: 'english', label: '🗣️ 英語学習', emoji: '🗣️' },
@@ -181,6 +231,38 @@ export const LEARNING_CATEGORIES = [
   { value: 'exercise', label: '🏃 運動', emoji: '🏃' },
   { value: 'other', label: '📝 その他', emoji: '📝' }
 ] as const
+
+// カテゴリをタグに変換するためのマッピング
+export const getCategoryColor = (category: LearningCategory): 'blue' | 'green' | 'purple' | 'orange' | 'teal' | 'rose' => {
+  switch (category) {
+    case 'programming': return 'blue'
+    case 'english': return 'green'
+    case 'reading': return 'purple'
+    case 'exercise': return 'orange'
+    case 'other': return 'teal'
+    default: return 'teal'
+  }
+}
+
+// デフォルトのカテゴリタグ定義
+export const createCategoryTags = (): CustomTag[] => {
+  return LEARNING_CATEGORIES.map(cat => ({
+    id: `category-${cat.value}`,
+    name: cat.label.replace(/📚|🗣️|📖|🏃|📝\s*/, '').trim(),
+    emoji: cat.emoji,
+    color: getCategoryColor(cat.value as LearningCategory),
+    isCategory: true,
+    parentTagId: undefined,
+    aliases: [cat.value],
+    isDefault: true,
+    isSystem: true,
+    usageCount: 0,
+    lastUsed: undefined,
+    category: cat.value as LearningCategory, // 移行期間中の互換性
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }))
+}
 
 export const COLOR_VARIANTS = [
   { value: 'blue', name: 'Blue', class: 'bg-blue-100 text-blue-800 border-blue-200' },

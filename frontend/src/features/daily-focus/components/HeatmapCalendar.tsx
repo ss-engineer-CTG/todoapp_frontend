@@ -3,6 +3,7 @@ import { useTheme } from '@core/components/ThemeProvider'
 import { Calendar, TrendingUp, Target, Clock, Filter } from 'lucide-react'
 import { useHeatmap, HeatmapData } from '../hooks/useHeatmap'
 import { LearningCategory, LEARNING_CATEGORIES } from '../types'
+import { useCustomTags } from '../hooks/useCustomTags'
 
 interface HeatmapCalendarProps {
   onDateSelect?: (date: string, data: HeatmapData) => void
@@ -10,6 +11,7 @@ interface HeatmapCalendarProps {
 
 export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }) => {
   const { theme } = useTheme()
+  const { getCategoryTags, getAllTags } = useCustomTags()
   const { 
     heatmapData, 
     config, 
@@ -126,10 +128,16 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
     return weeks
   }, [heatmapData])
 
-  // カテゴリフィルターの変更
+  // カテゴリフィルターの変更（タグベースに移行予定）
   const handleCategoryFilter = useCallback((category: LearningCategory | 'all') => {
     updateConfig({ selectedCategory: category })
   }, [updateConfig])
+  
+  // タグフィルターの変更（新しいタグシステム）
+  const handleTagFilter = useCallback((tagId: string | 'all') => {
+    // TODO: タグベースのフィルタリングを実装
+    console.log('Tag filter changed:', tagId)
+  }, [])
 
   // 期間の変更
   const handlePeriodChange = useCallback((period: 'week' | 'month' | 'quarter') => {
@@ -242,9 +250,11 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
           学習ヒートマップ
         </h3>
         
-        {/* 期間選択 */}
+        {/* フィルター選択 */}
         <div className="flex items-center space-x-2">
           <Filter size={14} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+          
+          {/* カテゴリフィルター（従来） */}
           <select
             value={config.selectedCategory}
             onChange={(e) => handleCategoryFilter(e.target.value as LearningCategory | 'all')}
@@ -258,6 +268,24 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
             {LEARNING_CATEGORIES.map(category => (
               <option key={category.value} value={category.value}>
                 {category.label}
+              </option>
+            ))}
+          </select>
+          
+          {/* タグフィルター（新しいタグシステム） */}
+          <select
+            onChange={(e) => handleTagFilter(e.target.value)}
+            className={`text-xs px-2 py-1 border rounded ${
+              theme === 'dark' 
+                ? 'border-gray-600 bg-gray-800 text-gray-200' 
+                : 'border-gray-300 bg-white text-gray-900'
+            }`}
+            disabled={true} // 一時的に無効
+          >
+            <option value="all">タグ：すべて</option>
+            {getCategoryTags().map(tag => (
+              <option key={tag.id} value={tag.id}>
+                {tag.emoji} {tag.name}
               </option>
             ))}
           </select>

@@ -24,12 +24,13 @@ export const useGoals = () => {
     }
   }, [])
 
-  // 目標の追加
+  // 目標の追加（新しいタグシステム対応）
   const addGoal = useCallback(async (
     title: string,
     description: string,
     color: ColorVariant,
-    category: LearningCategory
+    tagIds: string[] = [],
+    category?: LearningCategory // 後方互換性のためオプション
   ): Promise<Goal> => {
     try {
       const newGoal: Goal = {
@@ -37,7 +38,8 @@ export const useGoals = () => {
         title,
         description,
         color,
-        category,
+        tagIds,
+        category: category || 'other', // 後方互換性
         createdAt: new Date(),
         updatedAt: new Date(),
         isCompleted: false
@@ -104,9 +106,22 @@ export const useGoals = () => {
     return goals.find(goal => goal.id === goalId) || null
   }, [goals])
 
-  // カテゴリ別の目標取得
+  // カテゴリ別の目標取得（後方互換性）
   const getGoalsByCategory = useCallback((category: LearningCategory): Goal[] => {
     return goals.filter(goal => goal.category === category)
+  }, [goals])
+  
+  // タグ別の目標取得（新しいタグシステム）
+  const getGoalsByTag = useCallback((tagId: string): Goal[] => {
+    return goals.filter(goal => goal.tagIds && goal.tagIds.includes(tagId))
+  }, [goals])
+  
+  // 複数タグにマッチする目標取得
+  const getGoalsByTags = useCallback((tagIds: string[]): Goal[] => {
+    if (tagIds.length === 0) return goals
+    return goals.filter(goal => 
+      goal.tagIds && goal.tagIds.some(tagId => tagIds.includes(tagId))
+    )
   }, [goals])
 
   // 完了済みの目標取得
@@ -119,13 +134,14 @@ export const useGoals = () => {
     return goals.filter(goal => !goal.isCompleted)
   }, [goals])
 
-  // 目標の統計
+  // 目標の統計（タグシステム対応）
   const getGoalStats = useCallback(() => {
     const total = goals.length
     const completed = getCompletedGoals().length
     const active = getActiveGoals().length
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0
 
+    // 後方互換性：カテゴリ統計
     const categoryStats: Record<LearningCategory, { total: number; completed: number }> = {
       programming: { total: 0, completed: 0 },
       english: { total: 0, completed: 0 },
@@ -136,9 +152,28 @@ export const useGoals = () => {
     }
 
     goals.forEach(goal => {
-      categoryStats[goal.category].total++
-      if (goal.isCompleted) {
-        categoryStats[goal.category].completed++
+      if (goal.category) {
+        categoryStats[goal.category].total++
+        if (goal.isCompleted) {
+          categoryStats[goal.category].completed++
+        }
+      }
+    })
+    
+    // 新しいタグ統計
+    const tagStats: Record<string, { total: number; completed: number }> = {}
+    
+    goals.forEach(goal => {
+      if (goal.tagIds && goal.tagIds.length > 0) {
+        goal.tagIds.forEach(tagId => {
+          if (!tagStats[tagId]) {
+            tagStats[tagId] = { total: 0, completed: 0 }
+          }
+          tagStats[tagId].total++
+          if (goal.isCompleted) {
+            tagStats[tagId].completed++
+          }
+        })
       }
     })
 
@@ -147,7 +182,8 @@ export const useGoals = () => {
       completed,
       active,
       completionRate,
-      categoryStats
+      categoryStats,
+      tagStats
     }
   }, [goals, getCompletedGoals, getActiveGoals])
 
@@ -213,6 +249,8 @@ export const useGoals = () => {
     toggleGoalCompletion,
     getGoalById,
     getGoalsByCategory,
+    getGoalsByTag,
+    getGoalsByTags,
     getCompletedGoals,
     getActiveGoals,
     getGoalStats,

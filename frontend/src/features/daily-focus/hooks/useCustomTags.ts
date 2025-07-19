@@ -24,12 +24,62 @@ export const useCustomTags = () => {
     }
   }, [])
 
-  // タグの追加
+  // カテゴリタグを取得（移行期間中の互換性）
+  const getCategoryTags = useCallback(() => {
+    return tags.filter(tag => tag.isCategory)
+  }, [tags])
+
+  // 通常のカスタムタグを取得
+  const getCustomTags = useCallback(() => {
+    return tags.filter(tag => !tag.isCategory)
+  }, [tags])
+
+  // 全てのタグを取得（カテゴリ + カスタム）
+  const getAllTags = useCallback(() => {
+    return tags
+  }, [tags])
+
+  // タグIDからタグを取得
+  const getTagById = useCallback((tagId: string) => {
+    return tags.find(tag => tag.id === tagId)
+  }, [tags])
+
+  // カテゴリ値からタグを取得（移行期間中の互換性）
+  const getTagByCategory = useCallback((category: LearningCategory) => {
+    return tags.find(tag => tag.isCategory && tag.aliases?.includes(category))
+  }, [tags])
+
+  // タグの使用回数を更新
+  const incrementTagUsage = useCallback(async (tagId: string) => {
+    try {
+      const tag = tags.find(t => t.id === tagId)
+      if (tag) {
+        const updatedTag = {
+          ...tag,
+          usageCount: (tag.usageCount || 0) + 1,
+          lastUsed: new Date(),
+          updatedAt: new Date()
+        }
+        const updatedTags = tags.map(t => t.id === tagId ? updatedTag : t)
+        tagStorage.save(updatedTags)
+        setTags(updatedTags)
+      }
+    } catch (err) {
+      console.error('Failed to increment tag usage:', err)
+    }
+  }, [tags])
+
+  // タグの追加（新しいタグシステム対応）
   const addTag = useCallback(async (
     name: string,
     emoji: string,
     color: ColorVariant,
-    category: LearningCategory
+    options: {
+      parentTagId?: string
+      aliases?: string[]
+      isCategory?: boolean
+      category?: LearningCategory // 移行期間中の互換性
+    } = {}
   ): Promise<CustomTag> => {
     try {
       const newTag: CustomTag = {
@@ -37,8 +87,14 @@ export const useCustomTags = () => {
         name,
         emoji,
         color,
-        category,
+        isCategory: options.isCategory || false,
+        parentTagId: options.parentTagId,
+        aliases: options.aliases || [],
         isDefault: false,
+        isSystem: false,
+        usageCount: 0,
+        lastUsed: undefined,
+        category: options.category, // 移行期間中の互換性
         createdAt: new Date(),
         updatedAt: new Date()
       }
@@ -80,11 +136,6 @@ export const useCustomTags = () => {
     }
   }, [])
 
-  // IDによるタグの取得
-  const getTagById = useCallback((tagId: string): CustomTag | null => {
-    return tags.find(tag => tag.id === tagId) || null
-  }, [tags])
-
   // カテゴリ別のタグ取得
   const getTagsByCategory = useCallback((category: LearningCategory): CustomTag[] => {
     return tags.filter(tag => tag.category === category)
@@ -93,11 +144,6 @@ export const useCustomTags = () => {
   // デフォルトタグの取得
   const getDefaultTags = useCallback((): CustomTag[] => {
     return tags.filter(tag => tag.isDefault)
-  }, [tags])
-
-  // カスタムタグの取得
-  const getCustomTags = useCallback((): CustomTag[] => {
-    return tags.filter(tag => !tag.isDefault)
   }, [tags])
 
   // タグの検索
@@ -150,8 +196,8 @@ export const useCustomTags = () => {
   // タグの統計情報
   const getTagStats = useCallback(() => {
     const total = tags.length
-    const defaultTags = getDefaultTags().length
-    const customTags = getCustomTags().length
+    const defaultTags = tags.filter(tag => tag.isDefault).length
+    const customTags = tags.filter(tag => !tag.isDefault).length
 
     const categoryStats: Record<LearningCategory, number> = {
       programming: 0,
@@ -163,7 +209,9 @@ export const useCustomTags = () => {
     }
 
     tags.forEach(tag => {
-      categoryStats[tag.category]++
+      if (tag.category) {
+        categoryStats[tag.category]++
+      }
     })
 
     const colorStats: Record<ColorVariant, number> = {
@@ -186,7 +234,7 @@ export const useCustomTags = () => {
       categoryStats,
       colorStats
     }
-  }, [tags, getDefaultTags, getCustomTags])
+  }, [tags])
 
   // タグの色クラスを取得
   const getTagColorClasses = useCallback((color: ColorVariant, theme: 'light' | 'dark' = 'light'): string => {
@@ -312,6 +360,12 @@ export const useCustomTags = () => {
     getTagsByCategory,
     getDefaultTags,
     getCustomTags,
+    
+    // 新しいタグシステム用
+    getCategoryTags,
+    getAllTags,
+    getTagByCategory,
+    incrementTagUsage,
     
     // 検索・並び替え
     searchTags,

@@ -90,14 +90,24 @@ export const useLearningSession = () => {
     })
   }, [])
 
-  // 学習開始
-  const startLearning = useCallback(async (category: LearningCategory, goalId?: string) => {
+  // 学習開始（新しいタグシステム対応）
+  const startLearning = useCallback(async (
+    categoryOrTagIds: LearningCategory | string[], 
+    goalId?: string,
+    legacyCategory?: LearningCategory // 後方互換性
+  ) => {
     try {
       setError(null)
       
+      // タグシステムとカテゴリシステムの判定
+      const isTagMode = Array.isArray(categoryOrTagIds)
+      const tagIds = isTagMode ? categoryOrTagIds : []
+      const category = isTagMode ? (legacyCategory || 'other') : (categoryOrTagIds as LearningCategory)
+      
       const newSession: LearningSession = {
         id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        category,
+        tagIds: tagIds.length > 0 ? tagIds : undefined,
+        category, // 後方互換性
         startTime: new Date(),
         pausedTime: 0,
         totalTime: 0,
@@ -127,7 +137,12 @@ export const useLearningSession = () => {
       // タイマー開始
       timerRef.current = createTimer(updateTimer, 1000)
       
-      console.log('学習開始:', { category, goalId })
+      console.log('学習開始:', { 
+        mode: isTagMode ? 'tag' : 'category',
+        tagIds, 
+        category, 
+        goalId 
+      })
     } catch (err) {
       setError('学習開始に失敗しました')
       console.error('Failed to start learning:', err)
@@ -276,7 +291,7 @@ export const useLearningSession = () => {
     }
   }, [sessionState.currentSession, sessionState.isActive, sessionState.isPaused])
 
-  // カテゴリ変更
+  // カテゴリ変更（後方互換性）
   const changeCategory = useCallback(async (category: LearningCategory) => {
     try {
       setError(null)
@@ -304,6 +319,36 @@ export const useLearningSession = () => {
     } catch (err) {
       setError('カテゴリ変更に失敗しました')
       console.error('Failed to change category:', err)
+      throw err
+    }
+  }, [sessionState.currentSession])
+  
+  // タグ変更（新しいタグシステム）
+  const changeTags = useCallback(async (tagIds: string[]) => {
+    try {
+      setError(null)
+      
+      if (!sessionState.currentSession) {
+        // セッションがない場合は何もしない
+        return
+      }
+      
+      const updatedSession = {
+        ...sessionState.currentSession,
+        tagIds: tagIds.length > 0 ? tagIds : undefined
+      }
+      
+      sessionStorage.setCurrentSession(updatedSession)
+      
+      setSessionState(prev => ({
+        ...prev,
+        currentSession: updatedSession
+      }))
+      
+      console.log('タグ変更:', tagIds)
+    } catch (err) {
+      setError('タグ変更に失敗しました')
+      console.error('Failed to change tags:', err)
       throw err
     }
   }, [sessionState.currentSession])
@@ -406,6 +451,7 @@ export const useLearningSession = () => {
     resumeLearning,
     stopLearning,
     changeCategory,
+    changeTags,
     
     // 統計
     getTodayStats,

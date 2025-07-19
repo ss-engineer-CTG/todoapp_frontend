@@ -184,7 +184,20 @@ export const TagSelectionModal: React.FC<TagSelectionModalProps> = ({
     )
   }
 
-  if (!isOpen) return null
+  // デバッグ用：モーダルの状態を確認
+  console.log('TagSelectionModal render:', { 
+    isOpen, 
+    goals: goals.length, 
+    tags: tags.length, 
+    todoText
+  })
+  
+  if (!isOpen) {
+    console.log('TagSelectionModal not rendering because isOpen is false')
+    return null
+  }
+  
+  console.log('TagSelectionModal rendering with isOpen=true')
 
   // 編集中でないアイテムを作成（カスタムタグ用の編集ボタン付き）
   const createCustomTagItem = (tag: CustomTag, globalIndex: number): SelectableItem => {
@@ -234,6 +247,9 @@ export const TagSelectionModal: React.FC<TagSelectionModalProps> = ({
     // カスタムタグ項目（編集中のものも含む）
     ...tags.map((tag, index) => createCustomTagItem(tag, goals.length + index))
   ]
+  
+  // デバッグ用：フィルター済みアイテムの確認
+  console.log('filteredSelectableItems created:', filteredSelectableItems.length, filteredSelectableItems)
 
   // カスタムレンダラー（編集中のアイテム用）
   const renderCustomItem = (item: SelectableItem, index: number) => {

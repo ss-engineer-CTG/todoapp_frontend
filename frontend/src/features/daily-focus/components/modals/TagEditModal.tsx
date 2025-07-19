@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
 import { X, Save, Plus, Edit, Trash2 } from 'lucide-react'
 import { useCustomTags } from '../../hooks/useCustomTags'
-import { CustomTag, ColorVariant, LearningCategory, LEARNING_CATEGORIES, COLOR_VARIANTS } from '../../types'
+import { CustomTag, ColorVariant, COLOR_VARIANTS } from '../../types'
 
 interface TagEditModalProps {
   isOpen: boolean
@@ -16,16 +16,19 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
   editingFromTagSelection = false
 }) => {
   const { theme } = useTheme()
-  const { tags, addTag, updateTag, deleteTag, validateTag } = useCustomTags()
+  const { getCustomTags, getCategoryTags, addTag, updateTag, deleteTag, validateTag } = useCustomTags()
+  
+  // カスタムタグのみを編集対象とする（カテゴリタグは編集不可）
+  const customTags = getCustomTags()
   
   const [editingTags, setEditingTags] = useState<{
-    [key: string]: { name: string; emoji: string; color: ColorVariant; category: LearningCategory }
+    [key: string]: { name: string; emoji: string; color: ColorVariant; parentTagId?: string }
   }>({})
   const [newTag, setNewTag] = useState({
     name: '',
     emoji: '',
     color: 'orange' as ColorVariant,
-    category: 'other' as LearningCategory
+    parentTagId: '' as string
   })
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
@@ -35,12 +38,12 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       // 既存のタグを編集用の状態に設定
-      const initialEditingTags = tags.reduce((acc, tag) => {
+      const initialEditingTags = customTags.reduce((acc, tag) => {
         acc[tag.id] = {
           name: tag.name,
           emoji: tag.emoji,
           color: tag.color,
-          category: tag.category
+          parentTagId: tag.parentTagId
         }
         return acc
       }, {} as typeof editingTags)
@@ -50,12 +53,12 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
         name: '',
         emoji: '',
         color: 'orange',
-        category: 'other'
+        parentTagId: ''
       })
       setIsAddingNew(false)
       setErrors({})
     }
-  }, [isOpen, tags])
+  }, [isOpen, customTags])
 
   // 既存タグの更新
   const handleUpdateTag = (tagId: string, field: string, value: string) => {
@@ -115,13 +118,13 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
     try {
       // 既存タグの更新
       const updatePromises = Object.entries(editingTags).map(([tagId, tagData]) => {
-        const originalTag = tags.find(t => t.id === tagId)
+        const originalTag = customTags.find(t => t.id === tagId)
         if (originalTag) {
           const hasChanges = 
             originalTag.name !== tagData.name ||
             originalTag.emoji !== tagData.emoji ||
             originalTag.color !== tagData.color ||
-            originalTag.category !== tagData.category
+            originalTag.parentTagId !== tagData.parentTagId
           
           if (hasChanges) {
             return updateTag(tagId, tagData)
@@ -134,7 +137,10 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
       
       // 新しいタグの追加
       if (isAddingNew) {
-        await addTag(newTag.name, newTag.emoji, newTag.color, newTag.category)
+        await addTag(newTag.name, newTag.emoji, newTag.color, {
+          parentTagId: newTag.parentTagId || undefined,
+          isCategory: false
+        })
       }
       
       onClose()
@@ -169,7 +175,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
         name: '',
         emoji: '',
         color: 'orange',
-        category: 'other'
+        parentTagId: ''
       })
     }
   }
@@ -227,7 +233,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
         {/* 内容 */}
         <div className="p-4 space-y-4">
           {/* 既存タグの編集 */}
-          {tags.map(tag => (
+          {customTags.map(tag => (
             <div 
               key={tag.id} 
               className={`p-4 rounded-lg border ${
@@ -313,20 +319,21 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                   <label className={`block text-xs font-medium mb-1 ${
                     theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                   }`}>
-                    カテゴリ
+                    親カテゴリ
                   </label>
                   <select
-                    value={editingTags[tag.id]?.category || tag.category}
-                    onChange={(e) => handleUpdateTag(tag.id, 'category', e.target.value)}
+                    value={editingTags[tag.id]?.parentTagId || tag.parentTagId || ''}
+                    onChange={(e) => handleUpdateTag(tag.id, 'parentTagId', e.target.value)}
                     className={`w-full px-2 py-1 text-sm border rounded ${
                       theme === 'dark' 
                         ? 'border-gray-600 bg-gray-800 text-gray-100' 
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
                   >
-                    {LEARNING_CATEGORIES.map(category => (
-                      <option key={category.value} value={category.value}>
-                        {category.label}
+                    <option value="">なし</option>
+                    {getCategoryTags().map(categoryTag => (
+                      <option key={categoryTag.id} value={categoryTag.id}>
+                        {categoryTag.emoji} {categoryTag.name}
                       </option>
                     ))}
                   </select>
@@ -414,20 +421,21 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                   <label className={`block text-xs font-medium mb-1 ${
                     theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                   }`}>
-                    カテゴリ
+                    親カテゴリ
                   </label>
                   <select
-                    value={newTag.category}
-                    onChange={(e) => handleUpdateNewTag('category', e.target.value)}
+                    value={newTag.parentTagId}
+                    onChange={(e) => handleUpdateNewTag('parentTagId', e.target.value)}
                     className={`w-full px-2 py-1 text-sm border rounded ${
                       theme === 'dark' 
                         ? 'border-gray-600 bg-gray-800 text-gray-100' 
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
                   >
-                    {LEARNING_CATEGORIES.map(category => (
-                      <option key={category.value} value={category.value}>
-                        {category.label}
+                    <option value="">なし</option>
+                    {getCategoryTags().map(categoryTag => (
+                      <option key={categoryTag.id} value={categoryTag.id}>
+                        {categoryTag.emoji} {categoryTag.name}
                       </option>
                     ))}
                   </select>

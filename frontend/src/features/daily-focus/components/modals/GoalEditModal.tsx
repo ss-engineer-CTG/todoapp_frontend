@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
 import { X, Star, Save, Plus } from 'lucide-react'
-import { Goal, ColorVariant, LearningCategory, LEARNING_CATEGORIES, COLOR_VARIANTS } from '../../types'
+import { Goal, ColorVariant, COLOR_VARIANTS } from '../../types'
+import { useCustomTags } from '../../hooks/useCustomTags'
 
 interface GoalEditModalProps {
   isOpen: boolean
@@ -21,11 +22,13 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
   mode
 }) => {
   const { theme } = useTheme()
+  const { getCategoryTags, getAllTags, getTagById } = useCustomTags()
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     color: 'blue' as ColorVariant,
-    category: 'programming' as LearningCategory
+    tagIds: [] as string[]
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -38,14 +41,14 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
           title: goal.title,
           description: goal.description,
           color: goal.color,
-          category: goal.category
+          tagIds: goal.tagIds || []
         })
       } else {
         setFormData({
           title: '',
           description: '',
           color: 'blue',
-          category: 'programming'
+          tagIds: []
         })
       }
       setErrors({})
@@ -97,7 +100,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
   }
 
   // 入力値の変更
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     // エラーをクリア
     if (errors[field]) {
@@ -202,30 +205,6 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
             </p>
           </div>
 
-          {/* カテゴリ */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${
-              theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-            }`}>
-              カテゴリ
-            </label>
-            <select
-              value={formData.category}
-              onChange={(e) => handleInputChange('category', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg ${
-                theme === 'dark' 
-                  ? 'border-gray-600 bg-gray-700 text-gray-100' 
-                  : 'border-gray-300 bg-white text-gray-900'
-              }`}
-            >
-              {LEARNING_CATEGORIES.map(category => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* 色選択 */}
           <div>
             <label className={`block text-sm font-medium mb-2 ${
@@ -255,6 +234,58 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
                 />
               ))}
             </div>
+          </div>
+
+          {/* タグ選択 */}
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${
+              theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              カテゴリタグ（任意）
+            </label>
+            <div className="space-y-2">
+              {getCategoryTags().map(tag => (
+                <label
+                  key={tag.id}
+                  className={`flex items-center p-2 rounded-lg border cursor-pointer transition-colors ${
+                    formData.tagIds.includes(tag.id)
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : theme === 'dark'
+                      ? 'border-gray-600 hover:bg-gray-700'
+                      : 'border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData.tagIds.includes(tag.id)}
+                    onChange={(e) => {
+                      const newTagIds = e.target.checked
+                        ? [...formData.tagIds, tag.id]
+                        : formData.tagIds.filter(id => id !== tag.id)
+                      handleInputChange('tagIds', newTagIds)
+                    }}
+                    className="mr-3 text-blue-600"
+                  />
+                  <span className="text-lg mr-2">{tag.emoji}</span>
+                  <span className="flex-1">{tag.name}</span>
+                  <div className={`w-3 h-3 rounded-full ${
+                    tag.color === 'blue' ? 'bg-blue-500' :
+                    tag.color === 'green' ? 'bg-green-500' :
+                    tag.color === 'purple' ? 'bg-purple-500' :
+                    tag.color === 'orange' ? 'bg-orange-500' :
+                    tag.color === 'teal' ? 'bg-teal-500' :
+                    'bg-rose-500'
+                  }`} />
+                </label>
+              ))}
+            </div>
+            {formData.tagIds.length === 0 && (
+              <p className={`text-xs mt-1 ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                カテゴリタグを選択すると、統計やフィルタリングで利用できます
+              </p>
+            )}
           </div>
 
           {/* ボタン */}
