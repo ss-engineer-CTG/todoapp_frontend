@@ -1,11 +1,13 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
+import { useSelection } from '../hooks/useSelection'
 import { LeftPanel } from './LeftPanel'
 import { CenterPanel } from './CenterPanel'
 import { RightPanel } from './RightPanel'
 
 export const DailyFocusView: React.FC = () => {
   const { theme } = useTheme()
+  const { handleBackgroundClick } = useSelection()
   
   // パネル幅の管理
   const [leftPanelWidth, setLeftPanelWidth] = useState(25) // 25%
@@ -80,6 +82,7 @@ export const DailyFocusView: React.FC = () => {
   return (
     <div 
       ref={containerRef}
+      onClick={handleBackgroundClick}
       className={`flex h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} pt-16 overflow-hidden`}
     >
       {/* 左パネル: 目標管理・学習時間トラッキング */}

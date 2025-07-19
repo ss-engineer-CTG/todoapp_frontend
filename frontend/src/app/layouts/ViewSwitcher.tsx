@@ -36,7 +36,7 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({
   return (
     <div className="absolute top-4 left-4 z-50 flex bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       <button
-        className={`px-3 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center space-x-2 transition-colors ${
+        className={`px-2 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center justify-center transition-colors ${
           viewMode === 'tasklist' 
             ? 'bg-blue-600 text-white' 
             : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -45,10 +45,9 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({
         title="リストビュー (Ctrl+L)"
       >
         <List size={16} />
-        <span>リスト</span>
       </button>
       <button
-        className={`px-3 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center space-x-2 transition-colors ${
+        className={`px-2 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center justify-center transition-colors ${
           viewMode === 'timeline'
             ? 'bg-blue-600 text-white' 
             : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -57,10 +56,9 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({
         title="タイムラインビュー (Ctrl+T)"
       >
         <Calendar size={16} />
-        <span>タイムライン</span>
       </button>
       <button
-        className={`px-3 py-2 text-sm font-medium rounded-none flex items-center space-x-2 transition-colors ${
+        className={`px-2 py-2 text-sm font-medium rounded-none flex items-center justify-center transition-colors ${
           viewMode === 'daily-focus'
             ? 'bg-blue-600 text-white' 
             : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -69,7 +67,6 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({
         title="Daily Focus View (Ctrl+F)"
       >
         <Focus size={16} />
-        <span>フォーカス</span>
       </button>
     </div>
   )

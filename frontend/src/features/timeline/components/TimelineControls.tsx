@@ -4,7 +4,7 @@
 import React from 'react'
 import {
   ZoomIn, ZoomOut, RotateCw, Maximize2, ChevronLeft, ChevronRight,
-  Sun, Moon, Minimize2, ArrowLeft
+  Sun, Moon, Minimize2, ArrowLeft, Calendar, Focus
 } from 'lucide-react'
 import { TimelineControlsProps } from '../types'
 import { useTheme } from '@core/components/ThemeProvider'
@@ -68,20 +68,35 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
       {/* アプリケーションヘッダー */}
       <header className={`${classes.header} border-b py-2 px-4 flex items-center justify-between sticky top-0 z-50 w-full min-w-0`}>
         <div className="flex items-center min-w-0 flex-shrink-0">
-          <button
-            onClick={handleBackToList}
-            className={`
-              flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-all duration-200
-              font-medium text-sm shadow-sm hover:shadow-md active:scale-95
-              ${classes.backButton}
-            `}
-            title="リストビューに戻る (Ctrl+L)"
-            aria-label="リストビューに戻る"
-          >
-            <ArrowLeft size={18} className="flex-shrink-0" />
-            <span className="hidden sm:inline">リストに戻る</span>
-            <span className="sm:hidden">戻る</span>
-          </button>
+          {/* ViewSwitcher統一 */}
+          <div className="flex bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <button
+              className={`px-2 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center justify-center transition-colors ${
+                'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+              onClick={() => onViewModeChange && onViewModeChange('tasklist')}
+              title="リストビュー (Ctrl+L)"
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <button
+              className={`px-2 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center justify-center transition-colors ${
+                'bg-blue-600 text-white'
+              }`}
+              title="タイムラインビュー (Ctrl+T)"
+            >
+              <Calendar size={16} />
+            </button>
+            <button
+              className={`px-2 py-2 text-sm font-medium rounded-none flex items-center justify-center transition-colors ${
+                'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+              onClick={() => onViewModeChange && onViewModeChange('daily-focus')}
+              title="Daily Focus View (Ctrl+F)"
+            >
+              <Focus size={16} />
+            </button>
+          </div>
         </div>
         
         <div className="flex items-center space-x-2 flex-shrink-0 ml-4">

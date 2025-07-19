@@ -54,7 +54,8 @@
     "prepack": "npm run build",
     "electron": "electron .",
     "electron:dev": "cross-env NODE_ENV=development electron .",
-    "electron:prod": "cross-env NODE_ENV=production electron ."
+    "electron:prod": "cross-env NODE_ENV=production electron .",
+    "prepare": "husky"
   },
   "devDependencies": {
     "electron": "^27.0.0",
@@ -105,7 +106,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ]
     },
@@ -114,7 +118,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -124,7 +130,9 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
