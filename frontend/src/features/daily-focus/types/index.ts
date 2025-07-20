@@ -5,19 +5,24 @@ export interface Goal {
   title: string
   description: string
   color: 'blue' | 'green' | 'purple' | 'orange' | 'teal' | 'rose'
-  tagIds?: string[]         // 新: 複数タグ対応
+  tagIds?: string[] | undefined         // 新: 複数タグ対応
+  
+  // 月次目標関連フィールド
+  isMonthlyGoal?: boolean | undefined   // 月次目標かどうか
+  monthlyTargetDate?: string | undefined // 目標月 (YYYY-MM形式)
+  monthlyProgress?: number | undefined  // 進捗率 (0-100)
   
   // 移行期間中の互換性（段階的に削除予定）
-  category?: 'programming' | 'english' | 'health' | 'reading' | 'exercise' | 'other'
+  category?: 'programming' | 'english' | 'health' | 'reading' | 'exercise' | 'other' | 'monthly-goals' | undefined
   
   createdAt: Date
   updatedAt: Date
   isCompleted: boolean
-  completedAt?: Date
+  completedAt?: Date | undefined
 }
 
 // 従来のカテゴリタイプ（移行中の互換性のため）
-export type LearningCategory = 'programming' | 'english' | 'health' | 'reading' | 'exercise' | 'other'
+export type LearningCategory = 'programming' | 'english' | 'health' | 'reading' | 'exercise' | 'other' | 'monthly-goals'
 
 // 拡張されたCustomTag（カテゴリ統合版）
 export interface CustomTag {
@@ -28,7 +33,7 @@ export interface CustomTag {
   
   // 新しいタグシステム機能
   isCategory: boolean        // カテゴリタグかどうか
-  parentTagId?: string      // 親タグ（階層構造）
+  parentTagId?: string | undefined      // 親タグ（階層構造）
   aliases: string[]         // エイリアス（従来のカテゴリ値を含む）
   
   // メタデータ
@@ -37,10 +42,10 @@ export interface CustomTag {
   
   // 統計用
   usageCount: number        // 使用回数
-  lastUsed?: Date          // 最終使用日
+  lastUsed?: Date | undefined          // 最終使用日
   
   // 移行期間中の互換性（段階的に削除予定）
-  category?: LearningCategory
+  category?: LearningCategory | undefined
   
   // 既存フィールド
   createdAt: Date
@@ -51,16 +56,16 @@ export interface FocusTodo {
   id: string
   text: string
   completed: boolean
-  goalId?: string
-  tagId?: string
-  tagIds?: string[]         // 新: 複数タグ対応
+  goalId?: string | undefined
+  tagId?: string | undefined
+  tagIds?: string[] | undefined         // 新: 複数タグ対応
   
   // 移行期間中の互換性（段階的に削除予定）
-  category?: LearningCategory
+  category?: LearningCategory | undefined
   
   createdAt: Date
   updatedAt: Date
-  completedAt?: Date
+  completedAt?: Date | undefined
 }
 
 export interface LearningSession {
@@ -134,7 +139,6 @@ export interface TagEditModalState {
 }
 
 // ユーティリティ型
-export type LearningCategory = 'programming' | 'english' | 'reading' | 'exercise' | 'other'
 export type ColorVariant = 'blue' | 'green' | 'purple' | 'orange' | 'teal' | 'rose'
 export type SelectionType = 'goal' | 'todo' | null
 
@@ -229,7 +233,8 @@ export const LEARNING_CATEGORIES = [
   { value: 'english', label: '🗣️ 英語学習', emoji: '🗣️' },
   { value: 'reading', label: '📖 読書', emoji: '📖' },
   { value: 'exercise', label: '🏃 運動', emoji: '🏃' },
-  { value: 'other', label: '📝 その他', emoji: '📝' }
+  { value: 'other', label: '📝 その他', emoji: '📝' },
+  { value: 'monthly-goals', label: '🗓️ 今月の目標', emoji: '🗓️' }
 ] as const
 
 // カテゴリをタグに変換するためのマッピング
@@ -239,6 +244,7 @@ export const getCategoryColor = (category: LearningCategory): 'blue' | 'green' |
     case 'english': return 'green'
     case 'reading': return 'purple'
     case 'exercise': return 'orange'
+    case 'monthly-goals': return 'rose'
     case 'other': return 'teal'
     default: return 'teal'
   }
@@ -248,7 +254,7 @@ export const getCategoryColor = (category: LearningCategory): 'blue' | 'green' |
 export const createCategoryTags = (): CustomTag[] => {
   return LEARNING_CATEGORIES.map(cat => ({
     id: `category-${cat.value}`,
-    name: cat.label.replace(/📚|🗣️|📖|🏃|📝\s*/, '').trim(),
+    name: cat.label.replace(/📚|🗣️|📖|🏃|📝|🗓️\s*/, '').trim(),
     emoji: cat.emoji,
     color: getCategoryColor(cat.value as LearningCategory),
     isCategory: true,
@@ -272,3 +278,43 @@ export const COLOR_VARIANTS = [
   { value: 'teal', name: 'Teal', class: 'bg-teal-100 text-teal-800 border-teal-200' },
   { value: 'rose', name: 'Rose', class: 'bg-rose-100 text-rose-800 border-rose-200' }
 ] as const
+
+// 月次目標関連ユーティリティ関数
+export const getCurrentMonthString = (): string => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+export const getNextMonthString = (): string => {
+  const now = new Date()
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  return `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`
+}
+
+export const formatMonthString = (monthString: string): string => {
+  const [year, month] = monthString.split('-')
+  return `${year}年${month}月`
+}
+
+export const isMonthlyGoalExpired = (goal: Goal): boolean => {
+  if (!goal.isMonthlyGoal || !goal.monthlyTargetDate) return false
+  const currentMonth = getCurrentMonthString()
+  return goal.monthlyTargetDate < currentMonth
+}
+
+export const createMonthlyGoalsTag = (): CustomTag => ({
+  id: 'category-monthly-goals',
+  name: '今月の目標',
+  emoji: '🗓️',
+  color: 'rose' as const,
+  isCategory: true,
+  parentTagId: undefined,
+  aliases: ['monthly-goals'],
+  isDefault: true,
+  isSystem: true,
+  usageCount: 0,
+  lastUsed: undefined,
+  category: 'monthly-goals' as LearningCategory,
+  createdAt: new Date(),
+  updatedAt: new Date()
+})

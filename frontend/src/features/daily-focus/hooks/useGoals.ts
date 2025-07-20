@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Goal, ColorVariant, LearningCategory } from '../types'
+import { Goal, ColorVariant, LearningCategory, getCurrentMonthString, getNextMonthString } from '../types'
 import { goalStorage } from '../utils/storage'
 
 export const useGoals = () => {
@@ -148,7 +148,8 @@ export const useGoals = () => {
       health: { total: 0, completed: 0 },
       reading: { total: 0, completed: 0 },
       exercise: { total: 0, completed: 0 },
-      other: { total: 0, completed: 0 }
+      other: { total: 0, completed: 0 },
+      'monthly-goals': { total: 0, completed: 0 }
     }
 
     goals.forEach(goal => {
@@ -239,6 +240,70 @@ export const useGoals = () => {
     loadGoals()
   }, [loadGoals])
 
+  // 月次目標関連関数
+  const createMonthlyGoal = useCallback(async (
+    title: string,
+    description: string,
+    color: ColorVariant,
+    targetMonth?: string
+  ): Promise<Goal> => {
+    try {
+      const monthlyGoal: Goal = {
+        id: `goal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        title,
+        description,
+        color,
+        isMonthlyGoal: true,
+        monthlyTargetDate: targetMonth || getCurrentMonthString(),
+        monthlyProgress: 0,
+        tagIds: ['category-monthly-goals'],
+        category: 'monthly-goals',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isCompleted: false
+      }
+
+      const updatedGoals = goalStorage.add(monthlyGoal)
+      setGoals(updatedGoals)
+      return monthlyGoal
+    } catch (err) {
+      setError('月次目標の作成に失敗しました')
+      console.error('Failed to create monthly goal:', err)
+      throw err
+    }
+  }, [])
+
+  const getMonthlyGoals = useCallback((targetMonth?: string): Goal[] => {
+    return goalStorage.getMonthlyGoals(targetMonth)
+  }, [goals])
+
+  const getCurrentMonthGoals = useCallback((): Goal[] => {
+    return goalStorage.getCurrentMonthGoals()
+  }, [goals])
+
+  const updateMonthlyProgress = useCallback(async (goalId: string, progress: number): Promise<void> => {
+    try {
+      const updatedGoals = goalStorage.updateMonthlyProgress(goalId, progress)
+      setGoals(updatedGoals)
+    } catch (err) {
+      setError('月次目標の進捗更新に失敗しました')
+      console.error('Failed to update monthly progress:', err)
+      throw err
+    }
+  }, [])
+
+  const archiveExpiredGoals = useCallback(async (): Promise<{ archived: Goal[], remaining: Goal[] }> => {
+    try {
+      const result = goalStorage.archiveExpiredGoals()
+      setGoals(goalStorage.getAll())
+      return result
+    } catch (err) {
+      setError('期限切れ目標のアーカイブに失敗しました')
+      console.error('Failed to archive expired goals:', err)
+      throw err
+    }
+  }, [])
+
   return {
     goals,
     loading,
@@ -256,6 +321,14 @@ export const useGoals = () => {
     getGoalStats,
     searchGoals,
     sortGoals,
+    
+    // 月次目標関連
+    createMonthlyGoal,
+    getMonthlyGoals,
+    getCurrentMonthGoals,
+    updateMonthlyProgress,
+    archiveExpiredGoals,
+    
     reload: loadGoals
   }
 }

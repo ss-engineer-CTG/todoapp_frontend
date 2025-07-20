@@ -1,18 +1,27 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
 import { Star, Clock, Edit, Trash2, Plus } from 'lucide-react'
 import { useGoals } from '../hooks/useGoals'
 import { useSelection } from '../hooks/useSelection'
 import { useLearningSession } from '../hooks/useLearningSession'
 import { GoalEditModal } from './modals/GoalEditModal'
-import { Goal, LearningCategory, LEARNING_CATEGORIES } from '../types'
+import { Goal, LearningCategory, ColorVariant, LEARNING_CATEGORIES, getCurrentMonthString, formatMonthString } from '../types'
 import { formatDateString } from '../utils/timeUtils'
 import { initializeStorage } from '../utils/storage'
 
 export const LeftPanel: React.FC = () => {
   const { theme } = useTheme()
-  const { goals, loading: goalsLoading, addGoal, updateGoal, deleteGoal } = useGoals()
-  const { selection, selectGoal, getSelectableProps } = useSelection()
+  const { 
+    goals, 
+    loading: goalsLoading, 
+    addGoal, 
+    updateGoal, 
+    deleteGoal,
+    createMonthlyGoal,
+    getCurrentMonthGoals,
+    updateMonthlyProgress
+  } = useGoals()
+  const { selection, getSelectableProps } = useSelection()
   const { 
     sessionState, 
     loading: sessionLoading, 
@@ -27,12 +36,37 @@ export const LeftPanel: React.FC = () => {
   // モーダル状態
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
-  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'monthly'>('create')
+  
+  // 月次目標関連状態
+  const [monthlyGoals, setMonthlyGoals] = useState<Goal[]>([])
+  const [currentMonth] = useState(getCurrentMonthString())
 
   // 初期化
   useEffect(() => {
     initializeStorage()
   }, [])
+  
+  // 月次目標のロード
+  useEffect(() => {
+    const loadMonthlyGoals = () => {
+      const currentMonthGoals = getCurrentMonthGoals()
+      setMonthlyGoals(currentMonthGoals)
+    }
+    
+    loadMonthlyGoals()
+  }, [goals, getCurrentMonthGoals])
+
+  // 目標を削除
+  const handleDeleteGoal = useCallback(async (goalId: string) => {
+    if (window.confirm('この目標を削除してもよろしいですか？')) {
+      try {
+        await deleteGoal(goalId)
+      } catch (error) {
+        // エラーハンドリング（サイレント）
+      }
+    }
+  }, [deleteGoal])
 
   // 削除イベントの処理
   useEffect(() => {
@@ -47,7 +81,25 @@ export const LeftPanel: React.FC = () => {
     return () => {
       window.removeEventListener('deleteSelected', handleDeleteSelected as EventListener)
     }
-  }, [])
+  }, [handleDeleteGoal])
+  
+  // 月次目標作成
+  const handleCreateMonthlyGoal = () => {
+    setEditingGoal(null)
+    setModalMode('monthly')
+    setIsGoalModalOpen(true)
+  }
+  
+  // 月次目標の進捗更新
+  const handleUpdateProgress = async (goalId: string, progress: number) => {
+    try {
+      await updateMonthlyProgress(goalId, progress)
+      const updatedMonthlyGoals = getCurrentMonthGoals()
+      setMonthlyGoals(updatedMonthlyGoals)
+    } catch (error) {
+      // エラーハンドリング（サイレント）
+    }
+  }
 
   // 目標の色クラスを取得
   const getGoalColorClasses = (goal: Goal) => {
@@ -74,6 +126,51 @@ export const LeftPanel: React.FC = () => {
     }
     return colorMap[goal.color] || colorMap.blue
   }
+  
+  // 月次目標の進捗バーコンポーネント
+  const MonthlyGoalProgressBar = ({ goal }: { goal: Goal }) => {
+    const progress = goal.monthlyProgress || 0
+    
+    return (
+      <div className="mt-2">
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-xs text-gray-500">進捗</span>
+          <span className="text-xs font-medium">{progress}%</span>
+        </div>
+        <div className={`w-full h-2 rounded-full ${
+          theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+        }`}>
+          <div 
+            className={`h-2 rounded-full transition-all duration-300 ${
+              goal.color === 'blue' ? 'bg-blue-500' :
+              goal.color === 'green' ? 'bg-green-500' :
+              goal.color === 'purple' ? 'bg-purple-500' :
+              goal.color === 'orange' ? 'bg-orange-500' :
+              goal.color === 'teal' ? 'bg-teal-500' :
+              'bg-rose-500'
+            }`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-1">
+          <button 
+            onClick={() => handleUpdateProgress(goal.id, Math.max(0, progress - 10))}
+            className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+            disabled={progress <= 0}
+          >
+            -10%
+          </button>
+          <button 
+            onClick={() => handleUpdateProgress(goal.id, Math.min(100, progress + 10))}
+            className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+            disabled={progress >= 100}
+          >
+            +10%
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // 新しい目標を追加
   const handleAddGoal = () => {
@@ -89,24 +186,25 @@ export const LeftPanel: React.FC = () => {
     setIsGoalModalOpen(true)
   }
 
-  // 目標を削除
-  const handleDeleteGoal = async (goalId: string) => {
-    if (window.confirm('この目標を削除してもよろしいですか？')) {
-      try {
-        await deleteGoal(goalId)
-      } catch (error) {
-        console.error('Goal deletion failed:', error)
-      }
-    }
-  }
-
   // 目標の保存
   const handleSaveGoal = async (goalData: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      await addGoal(goalData.title, goalData.description, goalData.color, goalData.category)
+      await addGoal(goalData.title, goalData.description, goalData.color, goalData.tagIds, goalData.category)
       setIsGoalModalOpen(false)
     } catch (error) {
-      console.error('Goal creation failed:', error)
+      // エラーハンドリング（サイレント）
+    }
+  }
+
+  // 月次目標の保存
+  const handleSaveMonthlyGoal = async (title: string, description: string, color: ColorVariant, targetMonth?: string) => {
+    try {
+      await createMonthlyGoal(title, description, color, targetMonth)
+      const updatedMonthlyGoals = getCurrentMonthGoals()
+      setMonthlyGoals(updatedMonthlyGoals)
+      setIsGoalModalOpen(false)
+    } catch (error) {
+      // エラーハンドリング（サイレント）
     }
   }
 
@@ -116,7 +214,7 @@ export const LeftPanel: React.FC = () => {
       await updateGoal(goalId, updates)
       setIsGoalModalOpen(false)
     } catch (error) {
-      console.error('Goal update failed:', error)
+      // エラーハンドリング（サイレント）
     }
   }
 
@@ -125,7 +223,7 @@ export const LeftPanel: React.FC = () => {
     try {
       await startLearning(sessionState.currentCategory as LearningCategory)
     } catch (error) {
-      console.error('Learning start failed:', error)
+      // エラーハンドリング（サイレント）
     }
   }
 
@@ -134,7 +232,7 @@ export const LeftPanel: React.FC = () => {
     try {
       await pauseLearning()
     } catch (error) {
-      console.error('Learning pause failed:', error)
+      // エラーハンドリング（サイレント）
     }
   }
 
@@ -143,7 +241,7 @@ export const LeftPanel: React.FC = () => {
     try {
       await resumeLearning()
     } catch (error) {
-      console.error('Learning resume failed:', error)
+      // エラーハンドリング（サイレント）
     }
   }
 
@@ -152,7 +250,7 @@ export const LeftPanel: React.FC = () => {
     try {
       await stopLearning()
     } catch (error) {
-      console.error('Learning stop failed:', error)
+      // エラーハンドリング（サイレント）
     }
   }
 
@@ -187,11 +285,100 @@ export const LeftPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* 今月の目標 */}
+      {/* 今月の目標セクション */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className={`text-lg font-semibold flex items-center ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+            🗓️ 今月の目標
+          </h2>
+          <button
+            onClick={handleCreateMonthlyGoal}
+            className={`p-1 rounded-lg transition-colors ${
+              theme === 'dark' 
+                ? 'hover:bg-gray-700 text-gray-400' 
+                : 'hover:bg-gray-100 text-gray-600'
+            }`}
+            title="月次目標を追加"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+        
+        <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+          {formatMonthString(currentMonth)}
+        </p>
+        
+        {/* 月次目標リスト */}
+        <div className="space-y-3 mb-6">
+          {monthlyGoals.length === 0 ? (
+            <div className={`text-center py-6 ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+            }`}>
+              <p className="text-sm">今月の目標がありません</p>
+              <button 
+                onClick={handleCreateMonthlyGoal}
+                className="text-xs mt-2 px-3 py-1 bg-rose-600 text-white rounded hover:bg-rose-700 transition-colors"
+              >
+                目標を追加
+              </button>
+            </div>
+          ) : (
+            monthlyGoals.map((goal) => (
+              <div
+                key={goal.id}
+                {...getSelectableProps(goal.id, 'goal')}
+                className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ease-in-out hover:bg-opacity-80 hover:scale-[1.01] ${
+                  getGoalColorClasses(goal)
+                } ${getSelectableProps(goal.id, 'goal').className}`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-sm">
+                      {goal.title}
+                    </h3>
+                    <p className={`text-xs mt-1 ${getGoalDescriptionColorClasses(goal)}`}>
+                      {goal.description}
+                    </p>
+                    <MonthlyGoalProgressBar goal={goal} />
+                  </div>
+                  
+                  {/* 選択された目標のアクションボタン */}
+                  {selection.selectedGoalId === goal.id && (
+                    <div className="flex items-center space-x-1 ml-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditGoal(goal)
+                        }}
+                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+                        title="編集"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteGoal(goal.id)
+                        }}
+                        className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 transition-colors"
+                        title="削除"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+      
+      {/* 既存の目標セクション */}
       <div className="mb-6">
         <h2 className={`text-lg font-semibold mb-2 flex items-center ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
           <Star className="mr-2" size={20} />
-          今月の目標
+          目標
         </h2>
         <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
           {formatDateString(new Date()).split(' ')[0]}
@@ -202,10 +389,10 @@ export const LeftPanel: React.FC = () => {
           {goals.map((goal) => (
             <div
               key={goal.id}
+              {...getSelectableProps(goal.id, 'goal')}
               className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ease-in-out hover:bg-opacity-80 hover:scale-[1.01] ${
                 getGoalColorClasses(goal)
               } ${getSelectableProps(goal.id, 'goal').className}`}
-              {...getSelectableProps(goal.id, 'goal')}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -393,6 +580,7 @@ export const LeftPanel: React.FC = () => {
         isOpen={isGoalModalOpen}
         onClose={() => setIsGoalModalOpen(false)}
         onSave={handleSaveGoal}
+        onSaveMonthly={handleSaveMonthlyGoal}
         onUpdate={handleUpdateGoal}
         goal={editingGoal}
         mode={modalMode}

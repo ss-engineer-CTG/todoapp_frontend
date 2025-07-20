@@ -21,7 +21,9 @@
       "Bash(ls:*)",
       "Bash(npm install:*)",
       "Bash(npx husky:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": []
   }

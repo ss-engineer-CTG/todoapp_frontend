@@ -11,14 +11,13 @@ interface HeatmapCalendarProps {
 
 export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }) => {
   const { theme } = useTheme()
-  const { getCategoryTags, getAllTags } = useCustomTags()
+  const { getCategoryTags } = useCustomTags()
   const { 
     heatmapData, 
     config, 
     loading, 
     error, 
     updateConfig,
-    getDataForDate,
     getMonthlyStats,
     getCurrentStreak,
     getLongestStreak,
@@ -134,9 +133,9 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
   }, [updateConfig])
   
   // タグフィルターの変更（新しいタグシステム）
-  const handleTagFilter = useCallback((tagId: string | 'all') => {
+  const handleTagFilter = useCallback((_tagId: string | 'all') => {
     // TODO: タグベースのフィルタリングを実装
-    console.log('Tag filter changed:', tagId)
+    // 将来的にタグフィルタリング機能を実装
   }, [])
 
   // 期間の変更

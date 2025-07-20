@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
-import { X, Star, Save, Plus } from 'lucide-react'
-import { Goal, ColorVariant, COLOR_VARIANTS } from '../../types'
+import { X, Star, Save, Plus, Calendar } from 'lucide-react'
+import { Goal, ColorVariant, COLOR_VARIANTS, getCurrentMonthString, getNextMonthString, formatMonthString } from '../../types'
 import { useCustomTags } from '../../hooks/useCustomTags'
 
 interface GoalEditModalProps {
   isOpen: boolean
   onClose: () => void
   onSave: (goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
+  onSaveMonthly?: (title: string, description: string, color: ColorVariant, targetMonth?: string) => Promise<void>
   onUpdate?: (goalId: string, updates: Partial<Goal>) => Promise<void>
   goal?: Goal | null
-  mode: 'create' | 'edit'
+  mode: 'create' | 'edit' | 'monthly'
 }
 
 export const GoalEditModal: React.FC<GoalEditModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  onSaveMonthly,
   onUpdate,
   goal,
   mode
@@ -28,7 +30,8 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
     title: '',
     description: '',
     color: 'blue' as ColorVariant,
-    tagIds: [] as string[]
+    tagIds: [] as string[],
+    targetMonth: getCurrentMonthString() // 月次目標用
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -41,14 +44,24 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
           title: goal.title,
           description: goal.description,
           color: goal.color,
-          tagIds: goal.tagIds || []
+          tagIds: goal.tagIds || [],
+          targetMonth: goal.monthlyTargetDate || getCurrentMonthString()
+        })
+      } else if (mode === 'monthly') {
+        setFormData({
+          title: '',
+          description: '',
+          color: 'rose', // 月次目標のデフォルト色
+          tagIds: ['category-monthly-goals'], // 月次目標タグを自動選択
+          targetMonth: getCurrentMonthString()
         })
       } else {
         setFormData({
           title: '',
           description: '',
           color: 'blue',
-          tagIds: []
+          tagIds: [],
+          targetMonth: getCurrentMonthString()
         })
       }
       setErrors({})
@@ -83,7 +96,15 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
     
     setIsSubmitting(true)
     try {
-      if (mode === 'create') {
+      if (mode === 'monthly' && onSaveMonthly) {
+        // 月次目標の作成
+        await onSaveMonthly(
+          formData.title,
+          formData.description,
+          formData.color,
+          formData.targetMonth
+        )
+      } else if (mode === 'create') {
         await onSave({
           ...formData,
           isCompleted: false
@@ -106,6 +127,26 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
     }
+  }
+
+  // 月の選択肢を生成
+  const generateMonthOptions = () => {
+    const options = []
+    const currentMonth = getCurrentMonthString()
+    const nextMonth = getNextMonthString()
+    
+    // 当月と来月の選択肢を追加
+    options.push({
+      value: currentMonth,
+      label: formatMonthString(currentMonth)
+    })
+    
+    options.push({
+      value: nextMonth,
+      label: formatMonthString(nextMonth)
+    })
+    
+    return options
   }
 
   // ESCキーで閉じる
@@ -133,9 +174,14 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
         {/* ヘッダー */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-2">
-            <Star size={20} className="text-yellow-500" />
+            {mode === 'monthly' ? (
+              <Calendar size={20} className="text-rose-500" />
+            ) : (
+              <Star size={20} className="text-yellow-500" />
+            )}
             <h2 className="text-lg font-semibold">
-              {mode === 'create' ? '新しい目標を追加' : '目標を編集'}
+              {mode === 'monthly' ? '月次目標を追加' : 
+               mode === 'create' ? '新しい目標を追加' : '目標を編集'}
             </h2>
           </div>
           <button
@@ -236,57 +282,90 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
             </div>
           </div>
 
-          {/* タグ選択 */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${
-              theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-            }`}>
-              カテゴリタグ（任意）
-            </label>
-            <div className="space-y-2">
-              {getCategoryTags().map(tag => (
-                <label
-                  key={tag.id}
-                  className={`flex items-center p-2 rounded-lg border cursor-pointer transition-colors ${
-                    formData.tagIds.includes(tag.id)
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : theme === 'dark'
-                      ? 'border-gray-600 hover:bg-gray-700'
-                      : 'border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.tagIds.includes(tag.id)}
-                    onChange={(e) => {
-                      const newTagIds = e.target.checked
-                        ? [...formData.tagIds, tag.id]
-                        : formData.tagIds.filter(id => id !== tag.id)
-                      handleInputChange('tagIds', newTagIds)
-                    }}
-                    className="mr-3 text-blue-600"
-                  />
-                  <span className="text-lg mr-2">{tag.emoji}</span>
-                  <span className="flex-1">{tag.name}</span>
-                  <div className={`w-3 h-3 rounded-full ${
-                    tag.color === 'blue' ? 'bg-blue-500' :
-                    tag.color === 'green' ? 'bg-green-500' :
-                    tag.color === 'purple' ? 'bg-purple-500' :
-                    tag.color === 'orange' ? 'bg-orange-500' :
-                    tag.color === 'teal' ? 'bg-teal-500' :
-                    'bg-rose-500'
-                  }`} />
-                </label>
-              ))}
-            </div>
-            {formData.tagIds.length === 0 && (
+          {/* 月次目標用：目標月選択 */}
+          {mode === 'monthly' && (
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                目標月 *
+              </label>
+              <select
+                value={formData.targetMonth}
+                onChange={(e) => handleInputChange('targetMonth', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg ${
+                  theme === 'dark' 
+                    ? 'border-gray-600 bg-gray-700 text-gray-100' 
+                    : 'border-gray-300 bg-white text-gray-900'
+                }`}
+              >
+                {generateMonthOptions().map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
               <p className={`text-xs mt-1 ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
               }`}>
-                カテゴリタグを選択すると、統計やフィルタリングで利用できます
+                月次目標は指定した月の終わりに自動的にアーカイブされます
               </p>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* タグ選択（月次目標以外） */}
+          {mode !== 'monthly' && (
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                カテゴリタグ（任意）
+              </label>
+              <div className="space-y-2">
+                {getCategoryTags().map(tag => (
+                  <label
+                    key={tag.id}
+                    className={`flex items-center p-2 rounded-lg border cursor-pointer transition-colors ${
+                      formData.tagIds.includes(tag.id)
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : theme === 'dark'
+                        ? 'border-gray-600 hover:bg-gray-700'
+                        : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.tagIds.includes(tag.id)}
+                      onChange={(e) => {
+                        const newTagIds = e.target.checked
+                          ? [...formData.tagIds, tag.id]
+                          : formData.tagIds.filter(id => id !== tag.id)
+                        handleInputChange('tagIds', newTagIds)
+                      }}
+                      className="mr-3 text-blue-600"
+                    />
+                    <span className="text-lg mr-2">{tag.emoji}</span>
+                    <span className="flex-1">{tag.name}</span>
+                    <div className={`w-3 h-3 rounded-full ${
+                      tag.color === 'blue' ? 'bg-blue-500' :
+                      tag.color === 'green' ? 'bg-green-500' :
+                      tag.color === 'purple' ? 'bg-purple-500' :
+                      tag.color === 'orange' ? 'bg-orange-500' :
+                      tag.color === 'teal' ? 'bg-teal-500' :
+                      'bg-rose-500'
+                    }`} />
+                  </label>
+                ))}
+              </div>
+              {formData.tagIds.length === 0 && (
+                <p className={`text-xs mt-1 ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                  カテゴリタグを選択すると、統計やフィルタリングで利用できます
+                </p>
+              )}
+            </div>
+          )}
 
           {/* ボタン */}
           <div className="flex space-x-3 pt-4">
@@ -304,12 +383,19 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 ${
+              className={`flex-1 px-4 py-2 ${
+                mode === 'monthly' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-blue-600 hover:bg-blue-700'
+              } text-white rounded-lg transition-colors flex items-center justify-center space-x-2 ${
                 isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              {mode === 'create' ? <Plus size={16} /> : <Save size={16} />}
-              <span>{isSubmitting ? '保存中...' : mode === 'create' ? '追加' : '保存'}</span>
+              {mode === 'monthly' ? <Calendar size={16} /> : 
+               mode === 'create' ? <Plus size={16} /> : <Save size={16} />}
+              <span>
+                {isSubmitting ? '保存中...' : 
+                 mode === 'monthly' ? '月次目標を追加' :
+                 mode === 'create' ? '追加' : '保存'}
+              </span>
             </button>
           </div>
         </form>

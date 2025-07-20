@@ -9,7 +9,9 @@ import {
   DEFAULT_GOALS, 
   DEFAULT_CUSTOM_TAGS,
   LearningHeatmapData,
-  createCategoryTags
+  createCategoryTags,
+  getCurrentMonthString,
+  isMonthlyGoalExpired
 } from '../types'
 
 // ローカルストレージのキー定義
@@ -93,6 +95,53 @@ export const goalStorage = {
   getById: (goalId: string): Goal | null => {
     const goals = goalStorage.getAll()
     return goals.find(goal => goal.id === goalId) || null
+  },
+
+  // 月次目標関連関数
+  getMonthlyGoals: (targetMonth?: string): Goal[] => {
+    const goals = goalStorage.getAll()
+    const month = targetMonth || getCurrentMonthString()
+    return goals.filter(goal => 
+      goal.isMonthlyGoal && 
+      goal.monthlyTargetDate === month
+    )
+  },
+
+  getCurrentMonthGoals: (): Goal[] => {
+    return goalStorage.getMonthlyGoals(getCurrentMonthString())
+  },
+
+  getExpiredMonthlyGoals: (): Goal[] => {
+    const goals = goalStorage.getAll()
+    return goals.filter(goal => goal.isMonthlyGoal && isMonthlyGoalExpired(goal))
+  },
+
+  archiveExpiredGoals: (): { archived: Goal[], remaining: Goal[] } => {
+    const goals = goalStorage.getAll()
+    const expired = goals.filter(goal => goal.isMonthlyGoal && isMonthlyGoalExpired(goal))
+    const remaining = goals.filter(goal => !goal.isMonthlyGoal || !isMonthlyGoalExpired(goal))
+    
+    // 期限切れ目標を自動完了に設定
+    const archivedGoals = expired.map(goal => ({
+      ...goal,
+      isCompleted: true,
+      completedAt: new Date(),
+      updatedAt: new Date()
+    }))
+    
+    const allGoals = [...remaining, ...archivedGoals]
+    goalStorage.save(allGoals)
+    
+    return { archived: archivedGoals, remaining }
+  },
+
+  updateMonthlyProgress: (goalId: string, progress: number): Goal[] => {
+    const clampedProgress = Math.max(0, Math.min(100, progress))
+    return goalStorage.update(goalId, { 
+      monthlyProgress: clampedProgress,
+      isCompleted: clampedProgress >= 100,
+      completedAt: clampedProgress >= 100 ? new Date() : undefined
+    })
   }
 }
 

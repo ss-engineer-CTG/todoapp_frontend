@@ -1,39 +1,25 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
-import { CheckSquare, Plus, Trash2 } from 'lucide-react'
+import { CheckSquare, Plus, Trash2, Bell, BarChart3 } from 'lucide-react'
 import { useGoals } from '../hooks/useGoals'
 import { useCustomTags } from '../hooks/useCustomTags'
 import { useSelection } from '../hooks/useSelection'
+import { useMonthlyGoalsLifecycle } from '../hooks/useMonthlyGoalsLifecycle'
 import { TagSelectionModal } from './modals/TagSelectionModal'
 import { TagEditModal } from './modals/TagEditModal'
+import { MonthlyGoalsReport } from './MonthlyGoalsReport'
+import { MonthlyGoalsNotificationCenter } from './MonthlyGoalsNotificationCenter'
 import { FocusTodo, LearningCategory } from '../types'
 import { todoStorage, initializeStorage } from '../utils/storage'
-import { 
-  getNeutralClasses, 
-  getInteractionClasses,
-  type ThemeMode 
-} from '../utils/themeUtils'
 
 export const CenterPanel: React.FC = () => {
   const { theme } = useTheme()
   const { goals } = useGoals()
   const { tags } = useCustomTags()
   const { selection, getSelectableProps } = useSelection()
+  const { notifications, lifecycleState } = useMonthlyGoalsLifecycle()
   
-  // デバッグ用：goals と tags の状態確認
-  useEffect(() => {
-    console.log('Goals and tags updated:', {
-      goalsLength: goals.length,
-      tagsLength: tags.length,
-      goals: goals,
-      tags: tags
-    })
-  }, [goals, tags])
   
-  // 統一テーマシステムを使用
-  const themeMode = theme as ThemeMode
-  const neutralClasses = getNeutralClasses(themeMode)
-  const interactionClasses = getInteractionClasses(themeMode)
   
   const [newTodoText, setNewTodoText] = useState('')
   const [todos, setTodos] = useState<FocusTodo[]>([])
@@ -42,10 +28,10 @@ export const CenterPanel: React.FC = () => {
   const [pendingTodoText, setPendingTodoText] = useState('')
   const [loading, setLoading] = useState(true)
   
-  // デバッグ用：モーダル状態の追跡
-  useEffect(() => {
-    console.log('isTagSelectionOpen changed:', isTagSelectionOpen)
-  }, [isTagSelectionOpen])
+  // 月次目標機能の状態
+  const [showMonthlyReport, setShowMonthlyReport] = useState(false)
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false)
+  
 
   // ストレージ初期化とToDo読み込み
   useEffect(() => {
@@ -56,21 +42,20 @@ export const CenterPanel: React.FC = () => {
         initializeStorage()
         const loadedTodos = todoStorage.getAll()
         setTodos(loadedTodos)
-        
-        // デバッグ用：初期化後のデータ確認
-        console.log('CenterPanel initialized:', {
-          goals: goals.length,
-          tags: tags.length,
-          todos: loadedTodos.length
-        })
       } catch (error) {
-        console.error('Failed to load todos:', error)
+        // エラーハンドリング（サイレント）
       } finally {
         setLoading(false)
       }
     }
     
     loadTodos()
+  }, [])
+
+  // ToDo削除
+  const handleDeleteTodo = useCallback((todoId: string) => {
+    const updatedTodos = todoStorage.delete(todoId)
+    setTodos(updatedTodos)
   }, [])
 
   // 削除イベントの処理
@@ -86,26 +71,16 @@ export const CenterPanel: React.FC = () => {
     return () => {
       window.removeEventListener('deleteSelected', handleDeleteSelected as EventListener)
     }
-  }, [])
+  }, [handleDeleteTodo])
 
   // 統一されたToDo追加フロー（プロトタイプ風）
   const handleAddTodo = useCallback(() => {
     if (newTodoText.trim()) {
-      // デバッグ用ログ
-      console.log('handleAddTodo called:', { 
-        goalsLength: goals.length, 
-        tagsLength: tags.length,
-        goals: goals,
-        tags: tags
-      })
-      
-      // 目標またはカスタムタグが存在する場合はタグ選択モーダルを表示
+      // タグまたは目標が存在する場合はタグ選択モーダルを表示
       if (goals.length > 0 || tags.length > 0) {
-        console.log('Opening tag selection modal')
         setPendingTodoText(newTodoText.trim())
         setIsTagSelectionOpen(true)
       } else {
-        console.log('Adding todo directly without tags')
         // タグがない場合は直接追加
         const newTodo: FocusTodo = {
           id: `todo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -151,8 +126,8 @@ export const CenterPanel: React.FC = () => {
       id: `todo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       text: pendingTodoText,
       completed: false,
-      goalId,
-      tagId: selectedTagId,
+      goalId: goalId || undefined,
+      tagId: selectedTagId || undefined,
       tagIds,
       category,
       createdAt: new Date(),
@@ -191,40 +166,24 @@ export const CenterPanel: React.FC = () => {
     if (todo) {
       const updates: Partial<FocusTodo> = {
         completed: !todo.completed,
-        completedAt: !todo.completed ? new Date() : undefined
+        ...((!todo.completed) ? { completedAt: new Date() } : { completedAt: undefined })
       }
       const updatedTodos = todoStorage.update(todoId, updates)
       setTodos(updatedTodos)
     }
   }, [todos])
 
-  // ToDo削除
-  const handleDeleteTodo = useCallback((todoId: string) => {
-    const updatedTodos = todoStorage.delete(todoId)
-    setTodos(updatedTodos)
-  }, [])
-
   // キーボード処理（統一フロー）
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    console.log('handleKeyDown called:', { 
-      key: e.key, 
-      newTodoText,
-      defaultPrevented: e.defaultPrevented,
-      target: e.target 
-    })
-    
     if (e.key === 'Enter') {
-      console.log('Enter key detected - before preventDefault')
       e.preventDefault()
-      console.log('Enter key - after preventDefault, before handleAddTodo')
       
       // 直接的にhandleAddTodoを呼び出す代わりに、少し遅延させる
       setTimeout(() => {
-        console.log('Delayed handleAddTodo execution')
         handleAddTodo()
       }, 10)
     }
-  }, [handleAddTodo, newTodoText])
+  }, [handleAddTodo])
 
   // タグ表示の取得
   const getTodoTagDisplay = (todo: FocusTodo) => {
@@ -305,13 +264,52 @@ export const CenterPanel: React.FC = () => {
   return (
     <section className="mb-4" aria-labelledby="todo-section-title">
       <header>
-        <h2 
-          id="todo-section-title"
-          className={`text-lg font-semibold mb-2 flex items-center ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}
-        >
-          <CheckSquare className="mr-2" size={20} aria-hidden="true" />
-          今日のToDo
-        </h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 
+            id="todo-section-title"
+            className={`text-lg font-semibold flex items-center ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}
+          >
+            <CheckSquare className="mr-2" size={20} aria-hidden="true" />
+            今日のToDo
+          </h2>
+          
+          {/* 月次目標関連ボタン */}
+          <div className="flex items-center space-x-2">
+            {/* 通知センターボタン */}
+            <button
+              onClick={() => setShowNotificationCenter(true)}
+              className={`relative p-2 rounded-lg transition-colors ${
+                theme === 'dark' 
+                  ? 'hover:bg-gray-700 text-gray-400' 
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+              title="通知センター"
+            >
+              <Bell size={16} />
+              {(notifications.length > 0 || lifecycleState.expiredGoals.length > 0) && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {notifications.length + lifecycleState.expiredGoals.length}
+                </span>
+              )}
+            </button>
+            
+            {/* 月次レポートボタン */}
+            <button
+              onClick={() => setShowMonthlyReport(!showMonthlyReport)}
+              className={`p-2 rounded-lg transition-colors ${
+                showMonthlyReport
+                  ? 'bg-rose-600 text-white'
+                  : theme === 'dark' 
+                  ? 'hover:bg-gray-700 text-gray-400' 
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+              title="月次目標レポート"
+            >
+              <BarChart3 size={16} />
+            </button>
+          </div>
+        </div>
+        
         <time 
           className={`text-sm mb-4 block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}
           dateTime={new Date().toISOString().split('T')[0]}
@@ -433,10 +431,7 @@ export const CenterPanel: React.FC = () => {
             }`}
           />
           <button 
-            onClick={() => {
-              console.log('Add button clicked')
-              handleAddTodo()
-            }}
+            onClick={handleAddTodo}
             disabled={!newTodoText.trim()}
             className={`px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors flex items-center ${
               !newTodoText.trim() ? 'opacity-50 cursor-not-allowed' : ''
@@ -461,11 +456,24 @@ export const CenterPanel: React.FC = () => {
         )}
       </section>
       
+      {/* 月次目標レポート */}
+      {showMonthlyReport && (
+        <section className="mt-6" aria-labelledby="monthly-report-title">
+          <h3 id="monthly-report-title" className="sr-only">月次目標レポート</h3>
+          <MonthlyGoalsReport />
+        </section>
+      )}
+      
+      {/* 通知センター */}
+      <MonthlyGoalsNotificationCenter
+        isOpen={showNotificationCenter}
+        onClose={() => setShowNotificationCenter(false)}
+      />
+      
       {/* タグ選択モーダル */}
       <TagSelectionModal
         isOpen={isTagSelectionOpen}
         onClose={() => {
-          console.log('TagSelectionModal closed')
           setIsTagSelectionOpen(false)
           setPendingTodoText('')
         }}

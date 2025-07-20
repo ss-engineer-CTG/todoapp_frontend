@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
-import { FileText, BarChart3 } from 'lucide-react'
+import { BarChart3 } from 'lucide-react'
 import { HeatmapCalendar } from './HeatmapCalendar'
 import { LearningMemoPanel } from './LearningMemoPanel'
 
