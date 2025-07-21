@@ -1,0 +1,48 @@
+{
+    "name": "Todo App Development",
+    // ↑コンテナの名前（表示用）。Cursorでコンテナを開いた時に表示される
+    
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    // ↑ベースイメージ指定。「Ubuntu Linux環境を土台にする」という意味
+    // Microsoft公式のDevContainer用Ubuntuイメージを使用
+    
+    "features": {
+        // ↑「features」= 追加でインストールする開発ツール
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "18"
+        },
+        // ↑Node.js v18をインストール（フロントエンド用）
+        
+        "ghcr.io/devcontainers/features/python:1": {
+            "version": "3.11"
+        }
+        // ↑Python 3.11をインストール（バックエンド用）
+    },
+    
+    "customizations": {
+        "vscode": {
+            // ↑VS Code（Cursor）の設定をカスタマイズ
+            "extensions": [
+                "ms-python.python",
+                // ↑Python開発用拡張機能を自動インストール
+                "ms-vscode.vscode-typescript-next",
+                // ↑TypeScript開発用拡張機能
+                "bradlc.vscode-tailwindcss",
+                // ↑Tailwind CSS用拡張機能
+                "ms-vscode.vscode-json"
+                // ↑JSON編集用拡張機能
+            ]
+        }
+    },
+    
+    "forwardPorts": [3000, 8000],
+    // ↑ポート転送設定
+    // コンテナ内の3000番（フロントエンド）と8000番（バックエンド）を
+    // ホストPC（あなたのPC）からアクセス可能にする
+    
+    "postCreateCommand": "npm install && cd backend && pip install -r requirements.txt"
+    // ↑コンテナ作成後に自動実行するコマンド
+    // 1. npm install（フロントエンド依存関係インストール）
+    // 2. cd backend（backendフォルダに移動）
+    // 3. pip install -r requirements.txt（Python依存関係インストール）
+}
