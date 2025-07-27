@@ -90,6 +90,11 @@ electron-builder-output/
 
 # IDE / エディタ
 .vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.devcontainer/
 .idea/
 *.swp
 *.swo

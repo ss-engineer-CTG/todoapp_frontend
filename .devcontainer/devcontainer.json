@@ -1,0 +1,98 @@
+{
+  "name": "Todo App Development Environment",
+  "dockerFile": "Dockerfile",
+  "context": "..",
+  
+  "mounts": [
+    "source=${localWorkspaceFolder}/backend/todo.db,target=/workspaces/ToDoApp/backend/todo.db,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/backend/logs,target=/workspaces/ToDoApp/backend/logs,type=bind,consistency=cached"
+  ],
+
+  "forwardPorts": [3000, 8000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend (React/Vite)",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "Backend (FastAPI)",
+      "onAutoForward": "notify"
+    }
+  },
+
+  "postCreateCommand": "npm run setup && curl -fsSL https://claude.ai/claude-code/install.sh | sh",
+  "postStartCommand": "echo 'Development environment ready! Claude Code CLI available via: claude' && if [ -d \"$HOME/.nvm/versions/node\" ]; then LATEST_NODE=$(ls -1 $HOME/.nvm/versions/node | tail -1); echo \"export PATH=\\\"$HOME/.nvm/versions/node/$LATEST_NODE/bin:\\$PATH\\\"\" >> ~/.bashrc; fi",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "ms-python.flake8",
+        "ms-toolsai.jupyter",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "ms-vscode.vscode-typescript-next",
+        "ms-vscode-remote.remote-containers",
+        "rangav.vscode-thunder-client",
+        "ms-python.autopep8",
+        "charliermarsh.ruff",
+        "ms-vscode.vscode-json",
+        "redhat.vscode-yaml",
+        "formulahendry.auto-rename-tag",
+        "christian-kohler.path-intellisense",
+        "streetsidesoftware.code-spell-checker",
+        "gruntfuggly.todo-tree",
+        "ms-vscode.live-server"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.formatting.provider": "black",
+        "python.linting.enabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.linting.pylintEnabled": false,
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true,
+          "source.fixAll.eslint": true
+        },
+        "typescript.preferences.quoteStyle": "double",
+        "javascript.preferences.quoteStyle": "double",
+        "tailwindCSS.includeLanguages": {
+          "typescript": "javascript",
+          "typescriptreact": "javascript"
+        },
+        "tailwindCSS.experimental.classRegex": [
+          ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+          ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+        ],
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/__pycache__": true,
+          "**/*.pyc": true,
+          "**/dist": true,
+          "**/build": true
+        },
+        "search.exclude": {
+          "**/node_modules": true,
+          "**/dist": true,
+          "**/build": true,
+          "**/__pycache__": true
+        },
+        "emmet.includeLanguages": {
+          "typescript": "html",
+          "typescriptreact": "html"
+        }
+      }
+    }
+  },
+
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/ToDoApp",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  }
+}
