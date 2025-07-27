@@ -2,29 +2,23 @@
 
 このファイルは階層型ToDoリストアプリケーションの主要な処理フローをmermaid記法のシーケンス図で示しています。
 
-## 1. アプリケーション起動シーケンスcd
+## 1. アプリケーション起動シーケンス
 
 ```mermaid
 sequenceDiagram
     participant User as ユーザー
-    participant ElectronMain as Electron Main Process
-    participant Backend as Python FastAPI
+    participant Browser as Web Browser
     participant Frontend as React Frontend
-    participant ElectronRenderer as Electron Renderer
+    participant Backend as Python FastAPI
     participant Database as SQLite Database
 
-    User->>ElectronMain: アプリケーション起動
-    ElectronMain->>ElectronMain: メインプロセス初期化
-    ElectronMain->>Backend: Python FastAPIサーバー起動
+    User->>Browser: Webアプリケーションアクセス
+    Browser->>Frontend: 初期画面ロード要求 (localhost:3000)
+    
+    Note over Backend: バックエンドサーバーは獨立して起動 (localhost:8000)
     Backend->>Database: データベース接続確認
     Database-->>Backend: 接続成功
-    Backend-->>ElectronMain: サーバー起動完了 (Port: 8000)
     
-    ElectronMain->>Frontend: React開発サーバー起動
-    Frontend-->>ElectronMain: フロントエンド起動完了 (Port: 3000)
-    
-    ElectronMain->>ElectronRenderer: レンダラープロセス作成
-    ElectronRenderer->>Frontend: 初期画面ロード要求
     Frontend->>Backend: ヘルスチェック (GET /api/health)
     Backend-->>Frontend: サーバー状態正常
     
@@ -38,8 +32,8 @@ sequenceDiagram
     Database-->>Backend: タスクデータ
     Backend-->>Frontend: タスク一覧
     
-    Frontend-->>ElectronRenderer: 初期画面表示
-    ElectronRenderer-->>User: アプリケーション準備完了
+    Frontend-->>Browser: 初期画面表示
+    Browser-->>User: Webアプリケーション準備完了
 ```
 
 ## 2. タスク作成処理シーケンス

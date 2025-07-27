@@ -4,11 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a cross-platform desktop task management application called "階層型ToDoリストアプリケーション" (Hierarchical Todo List Application). It combines Electron, React/TypeScript frontend, and Python FastAPI backend to provide hierarchical task management with timeline visualization.
+This is a web-based task management application called "階層型ToDoリストアプリケーション" (Hierarchical Todo List Application). It combines React/TypeScript frontend and Python FastAPI backend to provide hierarchical task management with timeline visualization.
 
 ## Architecture
 
-- **Desktop**: Electron 27.0.0 wrapper with main/renderer processes
 - **Frontend**: React 18.2.0 + TypeScript + Vite + Tailwind CSS + Radix UI
 - **Backend**: Python FastAPI 0.104.1 + SQLite + Uvicorn
 - **Structure**: Feature-based organization with clean separation of concerns
@@ -18,10 +17,9 @@ This is a cross-platform desktop task management application called "階層型To
 
 ### Development
 ```bash
-npm run dev                 # Start all services (frontend + backend + electron)
+npm run dev                 # Start all services (frontend + backend)
 npm run dev:frontend        # React dev server only (localhost:3000)
 npm run dev:backend         # FastAPI server only (localhost:8000)
-npm run dev:electron        # Electron app only
 ```
 
 ### Testing & Quality
@@ -38,7 +36,7 @@ cd frontend && npm run type-check  # TypeScript checking
 ### Build & Package
 ```bash
 npm run build              # Build all components
-npm run package            # Create distributable packages
+npm run package            # Build frontend and backend
 npm run clean              # Clean build artifacts
 ```
 
@@ -65,12 +63,6 @@ python -m pytest          # Run backend tests
 - **API routing**: FastAPI with feature-based route organization
 - **Path aliases**: Comprehensive alias system for clean imports
 
-### Electron Integration
-- **Multi-process**: Main process manages Python backend, renderer for UI
-- **Security**: Context isolation with preload scripts
-- **Backend integration**: Automatic Python server startup and health checking
-- **Cross-platform**: Windows, macOS, Linux support
-
 ## Database & API
 
 ### Database
@@ -89,10 +81,9 @@ python -m pytest          # Run backend tests
 
 1. **Dependencies**: Install with `npm install` (handles frontend via postinstall)
 2. **Backend setup**: `cd backend && pip install -r requirements.txt`
-3. **Development**: `npm run dev` starts all services concurrently
+3. **Development**: `npm run dev` starts both frontend and backend concurrently
 4. **Frontend**: Vite dev server with hot reload on localhost:3000
 5. **Backend**: FastAPI with auto-reload on localhost:8000
-6. **Electron**: Desktop app launches after frontend/backend are ready
 
 ## Key Technologies & Libraries
 
@@ -110,14 +101,13 @@ python -m pytest          # Run backend tests
 
 ### Development Tools
 - **Process management**: concurrently
-- **Build**: electron-builder
 - **Cross-platform scripts**: cross-env
 - **Cleanup**: rimraf
 
 ## Process Flow Documentation
 
 For detailed understanding of application processes and component interactions, refer to:
-- **@sequence-diagrams.md** - Complete sequence diagrams showing data flow between Electron, React components, FastAPI backend, and SQLite database for all major operations (app startup, task creation, hierarchical operations, timeline drag & drop, project management, error handling)
+- **@sequence-diagrams.md** - Complete sequence diagrams showing data flow between React components, FastAPI backend, and SQLite database for all major operations (app startup, task creation, hierarchical operations, timeline drag & drop, project management, error handling)
 
 ## Important Notes
 
