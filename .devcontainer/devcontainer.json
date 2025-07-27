@@ -20,7 +20,7 @@
     }
   },
 
-  "postCreateCommand": "npm run setup",
+  "postCreateCommand": "npm run setup && curl -fsSL https://claude.ai/claude-code/install.sh | sh",
   "postStartCommand": "echo 'Development environment ready! Claude Code CLI available via: claude' && if [ -d \"$HOME/.nvm/versions/node\" ]; then LATEST_NODE=$(ls -1 $HOME/.nvm/versions/node | tail -1); echo \"export PATH=\\\"$HOME/.nvm/versions/node/$LATEST_NODE/bin:\\$PATH\\\"\" >> ~/.bashrc; fi",
 
   "customizations": {
