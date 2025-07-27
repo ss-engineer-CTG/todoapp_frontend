@@ -55,6 +55,7 @@ export const AppContainer: React.FC = () => {
   const [isEditingProject, setIsEditingProject] = useState<boolean>(false)
   const [viewMode, setViewMode] = useState<AppViewMode>('tasklist')
   const [timelineScrollToToday, setTimelineScrollToToday] = useState<(() => void) | null>(null)
+  const [draftTasks, setDraftTasks] = useState<Task[]>([])
 
   // ===== データ参照の最適化 =====
   const currentProjects = projects.data || []
@@ -79,11 +80,14 @@ export const AppContainer: React.FC = () => {
 
   const allTasksWithDrafts = useMemo(() => {
     // ドラフトタスクと通常タスクを統合
+    const combined = [...managedTasks, ...draftTasks]
     logger.debug('All tasks with drafts recalculated', { 
-      taskCount: managedTasks.length 
+      managedTaskCount: managedTasks.length,
+      draftTaskCount: draftTasks.length,
+      totalCount: combined.length
     })
-    return managedTasks
-  }, [managedTasks])
+    return combined
+  }, [managedTasks, draftTasks])
 
   // 🔧 最適化：計算値のメモ化
   const taskRelationMap = useMemo(() => {
@@ -119,6 +123,32 @@ export const AppContainer: React.FC = () => {
   }, [allTasksWithDrafts, taskRelationMap, viewMode, selectedProjectId, showCompleted, managedTasks])
 
   const selectedTask = allTasksWithDrafts.find((task: Task) => task.id === selection.selectedId)
+  
+  // Debug logging for task selection
+  useEffect(() => {
+    logger.info('AppContainer: Task selection state', {
+      selectedId: selection.selectedId,
+      selectedTask: selectedTask ? {
+        id: selectedTask.id,
+        name: selectedTask.name,
+        isDraft: isDraftTask(selectedTask)
+      } : null,
+      allTasksCount: allTasksWithDrafts.length,
+      draftTasksCount: draftTasks.length
+    })
+  }, [selection.selectedId, selectedTask, allTasksWithDrafts.length, draftTasks.length])
+  
+  // Clear draft tasks when switching projects or view modes to prevent orphaned drafts
+  useEffect(() => {
+    if (draftTasks.length > 0) {
+      logger.info('Clearing draft tasks due to context change', { 
+        draftCount: draftTasks.length,
+        selectedProjectId,
+        viewMode 
+      })
+      setDraftTasks([])
+    }
+  }, [selectedProjectId, viewMode])
 
   // ===== API Action Wrappers =====
   const taskApiActions = {
@@ -154,7 +184,22 @@ export const AppContainer: React.FC = () => {
     pasteTasks
   } = useTaskOperations({
     allTasks: allTasksWithDrafts,
-    setAllTasks: () => {}, // 🔧 最適化：useMemoで管理のためダミー関数
+    setAllTasks: useCallback((newTasksOrUpdater: Task[] | ((prev: Task[]) => Task[])) => {
+      // Handle both direct array and updater function
+      if (typeof newTasksOrUpdater === 'function') {
+        const updatedTasks = newTasksOrUpdater(allTasksWithDrafts)
+        // Separate regular tasks and draft tasks
+        const regularTasks = updatedTasks.filter(task => !isDraftTask(task))
+        const draftTasksOnly = updatedTasks.filter(task => isDraftTask(task))
+        setDraftTasks(draftTasksOnly)
+        // Note: Regular tasks are managed by useAppState, so we don't update them here
+      } else {
+        // Direct array assignment
+        const regularTasks = newTasksOrUpdater.filter(task => !isDraftTask(task))
+        const draftTasksOnly = newTasksOrUpdater.filter(task => isDraftTask(task))
+        setDraftTasks(draftTasksOnly)
+      }
+    }, [allTasksWithDrafts]),
     selectedProjectId,
     apiActions: taskApiActions
   })

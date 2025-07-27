@@ -45,10 +45,16 @@ export const useTaskForm = (selectedTask: Task | undefined): UseTaskFormReturn =
       logger.info('Initializing form data', { 
         taskId: selectedTask.id,
         isDraft: isTaskDraft,
-        taskName: selectedTask.name
+        taskName: selectedTask.name,
+        currentFormData: formData
       })
       
       resetForm(selectedTask)
+    } else {
+      logger.info('useTaskForm: No selected task for initialization', {
+        selectedTask,
+        formData
+      })
     }
   }, [selectedTask?.id, isTaskDraft])
 

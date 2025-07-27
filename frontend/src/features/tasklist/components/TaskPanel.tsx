@@ -385,6 +385,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
               }
             }}
             disabled={!selectedProjectId}
+            title={!selectedProjectId ? "プロジェクトを選択してください" : "新しいタスクを追加"}
           >
             <Plus className="h-4 w-4 mr-1" />
             タスク追加

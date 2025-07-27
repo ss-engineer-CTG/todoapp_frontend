@@ -169,6 +169,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   }
 
   if (!selectedTask) {
+    logger.info('DetailPanel: No selected task', {
+      selectedTask,
+      isVisible,
+      activeArea
+    })
     return (
       <div
         className={cn(
@@ -199,6 +204,17 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   const projectInfo = getProjectInfo(selectedTask.projectId)
   const isEmptyName = !formData.name.trim()
 
+  logger.info('DetailPanel: Rendering with selected task', {
+    taskId: selectedTask.id,
+    taskName: selectedTask.name,
+    isDraft: isTaskDraft,
+    isVisible,
+    activeArea,
+    formDataName: formData.name,
+    hasFormData: !!formData,
+    isEmptyName
+  })
+
   return (
     <div
       className={cn(
@@ -211,7 +227,7 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
       <div className="p-4 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">
-            タスク詳細
+            {isTaskDraft ? 'タスク作成' : 'タスク詳細'}
             {formData.hasChanges && !isTaskDraft && (
               <span className="ml-2 text-xs text-orange-500 font-normal">
                 •未保存
@@ -220,6 +236,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
             {isEmptyName && !isTaskDraft && (
               <span className="ml-2 text-xs text-red-500 font-normal">
                 •名前未設定
+              </span>
+            )}
+            {isTaskDraft && (
+              <span className="ml-2 text-xs text-blue-500 font-normal">
+                •新規作成中
               </span>
             )}
           </h2>

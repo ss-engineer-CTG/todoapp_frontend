@@ -82,23 +82,48 @@ export const useTaskContainer = (props: TaskContainerProps): TaskContainerReturn
         return
       }
 
-      logger.info('Creating draft task', { 
+      // Ensure this is only used in tasklist view to avoid conflicts with timeline
+      if (viewMode !== 'tasklist') {
+        logger.warn('Draft task creation attempted in non-tasklist view', { viewMode })
+        return
+      }
+
+      logger.info('Creating draft task in tasklist view', { 
         parentId, 
         level, 
         selectedProjectId,
+        viewMode,
         source: 'task_container'
       })
 
       const draft = taskOperations.createDraft(parentId, level)
       if (draft) {
-        setSelectedTaskId(draft.id)
-        setActiveArea("details")
-        setIsDetailPanelVisible(true)
+        logger.info('Draft task created successfully', {
+          draftId: draft.id,
+          draftName: draft.name,
+          isDraft: draft._isDraft
+        })
+        
+        // Fix race condition: Delay UI state updates to next render cycle
+        // to ensure draft task is added to allTasksWithDrafts before selection
+        setTimeout(() => {
+          setSelectedTaskId(draft.id)
+          setActiveArea("details")
+          setIsDetailPanelVisible(true)
+          
+          logger.info('UI state updated for draft task (delayed)', {
+            selectedTaskId: draft.id,
+            activeArea: "details",
+            isDetailPanelVisible: true
+          })
+        }, 0)
+      } else {
+        logger.error('Draft task creation returned null')
       }
     } catch (error) {
       logger.error('Draft task creation failed', { parentId, level, error })
     }
-  }, [selectedProjectId, taskOperations.createDraft, setSelectedTaskId, setActiveArea, setIsDetailPanelVisible])
+  }, [selectedProjectId, viewMode, taskOperations.createDraft, setSelectedTaskId, setActiveArea, setIsDetailPanelVisible])
 
   const handleCancelDraft = useCallback((taskId: string) => {
     try {
