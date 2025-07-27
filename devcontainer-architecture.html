@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App Devcontainer アーキテクチャ設計</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            padding: 40px;
+            transform: rotate(-0.5deg);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            transform: rotate(0.3deg);
+        }
+        
+        .title {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            transform: rotate(-0.2deg);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            font-weight: 300;
+        }
+        
+        .architecture-flow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        
+        .layer {
+            background: #fff;
+            border: 3px solid #3498db;
+            border-radius: 15px;
+            padding: 25px;
+            position: relative;
+            transform: rotate(0.5deg);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .layer:nth-child(even) {
+            transform: rotate(-0.3deg);
+            border-color: #e74c3c;
+        }
+        
+        .layer:nth-child(3n) {
+            border-color: #f39c12;
+        }
+        
+        .layer:hover {
+            transform: rotate(0deg) scale(1.05);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+        
+        .layer-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            border-radius: 50%;
+            transform: rotate(-2deg);
+        }
+        
+        .layer1 .layer-icon { background: #3498db; color: white; }
+        .layer2 .layer-icon { background: #e74c3c; color: white; }
+        .layer3 .layer-icon { background: #f39c12; color: white; }
+        .layer4 .layer-icon { background: #2ecc71; color: white; }
+        
+        .layer-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .layer-content {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #34495e;
+        }
+        
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .tech-badge {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transform: rotate(-1deg);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .tech-badge:nth-child(even) {
+            transform: rotate(1deg);
+            background: linear-gradient(45deg, #f093fb, #f5576c);
+        }
+        
+        .flow-diagram {
+            background: #ecf0f1;
+            border-radius: 20px;
+            padding: 30px;
+            margin: 40px 0;
+            transform: rotate(-0.2deg);
+            border: 2px dashed #95a5a6;
+        }
+        
+        .flow-title {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+        
+        .flow-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .flow-step {
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .step-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            transform: rotate(-5deg);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        
+        .step-circle:nth-child(odd) {
+            transform: rotate(5deg);
+        }
+        
+        .step-label {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        
+        .step-desc {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            line-height: 1.4;
+        }
+        
+        .arrow {
+            position: absolute;
+            top: 40px;
+            right: -30px;
+            font-size: 2rem;
+            color: #3498db;
+            animation: float 2s ease-in-out infinite;
+        }
+        
+        .arrow:last-child {
+            display: none;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .benefits {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin: 40px 0;
+            transform: rotate(0.3deg);
+        }
+        
+        .benefits-title {
+            font-size: 1.8rem;
+            text-align: center;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+        
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .benefit-item {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            transform: rotate(-0.5deg);
+            backdrop-filter: blur(10px);
+        }
+        
+        .benefit-item:nth-child(even) {
+            transform: rotate(0.5deg);
+        }
+        
+        .benefit-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .benefit-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .benefit-desc {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .file-structure {
+            background: #2c3e50;
+            color: #ecf0f1;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            font-family: 'Courier New', monospace;
+            transform: rotate(-0.3deg);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .file-title {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        .file-tree {
+            line-height: 1.8;
+            font-size: 0.9rem;
+        }
+        
+        .file-tree .folder {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        .file-tree .file {
+            color: #2ecc71;
+        }
+        
+        .file-tree .config {
+            color: #e74c3c;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                transform: none;
+            }
+            
+            .title {
+                font-size: 2rem;
+            }
+            
+            .architecture-flow {
+                grid-template-columns: 1fr;
+            }
+            
+            .flow-steps {
+                flex-direction: column;
+            }
+            
+            .arrow {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🐳 Todo App Devcontainer</h1>
+            <p class="subtitle">アーキテクチャ設計 & 開発環境構築</p>
+        </div>
+        
+        <div class="architecture-flow">
+            <div class="layer layer1">
+                <div class="layer-icon">🏗️</div>
+                <h3 class="layer-title">基盤レイヤー</h3>
+                <div class="layer-content">
+                    <p><strong>Ubuntu 22.04</strong>をベースとした軽量で安定したコンテナ環境を構築</p>
+                    <div class="tech-stack">
+                        <span class="tech-badge">Ubuntu 22.04</span>
+                        <span class="tech-badge">Docker</span>
+                        <span class="tech-badge">VSCode Remote</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="layer layer2">
+                <div class="layer-icon">⚙️</div>
+                <h3 class="layer-title">ランタイムレイヤー</h3>
+                <div class="layer-content">
+                    <p><strong>Python 3.11.4 + Node.js 18</strong>のマルチ言語環境で統合開発を実現</p>
+                    <div class="tech-stack">
+                        <span class="tech-badge">Python 3.11.4</span>
+                        <span class="tech-badge">Node.js 18</span>
+                        <span class="tech-badge">pyenv</span>
+                        <span class="tech-badge">npm</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="layer layer3">
+                <div class="layer-icon">🛠️</div>
+                <h3 class="layer-title">開発ツールレイヤー</h3>
+                <div class="layer-content">
+                    <p><strong>20+のVSCode拡張機能</strong>で効率的なフロントエンド・バックエンド開発をサポート</p>
+                    <div class="tech-stack">
+                        <span class="tech-badge">ESLint</span>
+                        <span class="tech-badge">Prettier</span>
+                        <span class="tech-badge">Black</span>
+                        <span class="tech-badge">TypeScript</span>
+                        <span class="tech-badge">Tailwind</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="layer layer4">
+                <div class="layer-icon">💾</div>
+                <h3 class="layer-title">データ永続化レイヤー</h3>
+                <div class="layer-content">
+                    <p><strong>バインドマウント方式</strong>でSQLiteデータベースとログファイルを永続化</p>
+                    <div class="tech-stack">
+                        <span class="tech-badge">SQLite</span>
+                        <span class="tech-badge">Bind Mount</span>
+                        <span class="tech-badge">Log Files</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flow-diagram">
+            <h3 class="flow-title">🚀 開発フロー</h3>
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">環境起動</div>
+                    <div class="step-desc">VSCodeでdevcontainer起動<br>自動依存関係インストール</div>
+                    <div class="arrow">→</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">開発開始</div>
+                    <div class="step-desc">統合ターミナルで<br>npm run dev実行</div>
+                    <div class="arrow">→</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">ホットリロード</div>
+                    <div class="step-desc">ポート3000/8000で<br>リアルタイム開発</div>
+                    <div class="arrow">→</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">テスト・デプロイ</div>
+                    <div class="step-desc">lint/testコマンドで<br>品質保証</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="file-structure">
+            <div class="file-title">📁 ファイル構造</div>
+            <div class="file-tree">
+<span class="folder">.devcontainer/</span><br>
+├── <span class="config">devcontainer.json</span>  # メイン設定ファイル<br>
+├── <span class="config">Dockerfile</span>         # カスタムイメージ定義<br>
+└── <span class="file">README.md</span>           # 使用方法ドキュメント<br><br>
+<span class="folder">設定内容:</span><br>
+├── <span class="config">VSCode拡張機能</span>      # 20+の開発支援ツール<br>
+├── <span class="config">ポート転送</span>          # 3000(Frontend), 8000(Backend)<br>
+├── <span class="config">バインドマウント</span>     # SQLite + ログの永続化<br>
+└── <span class="config">自動セットアップ</span>     # 依存関係の自動インストール
+            </div>
+        </div>
+        
+        <div class="benefits">
+            <h3 class="benefits-title">✨ 開発環境の利点</h3>
+            <div class="benefits-grid">
+                <div class="benefit-item">
+                    <div class="benefit-icon">🎯</div>
+                    <div class="benefit-title">環境の一貫性</div>
+                    <div class="benefit-desc">チーム全体で同一の開発環境を共有し、「動作環境の違い」によるトラブルを根絶</div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">⚡</div>
+                    <div class="benefit-title">高速セットアップ</div>
+                    <div class="benefit-desc">新規メンバーでも数分で完全な開発環境を構築、即座に開発参加可能</div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">🔒</div>
+                    <div class="benefit-title">分離された環境</div>
+                    <div class="benefit-desc">ホストOSに影響せず、クリーンな開発環境で安全にコードを実行</div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">🔄</div>
+                    <div class="benefit-title">データ永続化</div>
+                    <div class="benefit-desc">SQLiteデータベースとログファイルをホストと同期し、作業内容を確実に保存</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
