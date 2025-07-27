@@ -120,7 +120,7 @@ export interface TaskApiActions {
   updateTask: (id: string, task: Partial<Task>) => Promise<Task>
   deleteTask: (id: string) => Promise<void>
   loadTasks: () => Promise<Task[]>
-  batchUpdateTasks: (operation: BatchOperation, taskIds: string[]) => Promise<BatchOperationResult>
+  batchUpdateTasks: (operation: unknown, taskIds: string[]) => Promise<BatchOperationResult>
 }
 
 export interface ProjectApiActions {

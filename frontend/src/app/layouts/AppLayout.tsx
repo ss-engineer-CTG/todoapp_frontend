@@ -116,7 +116,7 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
     
     // ハンドラー（Container経由）
     onProjectSelect,
-    onToggleProject,
+    // onToggleProject,
     onTaskSave,
     onAddDraftTask,
     onCancelDraft,
@@ -128,9 +128,9 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
     onTaskSelectWrapper,
     onViewModeChange,
     onTimelineScrollToToday,
-    onExpandAll,
-    onCollapseAll,
-    onTaskUpdateViaDrag,
+    // onExpandAll,
+    // onCollapseAll,
+    // onTaskUpdateViaDrag,
     timelineProps,
     
     // セッター
@@ -142,13 +142,13 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
     setSelectedTaskId,
     setIsMultiSelectMode,
     setTaskRef,
-    setTimelineScrollToToday,
+    // setTimelineScrollToToday,
     
     // API Actions
     apiActions,
     
     // タスク操作
-    taskOperations,
+    // taskOperations,
     
     // 選択操作
     selectionOperations

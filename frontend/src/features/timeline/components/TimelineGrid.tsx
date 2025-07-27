@@ -7,7 +7,7 @@ import { TaskRow } from './TaskRow'
 import { SelectionBorder } from './SelectionBorder'
 import { DragSelectionRectangle } from './DragSelectionRectangle'
 import { isTaskVisibleInTimeline } from '@tasklist/utils/task'
-import { logger } from '@core/utils'
+// import { logger } from '@core/utils'
 
 interface TimelineGridProps {
   tasks: Task[]
@@ -60,7 +60,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = React.memo(({
   onToggleTask,
   onTaskUpdate,
   selectedTaskIds,
-  previewTaskIds,
+  _previewTaskIds,
   isTaskSelected,
   isTaskPreview,
   handleRowClick,

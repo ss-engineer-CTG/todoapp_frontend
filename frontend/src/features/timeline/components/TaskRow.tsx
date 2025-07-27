@@ -79,20 +79,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
 }) => {
   const { task } = taskWithChildren
   
-  if (!isValidDate(task.startDate) || !isValidDate(task.dueDate)) return null
-
-  const statusStyle = getTaskStatusStyle(task)
-  const indent = calculateIndent(task.level)
-  
-  let startPos = getDatePosition(task.startDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
-  let endPos = getDatePosition(task.dueDate, timeRange.startDate, dimensions.cellWidth, viewUnit)
-  
-  const barWidth = endPos - startPos + dimensions.cellWidth
-  const barHeight = Math.max(24, dimensions.taskBarHeight - (task.level * 1.5))
-
-  // ドラッグ中かつ対象タスクの場合の処理
-  const isCurrentlyDragging = isDragging && dragState.originalTask?.id === task.id
-  
+  // React Hooksを早期リターンより前に置く
   // 行の視覚的スタイル
   const getRowStyle = useCallback(() => {
     let backgroundColor = ''

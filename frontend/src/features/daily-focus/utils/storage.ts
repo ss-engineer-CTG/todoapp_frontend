@@ -30,7 +30,7 @@ const STORAGE_KEYS = {
 const safeJSONParse = <T>(item: string | null, defaultValue: T): T => {
   if (!item) return defaultValue
   try {
-    const parsed = JSON.parse(item)
+    const _parsed = JSON.parse(item)
     // 日付文字列をDateオブジェクトに変換
     return JSON.parse(item, (key, value) => {
       if (key.endsWith('At') || key.endsWith('Time')) {

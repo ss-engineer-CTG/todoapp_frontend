@@ -27,9 +27,9 @@ export function ThemeProvider({
   children,
   defaultTheme = "system",
   storageKey = "vite-ui-theme",
-  attribute = "class",
+  _attribute = "class",
   enableSystem = true,
-  disableTransitionOnChange = false,
+  _disableTransitionOnChange = false,
   ...props
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(

@@ -178,6 +178,7 @@ export const useTimelineContainer = (props: TimelineContainerProps): TimelineCon
       window.addEventListener('keydown', handleKeyDown)
       return () => window.removeEventListener('keydown', handleKeyDown)
     }
+    return undefined
   }, [viewMode, activeArea, handleTimelineScrollToToday])
 
   // ===== TimelineView用props構成 =====

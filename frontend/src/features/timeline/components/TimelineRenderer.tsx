@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { Task, Project } from '@core/types'
 import { TimelineRendererProps, TaskWithChildren } from '../types'
-import { DraggableTaskBar } from './DraggableTaskBar'
+// import { DraggableTaskBar } from './DraggableTaskBar'
 import { TaskRow } from './TaskRow'
 import { SelectionBorder } from './SelectionBorder'
 import { DragSelectionRectangle } from './DragSelectionRectangle'
@@ -50,7 +50,7 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
   previewTaskIds,
   onRowClick,
   onRowMouseDown,
-  onSelectionClear,
+  _onSelectionClear,
   registerRowElement,
   taskPositions,
   updateTaskPosition,

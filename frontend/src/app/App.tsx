@@ -11,8 +11,8 @@ interface ErrorBoundaryState {
   error: Error | null
 }
 
-class App extends Component<{}, ErrorBoundaryState> {
-  constructor(props: {}) {
+class App extends Component<Record<string, never>, ErrorBoundaryState> {
+  constructor(props: Record<string, never>) {
     super(props)
     this.state = { hasError: false, error: null }
   }
@@ -21,7 +21,7 @@ class App extends Component<{}, ErrorBoundaryState> {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     logger.error('ErrorBoundary caught error', {
       error: error.message,
       stack: error.stack,
@@ -39,7 +39,7 @@ class App extends Component<{}, ErrorBoundaryState> {
     window.location.reload()
   }
 
-  render(): ReactNode {
+  override render(): ReactNode {
     if (this.state.hasError) {
       return (
         <div className="flex items-center justify-center h-screen bg-background">

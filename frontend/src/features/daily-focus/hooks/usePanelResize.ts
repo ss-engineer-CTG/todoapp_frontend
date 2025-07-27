@@ -72,7 +72,7 @@ export const usePanelResize = () => {
     const containerWidth = containerRef.current?.offsetWidth || 1200
     const deltaPercent = (deltaX / containerWidth) * 100
 
-    let newSizes = { ...resizeHandle.startSizes }
+    const newSizes = { ...resizeHandle.startSizes }
 
     if (resizeHandle.activeHandle === 'left') {
       // 左パネルと中央パネルの境界をリサイズ

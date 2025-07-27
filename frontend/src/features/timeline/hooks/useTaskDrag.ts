@@ -117,7 +117,7 @@ export const useTaskDrag = ({
           break
           
         case 'move':
-        default:
+        default: {
           // 🔧 既存：タスク全体移動（既存ロジック保持）
           const daysDiff = calculateDaysDifference(dragDistance, cellWidth, viewUnit)
           
@@ -141,6 +141,7 @@ export const useTaskDrag = ({
             dragDistance
           })
           break
+        }
       }
       
       // 🔧 既存：妥当性チェック（既存ロジック活用）
@@ -217,7 +218,7 @@ export const useTaskDrag = ({
         })
         
         if (finalValidation.errorMessage) {
-          console.warn(`ドラッグ操作エラー: ${finalValidation.errorMessage}`)
+          // console.warn(`ドラッグ操作エラー: ${finalValidation.errorMessage}`)
         }
         
         return
@@ -245,7 +246,7 @@ export const useTaskDrag = ({
         
         // 警告メッセージがある場合はユーザーに通知
         if (finalValidation.warningMessage) {
-          console.info(`ドラッグ操作警告: ${finalValidation.warningMessage}`)
+          // console.info(`ドラッグ操作警告: ${finalValidation.warningMessage}`)
         }
       } else {
         logger.info('No date changes detected, skipping update', { 

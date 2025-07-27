@@ -258,7 +258,7 @@ export const calculateStreak = (dailyStats: Array<{ date: string; totalTime: num
   
   let streak = 0
   const today = getTodayDateString()
-  let currentDate = new Date(today)
+  const currentDate = new Date(today)
   
   for (const stat of sortedStats) {
     const statDate = stat.date

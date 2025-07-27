@@ -22,7 +22,7 @@ export const LearningMemoPanel: React.FC = () => {
     lastSaved,
     updateMemoContent,
     toggleEditing,
-    manualSave,
+    manualSave: _manualSave,
     addGoal,
     removeGoal,
     addAchievement,

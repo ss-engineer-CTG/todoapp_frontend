@@ -141,7 +141,7 @@ export const SelectableList: React.FC<SelectableListProps> = ({
     if (validItems.length === 0) return
 
     switch (event.key) {
-      case orientation === 'vertical' ? 'ArrowDown' : 'ArrowRight':
+      case orientation === 'vertical' ? 'ArrowDown' : 'ArrowRight': {
         event.preventDefault()
         const nextIndex = Math.min(selectedIndex + 1, items.length - 1)
         if (!items[nextIndex]?.disabled) {
@@ -153,8 +153,9 @@ export const SelectableList: React.FC<SelectableListProps> = ({
           }, 0)
         }
         break
+      }
 
-      case orientation === 'vertical' ? 'ArrowUp' : 'ArrowLeft':
+      case orientation === 'vertical' ? 'ArrowUp' : 'ArrowLeft': {
         event.preventDefault()
         const prevIndex = Math.max(selectedIndex - 1, 0)
         if (!items[prevIndex]?.disabled) {
@@ -166,15 +167,17 @@ export const SelectableList: React.FC<SelectableListProps> = ({
           }, 0)
         }
         break
+      }
 
       case 'Enter':
-      case ' ':
+      case ' ': {
         event.preventDefault()
         const selectedItem = items[selectedIndex]
         if (selectedItem && !selectedItem.disabled) {
           onSelect(selectedItem, selectedIndex)
         }
         break
+      }
     }
   }, [allowKeyboardNavigation, items, selectedIndex, orientation, handleSelectionChange, onSelect])
 

@@ -44,8 +44,10 @@ export const KeyboardNavigableModal: React.FC<KeyboardNavigableModalProps> = ({
 }) => {
   const { theme } = useTheme()
   const modalRef = useRef<HTMLDivElement>(null)
-  const titleId = `modal-title-${useId()}`
-  const subtitleId = subtitle ? `modal-subtitle-${useId()}` : undefined
+  const titleIdSuffix = useId()
+  const subtitleIdSuffix = useId()
+  const titleId = `modal-title-${titleIdSuffix}`
+  const subtitleId = subtitle ? `modal-subtitle-${subtitleIdSuffix}` : undefined
   
   // 統一テーマシステムを使用
   const themeMode = theme as ThemeMode

@@ -46,7 +46,7 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = React.memo(({
       
       {/* 日付ヘッダー */}
       <div className="flex">
-        {visibleDates.map((date, index) => {
+        {visibleDates.map((date, _index) => {
           const dateStr = date.toISOString().split('T')[0]
           const isFirstOfWeek = isFirstDayOfWeek(date)
           const isFirstOfMonth = isFirstDayOfMonth(date)

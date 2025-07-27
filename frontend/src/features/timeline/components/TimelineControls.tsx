@@ -33,7 +33,7 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
   const zoomOut = () => handleZoom(zoomLevel - ZOOM_CONFIG.step)
   const resetZoom = () => handleZoom(ZOOM_CONFIG.default)
 
-  const handleBackToList = () => {
+  const _handleBackToList = () => {
     if (onViewModeChange) {
       onViewModeChange('tasklist')
     }

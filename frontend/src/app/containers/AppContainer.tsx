@@ -58,25 +58,24 @@ export const AppContainer: React.FC = () => {
   const [draftTasks, setDraftTasks] = useState<Task[]>([])
 
   // ===== データ参照の最適化 =====
-  const currentProjects = projects.data || []
-  const currentTasks = tasks.data || []
-
   // 🔧 最適化：重複状態を統合し、計算値として管理
   const managedProjects = useMemo(() => {
+    const currentProjects = projects.data || []
     const projectsData = currentProjects || []
     logger.debug('Managed projects recalculated', { 
       projectCount: projectsData.length 
     })
     return projectsData
-  }, [currentProjects])
+  }, [projects.data])
 
   const managedTasks = useMemo(() => {
+    const currentTasks = tasks.data || []
     const tasksData = currentTasks || []
     logger.debug('Managed tasks recalculated', { 
       taskCount: tasksData.length 
     })
     return tasksData
-  }, [currentTasks])
+  }, [tasks.data])
 
   const allTasksWithDrafts = useMemo(() => {
     // ドラフトタスクと通常タスクを統合
@@ -148,7 +147,7 @@ export const AppContainer: React.FC = () => {
       })
       setDraftTasks([])
     }
-  }, [selectedProjectId, viewMode])
+  }, [selectedProjectId, viewMode, draftTasks.length])
 
   // ===== API Action Wrappers =====
   const taskApiActions = {
@@ -164,8 +163,8 @@ export const AppContainer: React.FC = () => {
         return await loadTasks(selectedProjectId)
       }
     },
-    batchUpdateTasks: async (operation: any, taskIds: string[]) => {
-      const result = await batchUpdateTasks(operation, taskIds)
+    batchUpdateTasks: async (operation: unknown, taskIds: string[]) => {
+      const result = await batchUpdateTasks(operation as BatchOperation, taskIds)
       // 🔧 修正：ビューモード問わず常に全タスクをロードして他プロジェクトタスク消失バグを防止
       await loadTasks()
       return result
@@ -189,13 +188,11 @@ export const AppContainer: React.FC = () => {
       if (typeof newTasksOrUpdater === 'function') {
         const updatedTasks = newTasksOrUpdater(allTasksWithDrafts)
         // Separate regular tasks and draft tasks
-        const regularTasks = updatedTasks.filter(task => !isDraftTask(task))
         const draftTasksOnly = updatedTasks.filter(task => isDraftTask(task))
         setDraftTasks(draftTasksOnly)
         // Note: Regular tasks are managed by useAppState, so we don't update them here
       } else {
         // Direct array assignment
-        const regularTasks = newTasksOrUpdater.filter(task => !isDraftTask(task))
         const draftTasksOnly = newTasksOrUpdater.filter(task => isDraftTask(task))
         setDraftTasks(draftTasksOnly)
       }
@@ -340,13 +337,6 @@ export const AppContainer: React.FC = () => {
     }
   }
 
-  // ===== タイムライン制御 =====
-  const handleTimelineScrollToToday = () => {
-    logger.info('Timeline scroll to today requested from main app')
-    if (timelineScrollToToday) {
-      timelineScrollToToday()
-    }
-  }
 
   // ===== タスク更新ハンドラー（ドラッグ経由） =====
   const handleTaskUpdateViaDrag = async (taskId: string, updates: Partial<Task>) => {
@@ -381,8 +371,10 @@ export const AppContainer: React.FC = () => {
         const projectsData = await loadProjects()
         if (projectsData.length > 0) {
           const firstProject = projectsData[0]
-          setSelectedProjectId(firstProject.id)
-          await loadTasks(firstProject.id)
+          if (firstProject) {
+            setSelectedProjectId(firstProject.id)
+            await loadTasks(firstProject.id)
+          }
         }
         setIsInitialized(true)
       } catch (error) {

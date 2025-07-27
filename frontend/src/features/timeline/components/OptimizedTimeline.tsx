@@ -14,28 +14,29 @@ import { useRowSelection } from '../hooks/useRowSelection'
 import { useTaskDrag } from '../hooks/useTaskDrag'
 import { buildTaskRelationMap } from '@tasklist/utils/task'
 import { useTheme } from '@core/components/ThemeProvider'
-import { Task, Project } from '@core/types'
+import { Task } from '@core/types'
+// import { Project } from '@core/types'
 import { apiService } from '@core/services/api'
 import { 
   logger,
-  getDateCellClass,
-  getMonthName,
-  getWeekNumber,
+  // getDateCellClass,
+  // getMonthName,
+  // getWeekNumber,
   calculateDateHeaderFontSize,
-  calculateDynamicSizes,
-  getDatePosition,
-  isValidDate,
-  isWeekend
+  // calculateDynamicSizes,
+  // getDatePosition,
+  // isValidDate,
+  // isWeekend
 } from '@core/utils'
 import { 
-  calculateTimelineTaskStatus,
-  isTaskVisibleInTimeline,
+  // calculateTimelineTaskStatus,
+  // isTaskVisibleInTimeline,
   filterTasksForAllProjects,
   sortTasksHierarchically
 } from '@tasklist/utils/task'
-import { isFirstDayOfWeek, isFirstDayOfMonth, buildTaskChildrenMap } from '../utils'
+import { /* isFirstDayOfWeek, isFirstDayOfMonth, */ buildTaskChildrenMap } from '../utils'
 import { DateShiftType } from './ContextMenu'
-import { ChevronDown, ChevronRight, Factory } from 'lucide-react'
+// import { ChevronDown, ChevronRight, Factory } from 'lucide-react'
 
 // 統合props型定義
 interface OptimizedTimelineProps extends TimelineViewProps {
@@ -47,7 +48,7 @@ export const OptimizedTimeline: React.FC<OptimizedTimelineProps> = ({
   tasks,
   onViewModeChange,
   onScrollToToday,
-  onToggleProject,
+  _onToggleProject,
   onToggleTask,
   onExpandAll,
   onCollapseAll,
@@ -68,7 +69,7 @@ export const OptimizedTimeline: React.FC<OptimizedTimelineProps> = ({
     visibleDates,
     setZoomLevel,
     setViewUnit,
-    setScrollLeft,
+    _setScrollLeft,
     fitToScreen,
     scrollToToday,
     timelineRef

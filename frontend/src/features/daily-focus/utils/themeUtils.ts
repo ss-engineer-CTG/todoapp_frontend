@@ -390,7 +390,7 @@ export const getButtonStyles = (
   const interaction = getInteractionClasses(theme)
   
   switch (variant) {
-    case 'primary':
+    case 'primary': {
       const primaryColors = getColorClasses(color, 'strong', theme)
       return combineClasses(
         primaryColors.background,
@@ -398,8 +398,9 @@ export const getButtonStyles = (
         'px-3 py-1 rounded transition-colors font-medium',
         'hover:opacity-90'
       )
+    }
       
-    case 'secondary':
+    case 'secondary': {
       const secondaryColors = getColorClasses(color, 'light', theme)
       return combineClasses(
         secondaryColors.background,
@@ -407,14 +408,16 @@ export const getButtonStyles = (
         'px-3 py-1 rounded transition-colors',
         interaction.hover
       )
+    }
       
-    case 'ghost':
+    case 'ghost': {
       const neutral = getNeutralClasses(theme)
       return combineClasses(
         neutral.textSecondary,
         'px-3 py-1 rounded transition-colors',
         interaction.hover
       )
+    }
       
     default:
       return ''
