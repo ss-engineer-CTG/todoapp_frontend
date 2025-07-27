@@ -11,6 +11,7 @@ import {
 } from '@tasklist'
 import { TimelineView } from '@timeline'
 import { DailyFocusView } from '@daily-focus'
+import { ErrorDashboard } from '@features/error-dashboard'
 import { LoadingSpinner } from '@core/components'
 import { logger } from '@core/utils'
 import { ViewSwitcher } from './ViewSwitcher'
@@ -211,6 +212,9 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
       ) : viewMode === 'daily-focus' ? (
         // Daily Focus View
         <DailyFocusView />
+      ) : viewMode === 'error-dashboard' ? (
+        // Error Dashboard
+        <ErrorDashboard />
       ) : (
         // タスクリストビュー（Container経由ハンドラー使用）
         <>

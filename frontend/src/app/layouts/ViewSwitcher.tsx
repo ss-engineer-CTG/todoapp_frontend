@@ -3,7 +3,7 @@
 
 import React, { useEffect } from 'react'
 import { AppViewMode } from '@core/types'
-import { Calendar, List, Focus } from 'lucide-react'
+import { Calendar, List, Focus, AlertTriangle } from 'lucide-react'
 
 interface ViewSwitcherProps {
   viewMode: AppViewMode
@@ -26,6 +26,9 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({
       } else if (e.ctrlKey && e.key === 'f') {
         e.preventDefault()
         onViewModeChange('daily-focus')
+      } else if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault()
+        onViewModeChange('error-dashboard')
       }
     }
 
@@ -58,7 +61,7 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({
         <Calendar size={16} />
       </button>
       <button
-        className={`px-2 py-2 text-sm font-medium rounded-none flex items-center justify-center transition-colors ${
+        className={`px-2 py-2 text-sm font-medium rounded-none border-r border-gray-200 dark:border-gray-700 flex items-center justify-center transition-colors ${
           viewMode === 'daily-focus'
             ? 'bg-blue-600 text-white' 
             : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -67,6 +70,17 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({
         title="Daily Focus View (Ctrl+F)"
       >
         <Focus size={16} />
+      </button>
+      <button
+        className={`px-2 py-2 text-sm font-medium rounded-none flex items-center justify-center transition-colors ${
+          viewMode === 'error-dashboard'
+            ? 'bg-red-600 text-white' 
+            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+        }`}
+        onClick={() => onViewModeChange('error-dashboard')}
+        title="Error Dashboard (Ctrl+E)"
+      >
+        <AlertTriangle size={16} />
       </button>
     </div>
   )

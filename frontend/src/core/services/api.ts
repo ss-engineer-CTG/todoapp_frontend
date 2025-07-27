@@ -2,7 +2,9 @@
 
 import { Project, Task, BatchOperationResult } from '@core/types'
 import { APP_CONFIG, APP_PATHS, joinPath } from '@core/config'
-import { logger, handleError, convertApiResponseDate } from '@core/utils/core'
+import { logger } from '@core/utils/logger'
+import { errorHandler, ErrorCategory } from '@core/utils/errorHandler'
+import { convertApiResponseDate } from '@core/utils/core'
 
 class ApiService {
   private baseUrl = `http://localhost:${APP_CONFIG.PORTS.BACKEND}`
@@ -27,8 +29,8 @@ class ApiService {
       const data = await response.json()
       return this.convertResponseDates(data)
     } catch (error) {
-      logger.error('API request failed', { url, error })
-      handleError(error, 'API通信エラーが発生しました')
+      logger.error('API request failed', { url, error }, 'ApiService', 'request')
+      errorHandler.handleNetworkError(error as Error, 'ApiService', 'request')
       throw error
     }
   }
@@ -181,7 +183,7 @@ class ApiService {
       originalTask: task,
       convertedTask: convertedTask,
       requestBody: JSON.stringify(convertedTask)
-    })
+    }, 'ApiService', 'createTask')
     
     return this.request<Task>(APP_PATHS.API.TASKS, {
       method: 'POST',

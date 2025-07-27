@@ -16,6 +16,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.config import config
 from core.logger import setup_logging, get_logger
 from core.database import init_database
+from core.middleware import (
+    LoggingMiddleware, SecurityMiddleware, 
+    RateLimitMiddleware, ErrorMonitoringMiddleware
+)
 from api.router import api_router
 
 # システムプロンプト準拠：統一ログ機能
@@ -52,6 +56,12 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# ミドルウェア設定（順序重要：逆順で実行される）
+app.add_middleware(ErrorMonitoringMiddleware)
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(SecurityMiddleware)
+app.add_middleware(RateLimitMiddleware, calls=1000, period=60)  # 1000 req/min
 
 # CORS設定
 app.add_middleware(
