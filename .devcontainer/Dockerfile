@@ -1,5 +1,5 @@
 # Todo App Development Environment
-# Base: Ubuntu 22.04 with Node.js 18 and Python 3.11.4
+# Base: Ubuntu 22.04 with Node.js 20.x (LTS) and Python 3.11.4
 
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-22.04
 
@@ -33,8 +33,8 @@ RUN apt-get update && apt-get install -y \
     tk-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 18.x
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+# Install Node.js 20.x (LTS)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs
 
 # Install pyenv for Python version management
@@ -62,9 +62,8 @@ RUN ln -sf /opt/pyenv/versions/3.11.4/bin/python /usr/local/bin/python \
 RUN python -m pip install --upgrade pip setuptools wheel \
     && pip install virtualenv pipenv poetry
 
-# Install global npm packages
+# Install global npm packages (compatible with Node.js 20.x)
 RUN npm install -g \
-    npm@latest \
     typescript \
     ts-node \
     @typescript-eslint/parser \
@@ -74,13 +73,16 @@ RUN npm install -g \
     vite \
     concurrently \
     wait-on \
-    cross-env
+    cross-env \
+    @anthropic-ai/claude-code \
+    && npm update -g npm
 
 # Create workspace directory
-WORKDIR /workspace
+WORKDIR /workspaces/ToDoApp
 
 # Setup user permissions
-RUN chown -R vscode:vscode /workspace \
+RUN mkdir -p /workspaces/ToDoApp \
+    && chown -R vscode:vscode /workspaces \
     && chown -R vscode:vscode /opt/pyenv
 
 # Switch to vscode user

@@ -4,8 +4,8 @@
   "context": "..",
   
   "mounts": [
-    "source=${localWorkspaceFolder}/backend/todo.db,target=/workspace/backend/todo.db,type=bind,consistency=cached",
-    "source=${localWorkspaceFolder}/backend/logs,target=/workspace/backend/logs,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder}/backend/todo.db,target=/workspaces/ToDoApp/backend/todo.db,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/backend/logs,target=/workspaces/ToDoApp/backend/logs,type=bind,consistency=cached"
   ],
 
   "forwardPorts": [3000, 8000],
@@ -21,7 +21,7 @@
   },
 
   "postCreateCommand": "npm run setup",
-  "postStartCommand": "echo 'Development environment ready! Run: npm run dev'",
+  "postStartCommand": "echo 'Development environment ready! Claude Code CLI available via: claude' && if [ -d \"$HOME/.nvm/versions/node\" ]; then LATEST_NODE=$(ls -1 $HOME/.nvm/versions/node | tail -1); echo \"export PATH=\\\"$HOME/.nvm/versions/node/$LATEST_NODE/bin:\\$PATH\\\"\" >> ~/.bashrc; fi",
 
   "customizations": {
     "vscode": {
@@ -89,7 +89,7 @@
   },
 
   "remoteUser": "vscode",
-  "workspaceFolder": "/workspace",
+  "workspaceFolder": "/workspaces/ToDoApp",
   
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},

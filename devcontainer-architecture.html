@@ -354,10 +354,10 @@
                 <div class="layer-icon">⚙️</div>
                 <h3 class="layer-title">ランタイムレイヤー</h3>
                 <div class="layer-content">
-                    <p><strong>Python 3.11.4 + Node.js 18</strong>のマルチ言語環境で統合開発を実現</p>
+                    <p><strong>Python 3.11.4 + Node.js 20.x LTS</strong>のマルチ言語環境で統合開発を実現</p>
                     <div class="tech-stack">
                         <span class="tech-badge">Python 3.11.4</span>
-                        <span class="tech-badge">Node.js 18</span>
+                        <span class="tech-badge">Node.js 20.x LTS</span>
                         <span class="tech-badge">pyenv</span>
                         <span class="tech-badge">npm</span>
                     </div>
@@ -368,13 +368,14 @@
                 <div class="layer-icon">🛠️</div>
                 <h3 class="layer-title">開発ツールレイヤー</h3>
                 <div class="layer-content">
-                    <p><strong>20+のVSCode拡張機能</strong>で効率的なフロントエンド・バックエンド開発をサポート</p>
+                    <p><strong>20+のVSCode拡張機能 + Claude Code CLI</strong>で効率的なフロントエンド・バックエンド開発をサポート</p>
                     <div class="tech-stack">
                         <span class="tech-badge">ESLint</span>
                         <span class="tech-badge">Prettier</span>
                         <span class="tech-badge">Black</span>
                         <span class="tech-badge">TypeScript</span>
                         <span class="tech-badge">Tailwind</span>
+                        <span class="tech-badge">Claude Code</span>
                     </div>
                 </div>
             </div>
@@ -459,6 +460,97 @@
                     <div class="benefit-icon">🔄</div>
                     <div class="benefit-title">データ永続化</div>
                     <div class="benefit-desc">SQLiteデータベースとログファイルをホストと同期し、作業内容を確実に保存</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="benefits">
+            <h3 class="benefits-title">🤖 Claude Code CLI 統合</h3>
+            <div class="benefits-grid">
+                <div class="benefit-item">
+                    <div class="benefit-icon">🧠</div>
+                    <div class="benefit-title">AI開発アシスタント</div>
+                    <div class="benefit-desc">Anthropic提供のターミナルベースAIツール。コードベース理解、ファイル編集、Git操作を自然言語で実行</div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">🔑</div>
+                    <div class="benefit-title">認証設定</div>
+                    <div class="benefit-desc"><code>claude auth login</code> または環境変数 ANTHROPIC_API_KEY で認証。Anthropic Consoleアカウントが必要</div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">⚡</div>
+                    <div class="benefit-title">CLIツールの本質</div>
+                    <div class="benefit-desc">VSCode extensionではなくCLIツール。<code>claude</code>コマンドでターミナルから直接利用可能</div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">💡</div>
+                    <div class="benefit-title">使用例</div>
+                    <div class="benefit-desc">"バグを修正して" "機能を追加して" "コードを説明して" など日本語での指示が可能</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="benefits">
+            <h3 class="benefits-title">⚠️ 重要な注意事項とトラブルシューティング</h3>
+            <div class="benefits-grid">
+                <div class="benefit-item">
+                    <div class="benefit-icon">🔗</div>
+                    <div class="benefit-title">Node.js/npm バージョン整合性</div>
+                    <div class="benefit-desc"><strong>必須:</strong> Node.js 20.x LTS使用。npm@latest は Node.js 20.17.0+ が必要なため、無理にアップグレードしない</div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">⚡</div>
+                    <div class="benefit-title">EBADENGINE エラー回避</div>
+                    <div class="benefit-desc">npm install -g npm@latest は避ける。代わりに npm update -g npm で段階的更新を実行</div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">🔧</div>
+                    <div class="benefit-title">Dockerfile ベストプラクティス</div>
+                    <div class="benefit-desc">Node.js バージョンとnpmパッケージの互換性を事前確認。apt→npm→pythonの順序でインストール</div>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">📋</div>
+                    <div class="benefit-title">デバッグ手順</div>
+                    <div class="benefit-desc">エラー時は docker logs確認 → .devcontainer再構築 → バージョン整合性チェックの順で対処</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flow-diagram">
+            <h3 class="flow-title">🚨 Claude Code CLI トラブルシューティング</h3>
+            <div style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                <h4 style="color: #721c24; margin-bottom: 15px;">❗ 問題: claude: command not found</h4>
+                <div style="color: #721c24; line-height: 1.6;">
+                    <p><strong>症状:</strong> DevContainer内で<code>claude</code>コマンドが見つからないエラー</p>
+                    <p><strong>根本原因:</strong> nvm管理のNode.js環境とPATH設定の不整合</p>
+                    <p><strong>診断コマンド:</strong></p>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li><code>npm list -g --depth=0</code> - インストール確認</li>
+                        <li><code>which node && which npm</code> - Node.js環境確認</li>
+                        <li><code>ls -la ~/.nvm/versions/node/*/bin/claude</code> - バイナリ存在確認</li>
+                    </ul>
+                    <p><strong>即座解決:</strong></p>
+                    <pre style="background: #f1f1f1; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace; font-size: 0.85rem;">NODE_VERSION=$(node --version | sed 's/v//')
+export PATH="/home/gbrai/.nvm/versions/node/v$NODE_VERSION/bin:$PATH"
+echo 'export PATH="/home/gbrai/.nvm/versions/node/v'$NODE_VERSION'/bin:$PATH"' >> ~/.bashrc</pre>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flow-diagram">
+            <h3 class="flow-title">🔧 マウント問題のトラブルシューティング</h3>
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                <h4 style="color: #856404; margin-bottom: 15px;">⚠️ 問題事例: workspaceFolder パス不整合</h4>
+                <div style="color: #856404; line-height: 1.6;">
+                    <p><strong>症状:</strong> ファイル編集は可能だが、データベースやログファイルが永続化されない</p>
+                    <p><strong>原因:</strong> VSCode自動マウント（/workspaces/ToDoApp）と設定ファイル（/workspace）の不整合</p>
+                    <p><strong>解決策:</strong></p>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li>devcontainer.json の workspaceFolder を "/workspaces/ToDoApp" に統一</li>
+                        <li>mounts の target パスを "/workspaces/ToDoApp/..." に修正</li>
+                        <li>Dockerfile の WORKDIR も同一パスに変更</li>
+                    </ul>
+                    <p><strong>検証方法:</strong> docker inspect [container_id] でマウントポイント確認</p>
                 </div>
             </div>
         </div>
