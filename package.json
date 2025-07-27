@@ -54,8 +54,7 @@
     "prepack": "npm run build",
     "electron": "electron .",
     "electron:dev": "cross-env NODE_ENV=development electron .",
-    "electron:prod": "cross-env NODE_ENV=production electron .",
-    "prepare": "husky"
+    "electron:prod": "cross-env NODE_ENV=production electron ."
   },
   "devDependencies": {
     "electron": "^27.0.0",
