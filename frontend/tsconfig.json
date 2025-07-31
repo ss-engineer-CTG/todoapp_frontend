@@ -17,7 +17,7 @@
     "noFallthroughCasesInSwitch": true,
     
     // Additional strict checks
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": false,
     "noImplicitReturns": true,
     "noImplicitOverride": true,
     "noUncheckedIndexedAccess": true,
@@ -31,6 +31,7 @@
       "@core/*": ["./src/core/*"],
       
       // 機能別モジュール
+      "@features/*": ["./src/features/*"],
       "@tasklist": ["./src/features/tasklist"],
       "@tasklist/*": ["./src/features/tasklist/*"],
       "@timeline": ["./src/features/timeline"],

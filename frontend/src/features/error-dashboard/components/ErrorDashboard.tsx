@@ -1,1 +1,384 @@
-import React, { useState, useEffect } from 'react'\nimport { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@core/components/ui/card'\nimport { Button } from '@core/components/ui/button'\nimport { Badge } from '@core/components/ui/badge'\nimport { AlertTriangle, TrendingUp, Users, Clock, Filter, Download, RefreshCw } from 'lucide-react'\nimport { errorHandler, ErrorCategory, ErrorSeverity } from '@core/utils/errorHandler'\nimport { logger } from '@core/utils/logger'\n\ninterface ErrorReport {\n  id: string\n  fingerprint: string\n  message: string\n  category: string\n  severity: string\n  status: string\n  first_occurrence: string\n  last_occurrence: string\n  occurrence_count: number\n  affected_users: string[]\n  stack_trace?: string\n  context?: any\n  resolution_notes?: string\n  assigned_to?: string\n}\n\ninterface ErrorStatistics {\n  total_errors: number\n  error_rate: number\n  errors_by_category: Record<string, number>\n  errors_by_severity: Record<string, number>\n  top_errors: ErrorReport[]\n  timeframe_hours: number\n}\n\ninterface ErrorTrend {\n  timestamp: string\n  error_count: number\n}\n\nconst ErrorDashboard: React.FC = () => {\n  const [statistics, setStatistics] = useState<ErrorStatistics | null>(null)\n  const [reports, setReports] = useState<ErrorReport[]>([])\n  const [trends, setTrends] = useState<ErrorTrend[]>([])\n  const [loading, setLoading] = useState(true)\n  const [selectedCategory, setSelectedCategory] = useState<string>('')\n  const [selectedSeverity, setSelectedSeverity] = useState<string>('')\n  const [timeframeHours, setTimeframeHours] = useState(24)\n\n  useEffect(() => {\n    loadDashboardData()\n    const interval = setInterval(loadDashboardData, 30000) // 30秒ごとに更新\n    return () => clearInterval(interval)\n  }, [timeframeHours])\n\n  const loadDashboardData = async () => {\n    try {\n      setLoading(true)\n      \n      // 統計データ取得\n      const statsResponse = await fetch(`/api/errors/statistics?hours=${timeframeHours}`)\n      if (statsResponse.ok) {\n        const statsData = await statsResponse.json()\n        setStatistics(statsData)\n      }\n      \n      // エラーレポート取得\n      const reportsResponse = await fetch(\n        `/api/errors/reports?${new URLSearchParams({\n          ...(selectedCategory && { category: selectedCategory }),\n          ...(selectedSeverity && { severity: selectedSeverity }),\n          limit: '50'\n        })}`\n      )\n      if (reportsResponse.ok) {\n        const reportsData = await reportsResponse.json()\n        setReports(reportsData.reports)\n      }\n      \n      // トレンドデータ取得\n      const trendsResponse = await fetch(\n        `/api/errors/trends?hours=${timeframeHours}&interval_minutes=60`\n      )\n      if (trendsResponse.ok) {\n        const trendsData = await trendsResponse.json()\n        setTrends(trendsData.trends)\n      }\n      \n      logger.info('Error dashboard data loaded', undefined, 'ErrorDashboard', 'loadData')\n      \n    } catch (error) {\n      errorHandler.handleError(error as Error, {\n        category: ErrorCategory.UI_COMPONENT,\n        component: 'ErrorDashboard',\n        action: 'loadDashboardData'\n      })\n    } finally {\n      setLoading(false)\n    }\n  }\n\n  const getSeverityColor = (severity: string) => {\n    switch (severity) {\n      case 'critical': return 'bg-red-500'\n      case 'high': return 'bg-orange-500'\n      case 'medium': return 'bg-yellow-500'\n      case 'low': return 'bg-blue-500'\n      default: return 'bg-gray-500'\n    }\n  }\n\n  const getSeverityTextColor = (severity: string) => {\n    switch (severity) {\n      case 'critical': return 'text-red-700'\n      case 'high': return 'text-orange-700'\n      case 'medium': return 'text-yellow-700'\n      case 'low': return 'text-blue-700'\n      default: return 'text-gray-700'\n    }\n  }\n\n  const exportErrors = () => {\n    try {\n      const errorData = errorHandler.exportErrors('csv')\n      const blob = new Blob([errorData], { type: 'text/csv' })\n      const url = URL.createObjectURL(blob)\n      const a = document.createElement('a')\n      a.href = url\n      a.download = `error-report-${new Date().toISOString().split('T')[0]}.csv`\n      document.body.appendChild(a)\n      a.click()\n      document.body.removeChild(a)\n      URL.revokeObjectURL(url)\n      \n      logger.info('Error report exported', undefined, 'ErrorDashboard', 'exportErrors')\n    } catch (error) {\n      errorHandler.handleUIError(error as Error, 'ErrorDashboard', 'exportErrors')\n    }\n  }\n\n  const resolveError = async (errorId: string) => {\n    try {\n      const response = await fetch(`/api/errors/reports/${errorId}/resolve`, {\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json'\n        },\n        body: JSON.stringify({\n          resolution_notes: 'Resolved from dashboard',\n          assigned_to: 'dashboard-user'\n        })\n      })\n      \n      if (response.ok) {\n        // リストを更新\n        setReports(prev => prev.filter(report => report.id !== errorId))\n        logger.info(`Error resolved: ${errorId}`, undefined, 'ErrorDashboard', 'resolveError')\n      }\n    } catch (error) {\n      errorHandler.handleError(error as Error, {\n        category: ErrorCategory.API,\n        component: 'ErrorDashboard',\n        action: 'resolveError'\n      })\n    }\n  }\n\n  if (loading && !statistics) {\n    return (\n      <div className=\"p-6\">\n        <div className=\"flex items-center justify-center h-64\">\n          <RefreshCw className=\"w-8 h-8 animate-spin\" />\n          <span className=\"ml-2 text-lg\">Loading error dashboard...</span>\n        </div>\n      </div>\n    )\n  }\n\n  return (\n    <div className=\"p-6 space-y-6\">\n      {/* ヘッダー */}\n      <div className=\"flex items-center justify-between\">\n        <div>\n          <h1 className=\"text-3xl font-bold tracking-tight\">Error Monitoring Dashboard</h1>\n          <p className=\"text-muted-foreground\">\n            エンタープライズグレードエラー監視システム\n          </p>\n        </div>\n        <div className=\"flex items-center space-x-2\">\n          <select\n            value={timeframeHours}\n            onChange={(e) => setTimeframeHours(Number(e.target.value))}\n            className=\"px-3 py-2 border rounded-md\"\n          >\n            <option value={1}>Last 1 hour</option>\n            <option value={6}>Last 6 hours</option>\n            <option value={24}>Last 24 hours</option>\n            <option value={168}>Last 7 days</option>\n          </select>\n          <Button onClick={loadDashboardData} disabled={loading}>\n            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />\n            Refresh\n          </Button>\n          <Button onClick={exportErrors} variant=\"outline\">\n            <Download className=\"w-4 h-4 mr-2\" />\n            Export\n          </Button>\n        </div>\n      </div>\n\n      {/* 統計カード */}\n      {statistics && (\n        <div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6\">\n          <Card>\n            <CardHeader className=\"flex flex-row items-center justify-between space-y-0 pb-2\">\n              <CardTitle className=\"text-sm font-medium\">Total Errors</CardTitle>\n              <AlertTriangle className=\"h-4 w-4 text-muted-foreground\" />\n            </CardHeader>\n            <CardContent>\n              <div className=\"text-2xl font-bold\">{statistics.total_errors}</div>\n              <p className=\"text-xs text-muted-foreground\">\n                Last {statistics.timeframe_hours} hours\n              </p>\n            </CardContent>\n          </Card>\n\n          <Card>\n            <CardHeader className=\"flex flex-row items-center justify-between space-y-0 pb-2\">\n              <CardTitle className=\"text-sm font-medium\">Error Rate</CardTitle>\n              <TrendingUp className=\"h-4 w-4 text-muted-foreground\" />\n            </CardHeader>\n            <CardContent>\n              <div className=\"text-2xl font-bold\">{statistics.error_rate.toFixed(2)}</div>\n              <p className=\"text-xs text-muted-foreground\">\n                errors per minute\n              </p>\n            </CardContent>\n          </Card>\n\n          <Card>\n            <CardHeader className=\"flex flex-row items-center justify-between space-y-0 pb-2\">\n              <CardTitle className=\"text-sm font-medium\">Affected Users</CardTitle>\n              <Users className=\"h-4 w-4 text-muted-foreground\" />\n            </CardHeader>\n            <CardContent>\n              <div className=\"text-2xl font-bold\">\n                {statistics.top_errors.reduce((acc, error) => acc + error.affected_users.length, 0)}\n              </div>\n              <p className=\"text-xs text-muted-foreground\">\n                unique users\n              </p>\n            </CardContent>\n          </Card>\n\n          <Card>\n            <CardHeader className=\"flex flex-row items-center justify-between space-y-0 pb-2\">\n              <CardTitle className=\"text-sm font-medium\">Critical Errors</CardTitle>\n              <Clock className=\"h-4 w-4 text-muted-foreground\" />\n            </CardHeader>\n            <CardContent>\n              <div className=\"text-2xl font-bold\">\n                {statistics.errors_by_severity.critical || 0}\n              </div>\n              <p className=\"text-xs text-muted-foreground\">\n                need immediate attention\n              </p>\n            </CardContent>\n          </Card>\n        </div>\n      )}\n\n      {/* フィルター */}\n      <Card>\n        <CardHeader>\n          <CardTitle className=\"flex items-center\">\n            <Filter className=\"w-5 h-5 mr-2\" />\n            Filters\n          </CardTitle>\n        </CardHeader>\n        <CardContent>\n          <div className=\"flex items-center space-x-4\">\n            <div>\n              <label className=\"text-sm font-medium\">Category</label>\n              <select\n                value={selectedCategory}\n                onChange={(e) => setSelectedCategory(e.target.value)}\n                className=\"ml-2 px-3 py-1 border rounded-md\"\n              >\n                <option value=\"\">All Categories</option>\n                {Object.values(ErrorCategory).map(category => (\n                  <option key={category} value={category}>{category}</option>\n                ))}\n              </select>\n            </div>\n            <div>\n              <label className=\"text-sm font-medium\">Severity</label>\n              <select\n                value={selectedSeverity}\n                onChange={(e) => setSelectedSeverity(e.target.value)}\n                className=\"ml-2 px-3 py-1 border rounded-md\"\n              >\n                <option value=\"\">All Severities</option>\n                {Object.values(ErrorSeverity).map(severity => (\n                  <option key={severity} value={severity}>{severity}</option>\n                ))}\n              </select>\n            </div>\n            <Button onClick={loadDashboardData} size=\"sm\">\n              Apply Filters\n            </Button>\n          </div>\n        </CardContent>\n      </Card>\n\n      {/* エラーレポートリスト */}\n      <Card>\n        <CardHeader>\n          <CardTitle>Recent Error Reports</CardTitle>\n          <CardDescription>\n            Latest error reports from your application\n          </CardDescription>\n        </CardHeader>\n        <CardContent>\n          <div className=\"space-y-4\">\n            {reports.map((report) => (\n              <div key={report.id} className=\"border rounded-lg p-4 space-y-2\">\n                <div className=\"flex items-start justify-between\">\n                  <div className=\"flex-1\">\n                    <div className=\"flex items-center space-x-2\">\n                      <Badge className={getSeverityColor(report.severity)}>\n                        {report.severity}\n                      </Badge>\n                      <Badge variant=\"outline\">{report.category}</Badge>\n                      <span className=\"text-sm text-muted-foreground\">\n                        {report.occurrence_count} occurrences\n                      </span>\n                    </div>\n                    <h3 className=\"font-medium mt-1\">{report.message}</h3>\n                    <p className=\"text-sm text-muted-foreground\">\n                      First seen: {new Date(report.first_occurrence).toLocaleString()}\n                    </p>\n                    <p className=\"text-sm text-muted-foreground\">\n                      Last seen: {new Date(report.last_occurrence).toLocaleString()}\n                    </p>\n                    {report.affected_users.length > 0 && (\n                      <p className=\"text-sm text-muted-foreground\">\n                        Affected users: {report.affected_users.length}\n                      </p>\n                    )}\n                  </div>\n                  <div className=\"flex items-center space-x-2\">\n                    <Button\n                      onClick={() => resolveError(report.id)}\n                      size=\"sm\"\n                      variant=\"outline\"\n                    >\n                      Resolve\n                    </Button>\n                  </div>\n                </div>\n                {report.stack_trace && (\n                  <details className=\"mt-2\">\n                    <summary className=\"cursor-pointer text-sm font-medium\">\n                      Stack Trace\n                    </summary>\n                    <pre className=\"mt-2 p-2 bg-gray-100 rounded text-xs overflow-x-auto\">\n                      {report.stack_trace}\n                    </pre>\n                  </details>\n                )}\n              </div>\n            ))}\n            {reports.length === 0 && (\n              <div className=\"text-center py-8 text-muted-foreground\">\n                No error reports found for the selected filters.\n              </div>\n            )}\n          </div>\n        </CardContent>\n      </Card>\n    </div>\n  )\n}\n\nexport default ErrorDashboard
+import React, { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@core/components/ui/card'
+import { Button } from '@core/components/ui/button'
+import { Badge } from '@core/components/ui/badge'
+import { AlertTriangle, TrendingUp, Users, Clock, Filter, Download, RefreshCw } from 'lucide-react'
+import { errorHandler, ErrorCategory, ErrorSeverity } from '@core/utils/errorHandler'
+import { logger } from '@core/utils/logger'
+
+interface ErrorReport {
+  id: string
+  fingerprint: string
+  message: string
+  category: string
+  severity: string
+  status: string
+  first_occurrence: string
+  last_occurrence: string
+  occurrence_count: number
+  affected_users: string[]
+  stack_trace?: string
+  context?: any
+  resolution_notes?: string
+  assigned_to?: string
+}
+
+interface ErrorStatistics {
+  total_errors: number
+  error_rate: number
+  errors_by_category: Record<string, number>
+  errors_by_severity: Record<string, number>
+  top_errors: ErrorReport[]
+  timeframe_hours: number
+}
+
+interface ErrorTrend {
+  timestamp: string
+  error_count: number
+}
+
+const ErrorDashboard: React.FC = () => {
+  const [statistics, setStatistics] = useState<ErrorStatistics | null>(null)
+  const [reports, setReports] = useState<ErrorReport[]>([])
+  const [trends, setTrends] = useState<ErrorTrend[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [selectedSeverity, setSelectedSeverity] = useState<string>('')
+  const [timeframeHours, setTimeframeHours] = useState(24)
+
+  useEffect(() => {
+    loadDashboardData()
+    const interval = setInterval(loadDashboardData, 30000) // 30秒ごとに更新
+    return () => clearInterval(interval)
+  }, [timeframeHours])
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true)
+      
+      // 統計データ取得
+      const statsResponse = await fetch(`/api/errors/statistics?hours=${timeframeHours}`)
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json()
+        setStatistics(statsData)
+      }
+      
+      // エラーレポート取得
+      const reportsResponse = await fetch(
+        `/api/errors/reports?${new URLSearchParams({
+          ...(selectedCategory && { category: selectedCategory }),
+          ...(selectedSeverity && { severity: selectedSeverity }),
+          limit: '50'
+        })}`
+      )
+      if (reportsResponse.ok) {
+        const reportsData = await reportsResponse.json()
+        setReports(reportsData.reports)
+      }
+      
+      // トレンドデータ取得
+      const trendsResponse = await fetch(
+        `/api/errors/trends?hours=${timeframeHours}&interval_minutes=60`
+      )
+      if (trendsResponse.ok) {
+        const trendsData = await trendsResponse.json()
+        setTrends(trendsData.trends)
+      }
+      
+      logger.info('Error dashboard data loaded', undefined, 'ErrorDashboard', 'loadData')
+      
+    } catch (error) {
+      errorHandler.handleError(error as Error, {
+        category: ErrorCategory.UI_COMPONENT,
+        component: 'ErrorDashboard',
+        action: 'loadDashboardData'
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'bg-red-500'
+      case 'high': return 'bg-orange-500'
+      case 'medium': return 'bg-yellow-500'
+      case 'low': return 'bg-blue-500'
+      default: return 'bg-gray-500'
+    }
+  }
+
+  const getSeverityTextColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'text-red-700'
+      case 'high': return 'text-orange-700'
+      case 'medium': return 'text-yellow-700'
+      case 'low': return 'text-blue-700'
+      default: return 'text-gray-700'
+    }
+  }
+
+  const exportErrors = () => {
+    try {
+      const errorData = errorHandler.exportErrors('csv')
+      const blob = new Blob([errorData], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `error-report-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      logger.info('Error report exported', undefined, 'ErrorDashboard', 'exportErrors')
+    } catch (error) {
+      errorHandler.handleUIError(error as Error, 'ErrorDashboard', 'exportErrors')
+    }
+  }
+
+  const resolveError = async (errorId: string) => {
+    try {
+      const response = await fetch(`/api/errors/reports/${errorId}/resolve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          resolution_notes: 'Resolved from dashboard',
+          assigned_to: 'dashboard-user'
+        })
+      })
+      
+      if (response.ok) {
+        // リストを更新
+        setReports(prev => prev.filter(report => report.id !== errorId))
+        logger.info(`Error resolved: ${errorId}`, undefined, 'ErrorDashboard', 'resolveError')
+      }
+    } catch (error) {
+      errorHandler.handleError(error as Error, {
+        category: ErrorCategory.API,
+        component: 'ErrorDashboard',
+        action: 'resolveError'
+      })
+    }
+  }
+
+  if (loading && !statistics) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="w-8 h-8 animate-spin" />
+          <span className="ml-2 text-lg">Loading error dashboard...</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* ヘッダー */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Error Monitoring Dashboard</h1>
+          <p className="text-muted-foreground">
+            エンタープライズグレードエラー監視システム
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <select
+            value={timeframeHours}
+            onChange={(e) => setTimeframeHours(Number(e.target.value))}
+            className="px-3 py-2 border rounded-md"
+          >
+            <option value={1}>Last 1 hour</option>
+            <option value={6}>Last 6 hours</option>
+            <option value={24}>Last 24 hours</option>
+            <option value={168}>Last 7 days</option>
+          </select>
+          <Button onClick={loadDashboardData} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button onClick={exportErrors} variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+        </div>
+      </div>
+
+      {/* 統計カード */}
+      {statistics && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Errors</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.total_errors}</div>
+              <p className="text-xs text-muted-foreground">
+                Last {statistics.timeframe_hours} hours
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.error_rate.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">
+                errors per minute
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Affected Users</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {statistics.top_errors.reduce((acc, error) => acc + error.affected_users.length, 0)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                unique users
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Critical Errors</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {statistics.errors_by_severity.critical || 0}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                need immediate attention
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* フィルター */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Filter className="w-5 h-5 mr-2" />
+            Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center space-x-4">
+            <div>
+              <label className="text-sm font-medium">Category</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="ml-2 px-3 py-1 border rounded-md"
+              >
+                <option value="">All Categories</option>
+                {Object.values(ErrorCategory).map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Severity</label>
+              <select
+                value={selectedSeverity}
+                onChange={(e) => setSelectedSeverity(e.target.value)}
+                className="ml-2 px-3 py-1 border rounded-md"
+              >
+                <option value="">All Severities</option>
+                {Object.values(ErrorSeverity).map(severity => (
+                  <option key={severity} value={severity}>{severity}</option>
+                ))}
+              </select>
+            </div>
+            <Button onClick={loadDashboardData} size="sm">
+              Apply Filters
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* エラーレポートリスト */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Error Reports</CardTitle>
+          <CardDescription>
+            Latest error reports from your application
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {reports.map((report) => (
+              <div key={report.id} className="border rounded-lg p-4 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <Badge className={getSeverityColor(report.severity)}>
+                        {report.severity}
+                      </Badge>
+                      <Badge variant="outline">{report.category}</Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {report.occurrence_count} occurrences
+                      </span>
+                    </div>
+                    <h3 className="font-medium mt-1">{report.message}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      First seen: {new Date(report.first_occurrence).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Last seen: {new Date(report.last_occurrence).toLocaleString()}
+                    </p>
+                    {report.affected_users.length > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Affected users: {report.affected_users.length}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      onClick={() => resolveError(report.id)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Resolve
+                    </Button>
+                  </div>
+                </div>
+                {report.stack_trace && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      Stack Trace
+                    </summary>
+                    <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-x-auto">
+                      {report.stack_trace}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            ))}
+            {reports.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No error reports found for the selected filters.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+export default ErrorDashboard

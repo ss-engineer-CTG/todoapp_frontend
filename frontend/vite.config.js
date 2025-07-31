@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { defineConfig } from 'vite'
 
 // システムプロンプト準拠: パス設定の一元管理
 const APP_CONFIG = {
@@ -22,6 +22,7 @@ export default defineConfig({
       "@core": path.resolve(__dirname, "./src/core"),
       
       // 機能別モジュール
+      "@features": path.resolve(__dirname, "./src/features"),
       "@tasklist": path.resolve(__dirname, "./src/features/tasklist"),
       "@timeline": path.resolve(__dirname, "./src/features/timeline"),
       "@daily-focus": path.resolve(__dirname, "./src/features/daily-focus"),
@@ -33,7 +34,8 @@ export default defineConfig({
     },
   },
   server: {
-    port: APP_CONFIG.PORTS.FRONTEND,
+    host: '0.0.0.0',  // DevContainer対応：外部からのアクセスを許可
+    port: 5173,  // 別のポートを試用
     proxy: {
       '/api': {
         target: `http://localhost:${APP_CONFIG.PORTS.BACKEND}`,
