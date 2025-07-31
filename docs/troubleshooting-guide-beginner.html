@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔰 初心者向け：Webアプリが表示されない問題の解決方法</title>
+    <style>
+        body {
+            font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+            line-height: 1.8;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #27ae60;
+            border-left: 5px solid #27ae60;
+            padding-left: 15px;
+            margin-top: 40px;
+        }
+        h3 {
+            color: #8e44ad;
+            margin-top: 30px;
+        }
+        .problem-box {
+            background: #ffebee;
+            border: 2px solid #e74c3c;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .solution-box {
+            background: #e8f5e8;
+            border: 2px solid #27ae60;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .info-box {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .warning-box {
+            background: #fff3e0;
+            border: 2px solid #ff9800;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 10px 10px 0;
+        }
+        .step-number {
+            background: #007bff;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            color: #d63384;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Consolas', monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .diagram {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px dashed #6c757d;
+        }
+        .emoji {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+        ul, ol {
+            padding-left: 30px;
+        }
+        li {
+            margin: 10px 0;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .flow-box {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 5px;
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+        }
+        .arrow {
+            font-size: 2em;
+            color: #2196f3;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔰 初心者向け：Webアプリが表示されない問題の解決方法</h1>
+        
+        <div class="info-box">
+            <h3><span class="emoji">📝</span>この文書について</h3>
+            <p>VSCode上でプログラムを開発中に「アプリケーションが立ち上がらない」「ブラウザで何も表示されない」という問題に遭遇した初心者の方向けの解説です。専門用語はできるだけ避けて、わかりやすく説明します。</p>
+        </div>
+
+        <h2><span class="emoji">❗</span>起こった問題</h2>
+        
+        <div class="problem-box">
+            <h3>症状</h3>
+            <ul>
+                <li>コマンドでは「アプリが起動した」と表示される</li>
+                <li>ブラウザで <code>http://localhost:3000</code> を開いても何も表示されない</li>
+                <li>読み込み中のまま止まってしまう</li>
+                <li>ブラウザの開発者ツール（F12）を見ても何も表示されない</li>
+            </ul>
+        </div>
+
+        <h2><span class="emoji">🕵️</span>問題の正体</h2>
+
+        <div class="diagram">
+            <h3>普通のパソコンでの開発 vs VSCode DevContainer環境</h3>
+            <div style="display: flex; justify-content: space-around; margin-top: 20px;">
+                <div style="text-align: center;">
+                    <h4 style="color: #27ae60;">✅ 普通のパソコン</h4>
+                    <div style="border: 2px solid #27ae60; padding: 15px; border-radius: 10px; background: #e8f5e8;">
+                        <div>💻 ブラウザ</div>
+                        <div style="margin: 10px 0;">↕️ 直接通信</div>
+                        <div>🖥️ Webサーバー</div>
+                        <p style="font-size: 0.9em; margin-top: 10px;">同じパソコン内なので<br><code>localhost</code>で簡単につながる</p>
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <h4 style="color: #e74c3c;">❌ VSCode DevContainer</h4>
+                    <div style="border: 2px solid #e74c3c; padding: 15px; border-radius: 10px; background: #ffebee;">
+                        <div>💻 ブラウザ（ホスト側）</div>
+                        <div style="margin: 10px 0;">🚫 通信できない</div>
+                        <div>📦 Webサーバー（コンテナ内）</div>
+                        <p style="font-size: 0.9em; margin-top: 10px;">別々の「部屋」にいるので<br>特別な設定が必要</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3><span class="emoji">🏠</span>「コンテナ」って何？</h3>
+            <p>コンテナとは、<strong>仮想的な「部屋」</strong>のようなものです。VSCode DevContainerを使うと、あなたのパソコンの中に別の「部屋」が作られ、そこでプログラムが動きます。</p>
+            <p>普通なら同じ部屋（パソコン）にいるブラウザとWebサーバーが、別々の部屋にいる状態になってしまい、お互いに見つけられなくなってしまいます。</p>
+        </div>
+
+        <h2><span class="emoji">🔧</span>解決方法</h2>
+
+        <div class="solution-box">
+            <h3>解決のポイント</h3>
+            <p class="highlight">Webサーバーの設定を「外からも接続できる」ように変更する</p>
+        </div>
+
+        <h3><span class="emoji">📋</span>具体的な手順</h3>
+
+        <div class="step">
+            <span class="step-number">1</span>
+            <strong>設定ファイルを開く</strong>
+            <p><code>vite.config.js</code> というファイルを探して開きます</p>
+        </div>
+
+        <div class="step">
+            <span class="step-number">2</span>
+            <strong>設定を変更する</strong>
+            <p>以下の部分を見つけて修正します：</p>
+            
+            <div style="margin: 15px 0;">
+                <h4 style="color: #e74c3c;">❌ 修正前（問題のある設定）</h4>
+                <div class="code-block">server: {
+  port: 3000
+  // host の設定がない
+}</div>
+            </div>
+
+            <div style="margin: 15px 0;">
+                <h4 style="color: #27ae60;">✅ 修正後（正しい設定）</h4>
+                <div class="code-block">server: {
+  host: '0.0.0.0',  // ← この行を追加！
+  port: 3000
+}</div>
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">3</span>
+            <strong>サーバーを再起動する</strong>
+            <p>ターミナルで <code>Ctrl+C</code> を押してサーバーを止めてから、もう一度 <code>npm run dev</code> を実行します</p>
+        </div>
+
+        <div class="step">
+            <span class="step-number">4</span>
+            <strong>VSCodeのポート設定を確認する</strong>
+            <p>VSCodeの下の方に「ポート」というタブがあるので、クリックしてポート3000が表示されているか確認します</p>
+        </div>
+
+        <h2><span class="emoji">🎯</span>なぜこの設定で解決するのか</h2>
+
+        <div class="flow-diagram">
+            <div class="flow-box">
+                <strong>host: '0.0.0.0'</strong><br>
+                「どこからでも接続OK」<br>という意味
+            </div>
+            <div class="arrow">→</div>
+            <div class="flow-box">
+                <strong>VSCodeが橋渡し</strong><br>
+                コンテナとホストを<br>つないでくれる
+            </div>
+            <div class="arrow">→</div>
+            <div class="flow-box">
+                <strong>ブラウザでアクセス可能</strong><br>
+                localhost:3000で<br>表示される
+            </div>
+        </div>
+
+        <h2><span class="emoji">⚠️</span>注意点</h2>
+
+        <div class="warning-box">
+            <h3>よくある間違い</h3>
+            <ul>
+                <li><strong>設定を変更したのにサーバーを再起動しない</strong><br>
+                    → 設定変更後は必ず再起動が必要です</li>
+                <li><strong>ポートフォワーディングの設定を忘れる</strong><br>
+                    → VSCodeの「ポート」タブで3000が表示されているか確認しましょう</li>
+                <li><strong>別のアプリケーションがポートを使用している</strong><br>
+                    → エラーが出る場合は、ポート番号を5173など別の番号に変更してみましょう</li>
+            </ul>
+        </div>
+
+        <h2><span class="emoji">🔍</span>トラブルシューティング</h2>
+
+        <h3>まだ表示されない場合</h3>
+        <ol>
+            <li><strong>ブラウザのネットワークタブを確認</strong>
+                <ul>
+                    <li>F12キーを押して開発者ツールを開く</li>
+                    <li>「Network」タブをクリック</li>
+                    <li>ページを再読み込みして、エラーがないか確認</li>
+                </ul>
+            </li>
+            <li><strong>別のポート番号を試す</strong>
+                <ul>
+                    <li><code>port: 5173</code> に変更してみる</li>
+                    <li>VSCodeのポートタブで新しいポート番号も確認</li>
+                </ul>
+            </li>
+            <li><strong>VSCodeを再起動</strong>
+                <ul>
+                    <li>VSCode全体を閉じて、もう一度開く</li>
+                    <li>DevContainerも再構築される</li>
+                </ul>
+            </li>
+        </ol>
+
+        <h2><span class="emoji">🎉</span>成功したときの表示</h2>
+
+        <div class="solution-box">
+            <h3>正常に動作している場合のログ</h3>
+            <div class="code-block">VITE v4.5.14  ready in 255 ms
+
+➜  Local:   http://localhost:3000/
+➜  Network: http://172.17.0.2:3000/  ← この行があればOK!</div>
+            <p><code>Network:</code> の行に具体的なIPアドレスが表示されていれば、外部からアクセス可能な状態です。</p>
+        </div>
+
+        <h2><span class="emoji">🔒</span>セキュリティについて（とても重要！）</h2>
+
+        <div class="warning-box">
+            <h3>「外部からアクセスできる設定にして大丈夫？」</h3>
+            <p><strong>結論：とても安全です！心配いりません。</strong></p>
+        </div>
+
+        <h3><span class="emoji">🛡️</span>なぜ安全なのか？</h3>
+
+        <div class="diagram">
+            <h4>実際のアクセス経路</h4>
+            <div class="flow-diagram">
+                <div class="flow-box">
+                    <strong>🌐 インターネット</strong><br>
+                    ❌ 到達不可
+                </div>
+                <div class="arrow">→</div>
+                <div class="flow-box">
+                    <strong>💻 あなたのPC</strong><br>
+                    ✅ 制御下
+                </div>
+                <div class="arrow">→</div>
+                <div class="flow-box">
+                    <strong>📦 DevContainer</strong><br>
+                    ✅ 箱の中
+                </div>
+                <div class="arrow">→</div>
+                <div class="flow-box">
+                    <strong>🖥️ Webサーバー</strong><br>
+                    ✅ さらに箱の中
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3><span class="emoji">🏠</span>わかりやすい例え</h3>
+            <p>今回の設定は、<strong>「家の中で部屋を移動できるようにした」</strong>だけです。</p>
+            <ul>
+                <li><strong>家の外の人</strong> → 全くアクセスできない</li>
+                <li><strong>家の中（あなたのPC内）</strong> → アクセス可能</li>
+                <li><strong>部屋（DevContainer内）</strong> → 設定により通信可能に</li>
+            </ul>
+            <p>インターネットの悪い人たちには、あなたの家の存在すら見えません！</p>
+        </div>
+
+        <h3><span class="emoji">🔍</span>技術的な仕組み</h3>
+
+        <div class="step">
+            <span class="step-number">1</span>
+            <strong>DevContainerは隔離された環境</strong>
+            <p><code>host: '0.0.0.0'</code> = 「コンテナ内のどこからでもアクセスOK」という意味<br>
+            でも、コンテナの外には一切出ません</p>
+        </div>
+
+        <div class="step">
+            <span class="step-number">2</span>
+            <strong>VSCodeが安全な橋渡し</strong>
+            <p>VSCodeが「あなただけの専用トンネル」を作って、安全にアクセスできるようにしています</p>
+        </div>
+
+        <div class="step">
+            <span class="step-number">3</span>
+            <strong>認証とアクセス制御</strong>
+            <p>VSCodeにログインしているあなただけが、このトンネルを使えます</p>
+        </div>
+
+        <h3><span class="emoji">⚠️</span>本当に危険なのはこんな場合</h3>
+
+        <div class="warning-box">
+            <h4>❌ これは絶対にやってはダメ！</h4>
+            <ul>
+                <li>あなたのPCのファイアウォールを完全に無効にする</li>
+                <li>ルーターの設定でポート3000を全世界に公開する</li>
+                <li>本番環境で <code>host: '0.0.0.0'</code> を使う</li>
+            </ul>
+            <p><strong>でも今回は違います！</strong> DevContainer内だけの設定なので安全です。</p>
+        </div>
+
+        <div class="solution-box">
+            <h3><span class="emoji">✅</span>今回の設定が安全な理由まとめ</h3>
+            <ul>
+                <li>🏠 DevContainer = 隔離された仮想環境</li>
+                <li>🔒 VSCode = 認証済みユーザーのみアクセス可能</li>
+                <li>🌐 インターネット = 全く到達できない</li>
+                <li>💻 localhost = あなたのPCでのみアクセス可能</li>
+            </ul>
+        </div>
+
+        <h2><span class="emoji">📚</span>覚えておきたいポイント</h2>
+
+        <div class="info-box">
+            <ul>
+                <li><strong>DevContainer環境では特別な設定が必要</strong><br>
+                    普通のパソコンでの開発とは違うことを理解しましょう</li>
+                <li><strong>「起動した」ログが出ても実際は動いていない場合がある</strong><br>
+                    ログを鵜呑みにせず、実際にブラウザで確認することが大切</li>
+                <li><strong>設定変更後は再起動が基本</strong><br>
+                    何か変更したら、まず再起動してみましょう</li>
+                <li><strong>VSCodeのポート機能を活用する</strong><br>
+                    「ポート」タブは問題解決の重要な手がかりになります</li>
+                <li><strong>セキュリティを心配するのは良いこと</strong><br>
+                    でも今回の設定は安全です。心配せずに開発を進めましょう</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+            <h3 style="color: #007bff;">🎓 これで解決です！</h3>
+            <p>この問題を通じて、開発環境の違いやネットワークの基本概念を学ぶことができました。<br>
+            今後似たような問題に遭遇しても、落ち着いて対処できるようになったはずです。</p>
+        </div>
+
+        <footer style="margin-top: 40px; text-align: center; color: #6c757d; font-size: 0.9em;">
+            <p>作成日: 2025年7月29日 | 対象: VSCode DevContainer初心者</p>
+        </footer>
+    </div>
+</body>
+</html>
