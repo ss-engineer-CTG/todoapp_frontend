@@ -68,7 +68,7 @@ class ErrorReportingService {
       },
       userId: error.context?.userId,
       sessionId: error.context?.sessionId,
-      correlationId: error.context?.correlationId,
+      correlationId: error.context?.correlationId || '',
       url: error.context?.url,
       userAgent: error.context?.userAgent
     }))

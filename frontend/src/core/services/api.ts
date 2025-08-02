@@ -3,7 +3,7 @@
 import { Project, Task, BatchOperationResult } from '@core/types'
 import { APP_CONFIG, APP_PATHS, joinPath } from '@core/config'
 import { logger } from '@core/utils/logger'
-import { errorHandler, ErrorCategory } from '@core/utils/errorHandler'
+import { errorHandler } from '@core/utils/errorHandler'
 import { convertApiResponseDate } from '@core/utils/core'
 
 class ApiService {

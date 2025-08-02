@@ -28,6 +28,7 @@ export interface ErrorContext {
   action?: string
   userId?: string
   sessionId?: string
+  correlationId?: string
   url?: string
   userAgent?: string
   timestamp: string
@@ -177,11 +178,13 @@ class EnterpriseErrorHandler {
     // 最大件数制限
     if (this.errorReports.size > this.MAX_ERROR_REPORTS) {
       const oldestKey = this.errorReports.keys().next().value
-      this.errorReports.delete(oldestKey)
+      if (oldestKey) {
+        this.errorReports.delete(oldestKey)
+      }
     }
 
     // ログに記録
-    const logLevel = this.getLogLevelFromSeverity(severity)
+    this.getLogLevelFromSeverity(severity)
     logger.error(
       `[${category.toUpperCase()}] ${errorMessage}`,
       {
