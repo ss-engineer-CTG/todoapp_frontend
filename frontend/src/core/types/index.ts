@@ -116,8 +116,8 @@ export interface BatchOperationResult {
 }
 
 export interface TaskApiActions {
-  createTask: (task: Omit<Task, 'id'>) => Promise<Task>
-  updateTask: (id: string, task: Partial<Task>) => Promise<Task>
+  createTask: (task: Omit<Task, 'id'>) => Promise<Task | undefined>
+  updateTask: (id: string, task: Partial<Task>) => Promise<Task | undefined>
   deleteTask: (id: string) => Promise<void>
   loadTasks: () => Promise<Task[]>
   batchUpdateTasks: (operation: unknown, taskIds: string[]) => Promise<BatchOperationResult>

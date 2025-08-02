@@ -34,12 +34,12 @@ export const TagSelectionModal: React.FC<TagSelectionModalProps> = ({
   onSkipTag,
   todoText
 }) => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const { goals } = useGoals()
   const { tags, updateTag } = useCustomTags()
   
-  // 統一テーマシステムを使用
-  const themeMode = theme as ThemeMode
+  // 統一テーマシステムを使用 - resolvedThemeを直接使用
+  const themeMode = resolvedTheme as ThemeMode
   const neutralClasses = getNeutralClasses(themeMode)
   const interactionClasses = getInteractionClasses(themeMode)
   

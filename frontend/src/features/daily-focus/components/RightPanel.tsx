@@ -5,7 +5,7 @@ import { HeatmapCalendar } from './HeatmapCalendar'
 import { LearningMemoPanel } from './LearningMemoPanel'
 
 export const RightPanel: React.FC = () => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   
   return (
     <div className="space-y-6">
@@ -14,7 +14,7 @@ export const RightPanel: React.FC = () => {
       
       {/* 成長可視化ダッシュボード */}
       <div className="mb-6">
-        <h3 className={`text-md font-semibold mb-3 flex items-center ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+        <h3 className={`text-md font-semibold mb-3 flex items-center ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
           <BarChart3 className="mr-2" size={18} />
           成長トラッキング
         </h3>

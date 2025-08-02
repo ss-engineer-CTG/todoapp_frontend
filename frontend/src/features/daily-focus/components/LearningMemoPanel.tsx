@@ -13,7 +13,7 @@ import {
 } from '../utils/themeUtils'
 
 export const LearningMemoPanel: React.FC = () => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const {
     memo,
     loading,
@@ -35,8 +35,8 @@ export const LearningMemoPanel: React.FC = () => {
     exportMemo
   } = useLearningMemo()
 
-  // 統一テーマシステムを使用
-  const themeMode = theme as ThemeMode
+  // 統一テーマシステムを使用 - resolvedThemeを直接使用
+  const themeMode = resolvedTheme as ThemeMode
   const neutralClasses = getNeutralClasses(themeMode)
   const interactionClasses = getInteractionClasses(themeMode)
 
@@ -132,7 +132,7 @@ export const LearningMemoPanel: React.FC = () => {
   if (error) {
     return (
       <div className={`p-4 rounded-lg border ${
-        theme === 'dark' 
+        themeMode === 'dark' 
           ? 'bg-red-900/20 border-red-800 text-red-200' 
           : 'bg-red-50 border-red-200 text-red-800'
       }`}>
@@ -165,7 +165,7 @@ export const LearningMemoPanel: React.FC = () => {
             className={`p-1 rounded transition-colors ${
               isCompactMode
                 ? 'bg-green-100 dark:bg-green-900/20 text-green-600'
-                : theme === 'dark' 
+                : themeMode === 'dark' 
                 ? 'hover:bg-gray-700 text-gray-400' 
                 : 'hover:bg-gray-100 text-gray-600'
             }`}
@@ -187,7 +187,7 @@ export const LearningMemoPanel: React.FC = () => {
               className={`p-1 rounded transition-colors ${
                 isPreviewMode
                   ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600'
-                  : theme === 'dark' 
+                  : themeMode === 'dark' 
                   ? 'hover:bg-gray-700 text-gray-400' 
                   : 'hover:bg-gray-100 text-gray-600'
               }`}
@@ -372,7 +372,7 @@ Markdownをサポート:
                   <div 
                     key={index}
                     className={`flex items-center justify-between ${isCompactMode ? 'p-1' : 'p-2'} rounded border ${
-                      theme === 'dark' 
+                      themeMode === 'dark' 
                         ? 'bg-gray-700 border-gray-600' 
                         : 'bg-gray-50 border-gray-200'
                     }`}
@@ -397,7 +397,7 @@ Markdownをサポート:
                       onChange={(e) => setNewGoal(e.target.value)}
                       placeholder="新しい目標を追加..."
                       className={`flex-1 p-2 border rounded ${
-                        theme === 'dark' 
+                        themeMode === 'dark' 
                           ? 'border-gray-600 bg-gray-800 text-gray-200' 
                           : 'border-gray-300 bg-white text-gray-900'
                       }`}
@@ -419,7 +419,7 @@ Markdownをサポート:
               <div className="flex items-center space-x-2 mb-2">
                 <Trophy size={16} className="text-green-600" />
                 <span className={`text-sm font-medium ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                  themeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'
                 }`}>
                   達成したこと
                 </span>
@@ -430,7 +430,7 @@ Markdownをサポート:
                   <div 
                     key={index}
                     className={`flex items-center justify-between p-2 rounded border ${
-                      theme === 'dark' 
+                      themeMode === 'dark' 
                         ? 'bg-gray-700 border-gray-600' 
                         : 'bg-gray-50 border-gray-200'
                     }`}
@@ -455,7 +455,7 @@ Markdownをサポート:
                       onChange={(e) => setNewAchievement(e.target.value)}
                       placeholder="達成したことを追加..."
                       className={`flex-1 p-2 border rounded ${
-                        theme === 'dark' 
+                        themeMode === 'dark' 
                           ? 'border-gray-600 bg-gray-800 text-gray-200' 
                           : 'border-gray-300 bg-white text-gray-900'
                       }`}
@@ -477,7 +477,7 @@ Markdownをサポート:
               <div className="flex items-center space-x-2 mb-2">
                 <AlertCircle size={16} className="text-orange-600" />
                 <span className={`text-sm font-medium ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                  themeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'
                 }`}>
                   課題・困ったこと
                 </span>
@@ -488,7 +488,7 @@ Markdownをサポート:
                   <div 
                     key={index}
                     className={`flex items-center justify-between p-2 rounded border ${
-                      theme === 'dark' 
+                      themeMode === 'dark' 
                         ? 'bg-gray-700 border-gray-600' 
                         : 'bg-gray-50 border-gray-200'
                     }`}
@@ -513,7 +513,7 @@ Markdownをサポート:
                       onChange={(e) => setNewChallenge(e.target.value)}
                       placeholder="課題を追加..."
                       className={`flex-1 p-2 border rounded ${
-                        theme === 'dark' 
+                        themeMode === 'dark' 
                           ? 'border-gray-600 bg-gray-800 text-gray-200' 
                           : 'border-gray-300 bg-white text-gray-900'
                       }`}
@@ -536,7 +536,7 @@ Markdownをサポート:
           <div className="space-y-4">
             <div>
               <label className={`block text-sm font-medium mb-1 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                themeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>
                 振り返り
               </label>
@@ -546,7 +546,7 @@ Markdownをサポート:
                 placeholder="今日の学習を振り返って感じたことを記録しましょう..."
                 disabled={!isEditing}
                 className={`w-full p-2 border rounded resize-none ${
-                  theme === 'dark' 
+                  themeMode === 'dark' 
                     ? 'border-gray-600 bg-gray-800 text-gray-200 placeholder-gray-400' 
                     : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
                 } ${!isEditing ? 'bg-opacity-50 cursor-not-allowed' : ''}`}
@@ -556,7 +556,7 @@ Markdownをサポート:
             
             <div>
               <label className={`block text-sm font-medium mb-1 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                themeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>
                 明日の計画
               </label>
@@ -566,7 +566,7 @@ Markdownをサポート:
                 placeholder="明日の学習計画を立てましょう..."
                 disabled={!isEditing}
                 className={`w-full p-2 border rounded resize-none ${
-                  theme === 'dark' 
+                  themeMode === 'dark' 
                     ? 'border-gray-600 bg-gray-800 text-gray-200 placeholder-gray-400' 
                     : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
                 } ${!isEditing ? 'bg-opacity-50 cursor-not-allowed' : ''}`}

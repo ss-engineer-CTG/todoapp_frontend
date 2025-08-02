@@ -15,7 +15,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
   onClose,
   editingFromTagSelection = false
 }) => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const { getCustomTags, getCategoryTags, addTag, updateTag, deleteTag, validateTag } = useCustomTags()
   
   // カスタムタグのみを編集対象とする（カテゴリタグは編集不可）
@@ -211,7 +211,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 z-60 flex items-center justify-center p-4">
       <div 
         className={`w-full max-w-2xl rounded-lg shadow-xl ${
-          theme === 'dark' ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'
+          resolvedTheme === 'dark' ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'
         } max-h-[90vh] overflow-y-auto`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -221,7 +221,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
           <button
             onClick={onClose}
             className={`p-1 rounded-lg transition-colors ${
-              theme === 'dark' 
+              resolvedTheme === 'dark' 
                 ? 'hover:bg-gray-700 text-gray-400' 
                 : 'hover:bg-gray-100 text-gray-600'
             }`}
@@ -237,7 +237,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
             <div 
               key={tag.id} 
               className={`p-4 rounded-lg border ${
-                theme === 'dark' ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'
+                resolvedTheme === 'dark' ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'
               }`}
             >
               <div className="flex items-center justify-between mb-3">
@@ -257,7 +257,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                   }`}>
                     名前
                   </label>
@@ -266,7 +266,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                     value={editingTags[tag.id]?.name || tag.name}
                     onChange={(e) => handleUpdateTag(tag.id, 'name', e.target.value)}
                     className={`w-full px-2 py-1 text-sm border rounded ${
-                      theme === 'dark' 
+                      resolvedTheme === 'dark' 
                         ? 'border-gray-600 bg-gray-800 text-gray-100' 
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
@@ -276,7 +276,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                 
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                   }`}>
                     絵文字
                   </label>
@@ -285,7 +285,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                     value={editingTags[tag.id]?.emoji || tag.emoji}
                     onChange={(e) => handleUpdateTag(tag.id, 'emoji', e.target.value)}
                     className={`w-full px-2 py-1 text-sm border rounded ${
-                      theme === 'dark' 
+                      resolvedTheme === 'dark' 
                         ? 'border-gray-600 bg-gray-800 text-gray-100' 
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
@@ -295,7 +295,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                 
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                   }`}>
                     色
                   </label>
@@ -317,7 +317,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                 
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                   }`}>
                     親カテゴリ
                   </label>
@@ -325,7 +325,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                     value={editingTags[tag.id]?.parentTagId || tag.parentTagId || ''}
                     onChange={(e) => handleUpdateTag(tag.id, 'parentTagId', e.target.value)}
                     className={`w-full px-2 py-1 text-sm border rounded ${
-                      theme === 'dark' 
+                      resolvedTheme === 'dark' 
                         ? 'border-gray-600 bg-gray-800 text-gray-100' 
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
@@ -349,7 +349,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
           {/* 新しいタグ追加 */}
           {isAddingNew && (
             <div className={`p-4 rounded-lg border-2 border-dashed ${
-              theme === 'dark' ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
+              resolvedTheme === 'dark' ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
             }`}>
               <div className="flex items-center space-x-2 mb-3">
                 <Plus size={16} className="text-green-600" />
@@ -359,7 +359,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                   }`}>
                     名前
                   </label>
@@ -368,7 +368,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                     value={newTag.name}
                     onChange={(e) => handleUpdateNewTag('name', e.target.value)}
                     className={`w-full px-2 py-1 text-sm border rounded ${
-                      theme === 'dark' 
+                      resolvedTheme === 'dark' 
                         ? 'border-gray-600 bg-gray-800 text-gray-100' 
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
@@ -378,7 +378,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                 
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                   }`}>
                     絵文字
                   </label>
@@ -387,7 +387,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                     value={newTag.emoji}
                     onChange={(e) => handleUpdateNewTag('emoji', e.target.value)}
                     className={`w-full px-2 py-1 text-sm border rounded ${
-                      theme === 'dark' 
+                      resolvedTheme === 'dark' 
                         ? 'border-gray-600 bg-gray-800 text-gray-100' 
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
@@ -397,7 +397,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                 
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                   }`}>
                     色
                   </label>
@@ -419,7 +419,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                 
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                   }`}>
                     親カテゴリ
                   </label>
@@ -427,7 +427,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
                     value={newTag.parentTagId}
                     onChange={(e) => handleUpdateNewTag('parentTagId', e.target.value)}
                     className={`w-full px-2 py-1 text-sm border rounded ${
-                      theme === 'dark' 
+                      resolvedTheme === 'dark' 
                         ? 'border-gray-600 bg-gray-800 text-gray-100' 
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
@@ -453,7 +453,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
             <button
               onClick={toggleAddingNew}
               className={`w-full p-3 border-2 border-dashed rounded-lg transition-colors flex items-center justify-center space-x-2 ${
-                theme === 'dark' 
+                resolvedTheme === 'dark' 
                   ? 'border-gray-600 text-gray-400 hover:border-gray-500' 
                   : 'border-gray-300 text-gray-500 hover:border-gray-400'
               }`}
@@ -469,7 +469,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
           <button
             onClick={onClose}
             className={`px-4 py-2 border rounded-lg transition-colors ${
-              theme === 'dark' 
+              resolvedTheme === 'dark' 
                 ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
                 : 'border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
@@ -490,7 +490,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
 
         {/* ヒント */}
         <div className={`px-4 pb-4 text-xs text-center ${
-          theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+          resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
         }`}>
           絵文字を含めて設定できます
         </div>

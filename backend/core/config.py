@@ -30,7 +30,9 @@ class Config:
         # CORS設定
         self.cors_origins = [
             "http://localhost:3000",
-            "http://127.0.0.1:3000"
+            "http://localhost:3001",  # Vite fallback port
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001"
         ]
     
     def get_database_url(self) -> str:

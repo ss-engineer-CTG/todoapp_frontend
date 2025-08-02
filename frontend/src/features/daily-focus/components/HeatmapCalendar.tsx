@@ -10,7 +10,7 @@ interface HeatmapCalendarProps {
 }
 
 export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }) => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const { getCategoryTags } = useCustomTags()
   const { 
     heatmapData, 
@@ -229,7 +229,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
   if (error) {
     return (
       <div className={`p-4 rounded-lg border ${
-        theme === 'dark' 
+        resolvedTheme === 'dark' 
           ? 'bg-red-900/20 border-red-800 text-red-200' 
           : 'bg-red-50 border-red-200 text-red-800'
       }`}>
@@ -243,7 +243,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <h3 className={`text-md font-semibold flex items-center ${
-          theme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+          resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
         }`}>
           <Calendar className="mr-2" size={18} />
           学習ヒートマップ
@@ -251,14 +251,14 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
         
         {/* フィルター選択 */}
         <div className="flex items-center space-x-2">
-          <Filter size={14} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+          <Filter size={14} className={resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
           
           {/* カテゴリフィルター（従来） */}
           <select
             value={config.selectedCategory}
             onChange={(e) => handleCategoryFilter(e.target.value as LearningCategory | 'all')}
             className={`text-xs px-2 py-1 border rounded ${
-              theme === 'dark' 
+              resolvedTheme === 'dark' 
                 ? 'border-gray-600 bg-gray-800 text-gray-200' 
                 : 'border-gray-300 bg-white text-gray-900'
             }`}
@@ -275,7 +275,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
           <select
             onChange={(e) => handleTagFilter(e.target.value)}
             className={`text-xs px-2 py-1 border rounded ${
-              theme === 'dark' 
+              resolvedTheme === 'dark' 
                 ? 'border-gray-600 bg-gray-800 text-gray-200' 
                 : 'border-gray-300 bg-white text-gray-900'
             }`}
@@ -294,60 +294,60 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
       {/* 統計情報 */}
       <div className="grid grid-cols-3 gap-3">
         <div className={`p-3 rounded-lg border ${
-          theme === 'dark' 
+          resolvedTheme === 'dark' 
             ? 'bg-blue-900/20 border-blue-800' 
             : 'bg-blue-50 border-blue-200'
         }`}>
           <div className="flex items-center space-x-2">
             <TrendingUp size={16} className="text-blue-600" />
             <span className={`text-xs font-medium ${
-              theme === 'dark' ? 'text-blue-200' : 'text-blue-800'
+              resolvedTheme === 'dark' ? 'text-blue-200' : 'text-blue-800'
             }`}>
               現在の連続
             </span>
           </div>
           <p className={`text-lg font-bold ${
-            theme === 'dark' ? 'text-blue-100' : 'text-blue-900'
+            resolvedTheme === 'dark' ? 'text-blue-100' : 'text-blue-900'
           }`}>
             {currentStreak.days}日
           </p>
         </div>
         
         <div className={`p-3 rounded-lg border ${
-          theme === 'dark' 
+          resolvedTheme === 'dark' 
             ? 'bg-green-900/20 border-green-800' 
             : 'bg-green-50 border-green-200'
         }`}>
           <div className="flex items-center space-x-2">
             <Target size={16} className="text-green-600" />
             <span className={`text-xs font-medium ${
-              theme === 'dark' ? 'text-green-200' : 'text-green-800'
+              resolvedTheme === 'dark' ? 'text-green-200' : 'text-green-800'
             }`}>
               最長連続
             </span>
           </div>
           <p className={`text-lg font-bold ${
-            theme === 'dark' ? 'text-green-100' : 'text-green-900'
+            resolvedTheme === 'dark' ? 'text-green-100' : 'text-green-900'
           }`}>
             {longestStreak.days}日
           </p>
         </div>
         
         <div className={`p-3 rounded-lg border ${
-          theme === 'dark' 
+          resolvedTheme === 'dark' 
             ? 'bg-purple-900/20 border-purple-800' 
             : 'bg-purple-50 border-purple-200'
         }`}>
           <div className="flex items-center space-x-2">
             <Clock size={16} className="text-purple-600" />
             <span className={`text-xs font-medium ${
-              theme === 'dark' ? 'text-purple-200' : 'text-purple-800'
+              resolvedTheme === 'dark' ? 'text-purple-200' : 'text-purple-800'
             }`}>
               総学習時間
             </span>
           </div>
           <p className={`text-lg font-bold ${
-            theme === 'dark' ? 'text-purple-100' : 'text-purple-900'
+            resolvedTheme === 'dark' ? 'text-purple-100' : 'text-purple-900'
           }`}>
             {formatDuration(monthlyStats.totalMinutes)}
           </p>
@@ -365,7 +365,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
             key={period.value}
             onClick={() => handlePeriodChange(period.value as 'week' | 'month' | 'quarter')}
             className={`px-3 py-1 text-xs rounded transition-colors ${
-              theme === 'dark'
+              resolvedTheme === 'dark'
                 ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
@@ -403,7 +403,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
                   <div
                     key={`month-${weekIndex}`}
                     className={`absolute text-xs ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                     }`}
                     style={{
                       left: `${weekIndex * 14}px`, // セル幅12px + gap 2px = 14px
@@ -453,7 +453,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
                       <div
                         key={data.date}
                         className={`w-3 h-3 rounded-sm cursor-pointer transition-all hover:scale-125 border ${
-                          theme === 'dark' ? 'border-gray-600' : 'border-gray-200'
+                          resolvedTheme === 'dark' ? 'border-gray-600' : 'border-gray-200'
                         } ${selectedDate === data.date ? 'ring-2 ring-blue-500' : ''} ${
                           isToday ? 'animate-pulse ring-1 ring-blue-400' : ''
                         }`}
@@ -477,7 +477,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
 
       {/* 凡例 */}
       <div className="flex items-center justify-between text-xs">
-        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+        <span className={resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
           少ない
         </span>
         <div className="flex space-x-1">
@@ -489,7 +489,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
             />
           ))}
         </div>
-        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+        <span className={resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
           多い
         </span>
       </div>
@@ -498,7 +498,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
       {tooltipData && (
         <div
           className={`fixed z-50 p-3 rounded-lg shadow-lg border max-w-xs ${
-            theme === 'dark' 
+            resolvedTheme === 'dark' 
               ? 'bg-gray-800 border-gray-700 text-gray-100' 
               : 'bg-white border-gray-200 text-gray-900'
           }`}

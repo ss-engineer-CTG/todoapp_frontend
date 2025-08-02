@@ -46,7 +46,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   selectedProjectId, // 🆕 追加
   refreshTasks // 🆕 追加
 }) => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   
   // ダイアログの状態管理
   const [isDateShiftDialogOpen, setIsDateShiftDialogOpen] = useState(false)
@@ -428,7 +428,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   }, [tasks, getSelectedTasks, clearSelection, onTaskUpdate])
 
   const getAppClasses = useCallback(() => {
-    return theme === 'dark' 
+    return resolvedTheme === 'dark' 
       ? {
           app: "bg-gray-950 text-gray-50",
           dateHeader: "bg-gray-900 border-gray-600 text-white"
@@ -437,7 +437,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
           app: "bg-gray-50 text-gray-900",
           dateHeader: "bg-white border-gray-300 text-gray-900"
         }
-  }, [theme])
+  }, [resolvedTheme])
 
   const classes = getAppClasses()
 
@@ -552,7 +552,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
             selectedTasks={getSelectedTasks(tasks)}
             onDateShift={handleDateShift}
             onClearSelection={clearSelection}
-            theme={theme === 'dark' ? 'dark' : 'light'}
+            theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
           />
           
           <main className="flex-1 flex flex-col overflow-hidden w-full min-w-0" style={{ height: 'calc(100vh - 114px)' }}>
@@ -572,9 +572,9 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                         width: `${monthGroup.width}px`,
                         minWidth: `${monthGroup.width}px`,
                         borderRightWidth: '3px',
-                        borderRightColor: theme === 'dark' ? '#6366f1' : '#4f46e5',
+                        borderRightColor: resolvedTheme === 'dark' ? '#6366f1' : '#4f46e5',
                         fontSize: `${dynamicFontSizes.base}px`,
-                        backgroundColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(79, 70, 229, 0.05)'
+                        backgroundColor: resolvedTheme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(79, 70, 229, 0.05)'
                       }}
                     >
                       <div className="text-indigo-700 dark:text-indigo-300 font-bold">
@@ -596,12 +596,12 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                     return (
                       <div 
                         key={date.getTime()} 
-                        className={`text-center font-semibold py-1 border-r ${classes.dateHeader} ${getDateCellClass(date, today, theme)} flex items-center justify-center`}
+                        className={`text-center font-semibold py-1 border-r ${classes.dateHeader} ${getDateCellClass(date, today, resolvedTheme)} flex items-center justify-center`}
                         style={{ 
                           width: `${dimensions.cellWidth}px`,
                           minWidth: `${dimensions.cellWidth}px`,
                           borderRightWidth: isLastDateOfMonth ? '3px' : isFirstWeek ? '2px' : '1px',
-                          borderRightColor: isLastDateOfMonth ? (theme === 'dark' ? '#6366f1' : '#4f46e5') : isFirstWeek ? (theme === 'dark' ? '#6b7280' : '#9ca3af') : (theme === 'dark' ? '#4b5563' : '#d1d5db'),
+                          borderRightColor: isLastDateOfMonth ? (resolvedTheme === 'dark' ? '#6366f1' : '#4f46e5') : isFirstWeek ? (resolvedTheme === 'dark' ? '#6b7280' : '#9ca3af') : (resolvedTheme === 'dark' ? '#4b5563' : '#d1d5db'),
                           fontSize: `${dynamicFontSizes.small}px`
                         }}
                       >
@@ -639,9 +639,9 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
                         width: `${dimensions.cellWidth * 7}px`,
                         minWidth: `${dimensions.cellWidth * 7}px`,
                         borderRightWidth: isLastWeekOfMonth ? '4px' : '2px',
-                        borderRightColor: isLastWeekOfMonth ? (theme === 'dark' ? '#6366f1' : '#4f46e5') : (theme === 'dark' ? '#6b7280' : '#9ca3af'),
+                        borderRightColor: isLastWeekOfMonth ? (resolvedTheme === 'dark' ? '#6366f1' : '#4f46e5') : (resolvedTheme === 'dark' ? '#6b7280' : '#9ca3af'),
                         borderLeftWidth: isFirstMonth ? '4px' : '0px',
-                        borderLeftColor: isFirstMonth ? (theme === 'dark' ? '#6366f1' : '#4f46e5') : undefined,
+                        borderLeftColor: isFirstMonth ? (resolvedTheme === 'dark' ? '#6366f1' : '#4f46e5') : undefined,
                       }}
                     >
                       <div className="font-bold text-gray-900 dark:text-white" style={{ fontSize: `${dynamicFontSizes.base}px` }}>
@@ -672,7 +672,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
           ref={timelineRef}
           style={{
             scrollbarWidth: 'thin',
-            scrollbarColor: theme === 'dark' ? '#6b7280 #1f2937' : '#9ca3af #ffffff'
+            scrollbarColor: resolvedTheme === 'dark' ? '#6b7280 #1f2937' : '#9ca3af #ffffff'
           }}
         >
           {/* 🔧 修正：TimelineRendererに行選択機能を渡す */}
@@ -682,7 +682,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
             taskRelationMap={taskRelationMap}
             zoomLevel={state.zoomLevel}
             viewUnit={state.viewUnit}
-            theme={theme === 'dark' ? 'dark' : 'light'}
+            theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
             timeRange={timeRange}
             visibleDates={visibleDates}
             scrollLeft={state.scrollLeft}

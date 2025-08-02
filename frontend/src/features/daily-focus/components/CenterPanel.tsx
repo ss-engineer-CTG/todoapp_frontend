@@ -13,7 +13,7 @@ import { FocusTodo, LearningCategory } from '../types'
 import { todoStorage, initializeStorage } from '../utils/storage'
 
 export const CenterPanel: React.FC = () => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const { goals } = useGoals()
   const { tags } = useCustomTags()
   const { selection, getSelectableProps } = useSelection()
@@ -232,14 +232,14 @@ export const CenterPanel: React.FC = () => {
   // タグの色クラス取得
   const getTagColorClasses = (color: string) => {
     const colorMap: Record<string, string> = {
-      blue: theme === 'dark' ? 'bg-blue-900/30 text-blue-200' : 'bg-blue-100 text-blue-800',
-      green: theme === 'dark' ? 'bg-green-900/30 text-green-200' : 'bg-green-100 text-green-800',
-      purple: theme === 'dark' ? 'bg-purple-900/30 text-purple-200' : 'bg-purple-100 text-purple-800',
-      orange: theme === 'dark' ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-100 text-orange-800',
-      teal: theme === 'dark' ? 'bg-teal-900/30 text-teal-200' : 'bg-teal-100 text-teal-800',
-      rose: theme === 'dark' ? 'bg-rose-900/30 text-rose-200' : 'bg-rose-100 text-rose-800'
+      blue: resolvedTheme === 'dark' ? 'bg-blue-900/30 text-blue-200' : 'bg-blue-100 text-blue-800',
+      green: resolvedTheme === 'dark' ? 'bg-green-900/30 text-green-200' : 'bg-green-100 text-green-800',
+      purple: resolvedTheme === 'dark' ? 'bg-purple-900/30 text-purple-200' : 'bg-purple-100 text-purple-800',
+      orange: resolvedTheme === 'dark' ? 'bg-orange-900/30 text-orange-200' : 'bg-orange-100 text-orange-800',
+      teal: resolvedTheme === 'dark' ? 'bg-teal-900/30 text-teal-200' : 'bg-teal-100 text-teal-800',
+      rose: resolvedTheme === 'dark' ? 'bg-rose-900/30 text-rose-200' : 'bg-rose-100 text-rose-800'
     }
-    return colorMap[color] || (theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800')
+    return colorMap[color] || (resolvedTheme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800')
   }
 
   // 現在の日付文字列を取得
@@ -267,7 +267,7 @@ export const CenterPanel: React.FC = () => {
         <div className="flex items-center justify-between mb-2">
           <h2 
             id="todo-section-title"
-            className={`text-lg font-semibold flex items-center ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}
+            className={`text-lg font-semibold flex items-center ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}
           >
             <CheckSquare className="mr-2" size={20} aria-hidden="true" />
             今日のToDo
@@ -279,7 +279,7 @@ export const CenterPanel: React.FC = () => {
             <button
               onClick={() => setShowNotificationCenter(true)}
               className={`relative p-2 rounded-lg transition-colors ${
-                theme === 'dark' 
+                resolvedTheme === 'dark' 
                   ? 'hover:bg-gray-700 text-gray-400' 
                   : 'hover:bg-gray-100 text-gray-600'
               }`}
@@ -299,7 +299,7 @@ export const CenterPanel: React.FC = () => {
               className={`p-2 rounded-lg transition-colors ${
                 showMonthlyReport
                   ? 'bg-rose-600 text-white'
-                  : theme === 'dark' 
+                  : resolvedTheme === 'dark' 
                   ? 'hover:bg-gray-700 text-gray-400' 
                   : 'hover:bg-gray-100 text-gray-600'
               }`}
@@ -311,7 +311,7 @@ export const CenterPanel: React.FC = () => {
         </div>
         
         <time 
-          className={`text-sm mb-4 block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}
+          className={`text-sm mb-4 block ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}
           dateTime={new Date().toISOString().split('T')[0]}
         >
           {getCurrentDateString()}
@@ -331,7 +331,7 @@ export const CenterPanel: React.FC = () => {
               key={todo.id}
               {...getSelectableProps(todo.id, 'todo')}
               className={`flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200 ease-in-out hover:scale-[1.01] ${
-                theme === 'dark' 
+                resolvedTheme === 'dark' 
                   ? 'bg-gray-700 hover:bg-gray-600' 
                   : 'bg-gray-50 hover:bg-gray-100'
               } ${getSelectableProps(todo.id, 'todo').className}`}
@@ -394,7 +394,7 @@ export const CenterPanel: React.FC = () => {
         {todos.length === 0 && (
           <div 
             className={`text-center py-8 ${
-              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
             }`}
             role="status"
             aria-live="polite"
@@ -425,7 +425,7 @@ export const CenterPanel: React.FC = () => {
             }
             aria-describedby="add-todo-help"
             className={`flex-1 p-2 border rounded-l-lg ${
-              theme === 'dark' 
+              resolvedTheme === 'dark' 
                 ? 'border-gray-600 bg-gray-800 text-gray-200 placeholder-gray-400' 
                 : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
             }`}
@@ -447,7 +447,7 @@ export const CenterPanel: React.FC = () => {
           <p 
             id="add-todo-help"
             className={`text-xs mt-2 ${
-              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
             }`}
             role="note"
           >

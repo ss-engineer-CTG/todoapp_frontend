@@ -15,7 +15,7 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({
   isResizing,
   className = ''
 }) => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
 
   return (
     <div
@@ -28,7 +28,7 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({
         w-2 h-full cursor-col-resize
         hover:bg-blue-500/20 transition-colors
         group relative
-        ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}
+        ${resolvedTheme === 'dark' ? 'border-gray-600' : 'border-gray-300'}
       `}
       onMouseDown={onMouseDown}
       title={`${position === 'left' ? '左' : '右'}パネルをリサイズ`}
@@ -40,7 +40,7 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({
           ${
             isResizing
               ? 'bg-blue-500'
-              : theme === 'dark'
+              : resolvedTheme === 'dark'
               ? 'bg-gray-500 group-hover:bg-blue-400'
               : 'bg-gray-400 group-hover:bg-blue-500'
           }
@@ -61,7 +61,7 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({
             ${
               isResizing
                 ? 'text-blue-500'
-                : theme === 'dark'
+                : resolvedTheme === 'dark'
                 ? 'text-gray-300'
                 : 'text-gray-600'
             }

@@ -11,7 +11,7 @@ interface NotificationData {
 }
 
 export const NotificationToast: React.FC = () => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const [notifications, setNotifications] = useState<NotificationData[]>([])
 
   // 通知イベントリスナー
@@ -61,14 +61,14 @@ export const NotificationToast: React.FC = () => {
 
   // 通知のスタイルを取得
   const getNotificationStyles = (type: NotificationData['type']) => {
-    const baseStyles = theme === 'dark' 
+    const baseStyles = resolvedTheme === 'dark' 
       ? 'bg-gray-800 border-gray-700 text-gray-100' 
       : 'bg-white border-gray-200 text-gray-900'
 
     const typeStyles = {
-      info: theme === 'dark' ? 'border-l-blue-500' : 'border-l-blue-600',
-      warning: theme === 'dark' ? 'border-l-yellow-500' : 'border-l-yellow-600',
-      success: theme === 'dark' ? 'border-l-green-500' : 'border-l-green-600'
+      info: resolvedTheme === 'dark' ? 'border-l-blue-500' : 'border-l-blue-600',
+      warning: resolvedTheme === 'dark' ? 'border-l-yellow-500' : 'border-l-yellow-600',
+      success: resolvedTheme === 'dark' ? 'border-l-green-500' : 'border-l-green-600'
     }
 
     return `${baseStyles} ${typeStyles[type]} border-l-4`
@@ -92,7 +92,7 @@ export const NotificationToast: React.FC = () => {
                 {notification.title}
               </h4>
               <p className={`text-sm mt-1 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'
               }`}>
                 {notification.message}
               </p>
@@ -100,7 +100,7 @@ export const NotificationToast: React.FC = () => {
             <button
               onClick={() => dismissNotification(notification.id)}
               className={`flex-shrink-0 p-1 rounded-lg transition-colors ${
-                theme === 'dark' 
+                resolvedTheme === 'dark' 
                   ? 'hover:bg-gray-700 text-gray-400' 
                   : 'hover:bg-gray-100 text-gray-500'
               }`}

@@ -6,7 +6,7 @@ import time
 import uuid
 from typing import Callable
 from fastapi import Request, Response, HTTPException
-from fastapi.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from .logger import get_logger, LogCategory
@@ -199,68 +199,68 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             
-            # 4xx, 5xxエラーの場合はエラーモニタリングに報告
-            if response.status_code >= 400:
-                from features.error_monitoring.service import error_monitoring_service
-                from features.error_monitoring.models import ErrorCategory, ErrorSeverity
-                
-                # エラーカテゴリ判定
-                if response.status_code >= 500:
-                    category = ErrorCategory.API
-                    severity = ErrorSeverity.HIGH
-                elif response.status_code == 401:
-                    category = ErrorCategory.AUTHENTICATION
-                    severity = ErrorSeverity.MEDIUM
-                elif response.status_code == 403:
-                    category = ErrorCategory.AUTHORIZATION
-                    severity = ErrorSeverity.MEDIUM
-                elif response.status_code == 404:
-                    category = ErrorCategory.API
-                    severity = ErrorSeverity.LOW
-                else:
-                    category = ErrorCategory.API
-                    severity = ErrorSeverity.MEDIUM
-                
-                # エラーレポート作成
-                error_monitoring_service.report_error(
-                    message=f"HTTP {response.status_code} - {request.method} {request.url}",
-                    category=category,
-                    severity=severity,
-                    context={
-                        "status_code": response.status_code,
-                        "method": request.method,
-                        "url": str(request.url),
-                        "headers": dict(request.headers)
-                    },
-                    user_id=request.headers.get("X-User-ID"),
-                    session_id=request.headers.get("X-Session-ID"),
-                    request_id=request.headers.get("X-Correlation-ID"),
-                    url=str(request.url),
-                    user_agent=request.headers.get("user-agent")
-                )
+            # TODO: 4xx, 5xxエラーの場合はエラーモニタリングに報告（一時的に無効化）
+            # if response.status_code >= 400:
+            #     from features.error_monitoring.service import error_monitoring_service
+            #     from features.error_monitoring.models import ErrorCategory, ErrorSeverity
+            #     
+            #     # エラーカテゴリ判定
+            #     if response.status_code >= 500:
+            #         category = ErrorCategory.API
+            #         severity = ErrorSeverity.HIGH
+            #     elif response.status_code == 401:
+            #         category = ErrorCategory.AUTHENTICATION
+            #         severity = ErrorSeverity.MEDIUM
+            #     elif response.status_code == 403:
+            #         category = ErrorCategory.AUTHORIZATION
+            #         severity = ErrorSeverity.MEDIUM
+            #     elif response.status_code == 404:
+            #         category = ErrorCategory.API
+            #         severity = ErrorSeverity.LOW
+            #     else:
+            #         category = ErrorCategory.API
+            #         severity = ErrorSeverity.MEDIUM
+            #     
+            #     # エラーレポート作成
+            #     error_monitoring_service.report_error(
+            #         message=f"HTTP {response.status_code} - {request.method} {request.url}",
+            #         category=category,
+            #         severity=severity,
+            #         context={
+            #             "status_code": response.status_code,
+            #             "method": request.method,
+            #             "url": str(request.url),
+            #             "headers": dict(request.headers)
+            #         },
+            #         user_id=request.headers.get("X-User-ID"),
+            #         session_id=request.headers.get("X-Session-ID"),
+            #         request_id=request.headers.get("X-Correlation-ID"),
+            #         url=str(request.url),
+            #         user_agent=request.headers.get("user-agent")
+            #     )
             
             return response
             
         except Exception as e:
-            # 未処理例外をエラーモニタリングに報告
-            from features.error_monitoring.service import error_monitoring_service
-            from features.error_monitoring.models import ErrorCategory, ErrorSeverity
-            
-            error_monitoring_service.report_error(
-                message=f"Unhandled exception: {str(e)}",
-                category=ErrorCategory.SYSTEM,
-                severity=ErrorSeverity.CRITICAL,
-                stack_trace=str(e.__traceback__) if hasattr(e, '__traceback__') else None,
-                context={
-                    "method": request.method,
-                    "url": str(request.url),
-                    "exception_type": type(e).__name__
-                },
-                user_id=request.headers.get("X-User-ID"),
-                session_id=request.headers.get("X-Session-ID"),
-                request_id=request.headers.get("X-Correlation-ID"),
-                url=str(request.url),
-                user_agent=request.headers.get("user-agent")
-            )
+            # TODO: 未処理例外をエラーモニタリングに報告（一時的に無効化）
+            # from features.error_monitoring.service import error_monitoring_service
+            # from features.error_monitoring.models import ErrorCategory, ErrorSeverity
+            # 
+            # error_monitoring_service.report_error(
+            #     message=f"Unhandled exception: {str(e)}",
+            #     category=ErrorCategory.SYSTEM,
+            #     severity=ErrorSeverity.CRITICAL,
+            #     stack_trace=str(e.__traceback__) if hasattr(e, '__traceback__') else None,
+            #     context={
+            #         "method": request.method,
+            #         "url": str(request.url),
+            #         "exception_type": type(e).__name__
+            #     },
+            #     user_id=request.headers.get("X-User-ID"),
+            #     session_id=request.headers.get("X-Session-ID"),
+            #     request_id=request.headers.get("X-Correlation-ID"),
+            #     url=str(request.url),
+            #     user_agent=request.headers.get("user-agent")
+            # )
             
             raise

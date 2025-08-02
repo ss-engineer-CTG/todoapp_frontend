@@ -23,7 +23,11 @@
       "Bash(npx husky:*)",
       "Bash(chmod:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(python:*)",
+      "Bash(pkill:*)",
+      "Bash(true)",
+      "Bash(echo:*)"
     ],
     "deny": []
   }

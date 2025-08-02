@@ -79,6 +79,17 @@ export const TaskRow: React.FC<TaskRowProps> = ({
 }) => {
   const { task } = taskWithChildren
   
+  // インデント計算
+  const indent = calculateIndent(task.level)
+  
+  // タスクバー関連の計算
+  const startPos = task.startDate ? getDatePosition(new Date(task.startDate), timeRange.startDate, dimensions.cellWidth, viewUnit) : 0
+  const endPos = task.dueDate ? getDatePosition(new Date(task.dueDate), timeRange.startDate, dimensions.cellWidth, viewUnit) : startPos + 100
+  const barWidth = Math.max(endPos - startPos, 50) // 最小幅50px
+  const barHeight = dimensions.taskBarHeight
+  const statusStyle = getTaskStatusStyle(task)
+  const isCurrentlyDragging = isDragging
+  
   // React Hooksを早期リターンより前に置く
   // 行の視覚的スタイル
   const getRowStyle = useCallback(() => {

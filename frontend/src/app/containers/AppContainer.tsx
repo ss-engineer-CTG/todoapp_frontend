@@ -2,7 +2,7 @@
 // リファクタリング対象：TodoApp.tsx から状態管理とAPI呼び出し処理を抽出
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { AreaType, Task, AppViewMode } from '@core/types'
+import { AreaType, Task, AppViewMode, BatchOperation } from '@core/types'
 import { 
   useAppState,
   useTaskOperations,

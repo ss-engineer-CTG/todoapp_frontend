@@ -35,7 +35,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',  // DevContainer対応：外部からのアクセスを許可
-    port: 5173,  // 別のポートを試用
+    port: APP_CONFIG.PORTS.FRONTEND,  // CLAUDE.md仕様に準拠：3000番
     proxy: {
       '/api': {
         target: `http://localhost:${APP_CONFIG.PORTS.BACKEND}`,

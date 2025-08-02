@@ -4,7 +4,7 @@ import { Settings, RotateCcw, Layout, Maximize2, Minimize2 } from 'lucide-react'
 import { usePanelResize } from '../hooks/usePanelResize'
 
 export const PanelResizeControls: React.FC = () => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const { 
     panelSizes, 
     resetToDefault, 
@@ -53,7 +53,7 @@ export const PanelResizeControls: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className={`
           p-2 rounded-lg transition-colors
-          ${theme === 'dark' 
+          ${resolvedTheme === 'dark' 
             ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' 
             : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
           }
@@ -68,7 +68,7 @@ export const PanelResizeControls: React.FC = () => {
         <div
           className={`
             absolute top-12 right-0 z-50 w-80 p-4 rounded-lg shadow-lg border
-            ${theme === 'dark' 
+            ${resolvedTheme === 'dark' 
               ? 'bg-gray-800 border-gray-700 text-gray-100' 
               : 'bg-white border-gray-200 text-gray-900'
             }
@@ -81,7 +81,7 @@ export const PanelResizeControls: React.FC = () => {
               onClick={() => setIsOpen(false)}
               className={`
                 p-1 rounded transition-colors
-                ${theme === 'dark' 
+                ${resolvedTheme === 'dark' 
                   ? 'hover:bg-gray-700 text-gray-400' 
                   : 'hover:bg-gray-100 text-gray-600'
                 }
@@ -126,7 +126,7 @@ export const PanelResizeControls: React.FC = () => {
                   onClick={() => applyPreset(preset.id as any)}
                   className={`
                     w-full p-2 rounded-lg text-left transition-colors
-                    ${theme === 'dark' 
+                    ${resolvedTheme === 'dark' 
                       ? 'bg-gray-700 hover:bg-gray-600' 
                       : 'bg-gray-50 hover:bg-gray-100'
                     }
@@ -136,7 +136,7 @@ export const PanelResizeControls: React.FC = () => {
                     <preset.icon size={14} />
                     <div className="flex-1">
                       <div className="text-xs font-medium">{preset.name}</div>
-                      <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <div className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                         {preset.description}
                       </div>
                     </div>
@@ -151,7 +151,7 @@ export const PanelResizeControls: React.FC = () => {
             onClick={resetToDefault}
             className={`
               w-full p-2 rounded-lg transition-colors flex items-center justify-center space-x-2
-              ${theme === 'dark' 
+              ${resolvedTheme === 'dark' 
                 ? 'bg-blue-900/20 hover:bg-blue-900/30 text-blue-400' 
                 : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
               }
@@ -164,7 +164,7 @@ export const PanelResizeControls: React.FC = () => {
           {/* 使用方法 */}
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <h4 className="text-xs font-medium mb-2">使用方法</h4>
-            <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            <div className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
               <p>パネル間の境界線をドラッグしてサイズを調整できます。</p>
               <p className="mt-1">最小サイズ: 20%、最大サイズ: 60%</p>
             </div>

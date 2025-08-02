@@ -42,15 +42,15 @@ export const KeyboardNavigableModal: React.FC<KeyboardNavigableModalProps> = ({
   initialFocusRef,
   role = 'dialog'
 }) => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const modalRef = useRef<HTMLDivElement>(null)
   const titleIdSuffix = useId()
   const subtitleIdSuffix = useId()
   const titleId = `modal-title-${titleIdSuffix}`
   const subtitleId = subtitle ? `modal-subtitle-${subtitleIdSuffix}` : undefined
   
-  // 統一テーマシステムを使用
-  const themeMode = theme as ThemeMode
+  // 統一テーマシステムを使用 - resolvedThemeを直接使用
+  const themeMode = resolvedTheme as ThemeMode
   const neutralClasses = getNeutralClasses(themeMode)
   const interactionClasses = getInteractionClasses(themeMode)
 

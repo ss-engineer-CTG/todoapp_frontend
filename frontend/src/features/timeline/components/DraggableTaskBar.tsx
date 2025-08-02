@@ -72,7 +72,7 @@ export const DraggableTaskBar: React.FC<DraggableTaskBarProps> = ({
 }) => {
   const { task, hasChildren, childrenCount } = taskWithChildren
   const isTaskDraft = isDraftTask(task)
-  const { theme: currentTheme } = useTheme()
+  const { resolvedTheme: currentTheme } = useTheme()
   
   // タスク期間の計算
   const taskDuration = calculateTaskDuration(new Date(task.startDate), new Date(task.dueDate))

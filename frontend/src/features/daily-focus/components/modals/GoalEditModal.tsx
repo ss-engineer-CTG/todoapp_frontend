@@ -23,7 +23,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
   goal,
   mode
 }) => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const { getCategoryTags, getAllTags, getTagById } = useCustomTags()
   
   const [formData, setFormData] = useState({
@@ -167,7 +167,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div 
         className={`w-full max-w-md rounded-lg shadow-xl ${
-          theme === 'dark' ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'
+          resolvedTheme === 'dark' ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -187,7 +187,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
           <button
             onClick={onClose}
             className={`p-1 rounded-lg transition-colors ${
-              theme === 'dark' 
+              resolvedTheme === 'dark' 
                 ? 'hover:bg-gray-700 text-gray-400' 
                 : 'hover:bg-gray-100 text-gray-600'
             }`}
@@ -201,7 +201,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
           {/* タイトル */}
           <div>
             <label className={`block text-sm font-medium mb-2 ${
-              theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
             }`}>
               タイトル *
             </label>
@@ -210,7 +210,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg ${
-                theme === 'dark' 
+                resolvedTheme === 'dark' 
                   ? 'border-gray-600 bg-gray-700 text-gray-100' 
                   : 'border-gray-300 bg-white text-gray-900'
               } ${errors.title ? 'border-red-500' : ''}`}
@@ -225,7 +225,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
           {/* 説明 */}
           <div>
             <label className={`block text-sm font-medium mb-2 ${
-              theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
             }`}>
               説明 *
             </label>
@@ -233,7 +233,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg resize-none ${
-                theme === 'dark' 
+                resolvedTheme === 'dark' 
                   ? 'border-gray-600 bg-gray-700 text-gray-100' 
                   : 'border-gray-300 bg-white text-gray-900'
               } ${errors.description ? 'border-red-500' : ''}`}
@@ -245,7 +245,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
               <p className="mt-1 text-sm text-red-500">{errors.description}</p>
             )}
             <p className={`mt-1 text-xs ${
-              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
             }`}>
               {formData.description.length}/500文字
             </p>
@@ -254,7 +254,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
           {/* 色選択 */}
           <div>
             <label className={`block text-sm font-medium mb-2 ${
-              theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
             }`}>
               色
             </label>
@@ -286,7 +286,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
           {mode === 'monthly' && (
             <div>
               <label className={`block text-sm font-medium mb-2 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>
                 目標月 *
               </label>
@@ -294,7 +294,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
                 value={formData.targetMonth}
                 onChange={(e) => handleInputChange('targetMonth', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg ${
-                  theme === 'dark' 
+                  resolvedTheme === 'dark' 
                     ? 'border-gray-600 bg-gray-700 text-gray-100' 
                     : 'border-gray-300 bg-white text-gray-900'
                 }`}
@@ -306,7 +306,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
                 ))}
               </select>
               <p className={`text-xs mt-1 ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
               }`}>
                 月次目標は指定した月の終わりに自動的にアーカイブされます
               </p>
@@ -317,7 +317,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
           {mode !== 'monthly' && (
             <div>
               <label className={`block text-sm font-medium mb-2 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>
                 カテゴリタグ（任意）
               </label>
@@ -328,7 +328,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
                     className={`flex items-center p-2 rounded-lg border cursor-pointer transition-colors ${
                       formData.tagIds.includes(tag.id)
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : theme === 'dark'
+                        : resolvedTheme === 'dark'
                         ? 'border-gray-600 hover:bg-gray-700'
                         : 'border-gray-300 hover:bg-gray-50'
                     }`}
@@ -359,7 +359,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
               </div>
               {formData.tagIds.length === 0 && (
                 <p className={`text-xs mt-1 ${
-                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                  resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>
                   カテゴリタグを選択すると、統計やフィルタリングで利用できます
                 </p>
@@ -373,7 +373,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
               type="button"
               onClick={onClose}
               className={`flex-1 px-4 py-2 border rounded-lg transition-colors ${
-                theme === 'dark' 
+                resolvedTheme === 'dark' 
                   ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
                   : 'border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}

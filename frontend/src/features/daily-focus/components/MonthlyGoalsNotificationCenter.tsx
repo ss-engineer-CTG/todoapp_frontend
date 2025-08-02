@@ -14,7 +14,7 @@ export const MonthlyGoalsNotificationCenter: React.FC<NotificationCenterProps> =
   isOpen,
   onClose
 }) => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const {
     notifications,
     lifecycleState,
@@ -44,25 +44,25 @@ export const MonthlyGoalsNotificationCenter: React.FC<NotificationCenterProps> =
     switch (type) {
       case 'goal-expired':
         return `${baseClasses} ${
-          theme === 'dark' 
+          resolvedTheme === 'dark' 
             ? 'bg-red-900/20 border-red-800' 
             : 'bg-red-50 border-red-200'
         }`
       case 'archive-completed':
         return `${baseClasses} ${
-          theme === 'dark' 
+          resolvedTheme === 'dark' 
             ? 'bg-green-900/20 border-green-800' 
             : 'bg-green-50 border-green-200'
         }`
       case 'month-end':
         return `${baseClasses} ${
-          theme === 'dark' 
+          resolvedTheme === 'dark' 
             ? 'bg-blue-900/20 border-blue-800' 
             : 'bg-blue-50 border-blue-200'
         }`
       default:
         return `${baseClasses} ${
-          theme === 'dark' 
+          resolvedTheme === 'dark' 
             ? 'bg-gray-700 border-gray-600' 
             : 'bg-gray-50 border-gray-200'
         }`
@@ -94,7 +94,7 @@ export const MonthlyGoalsNotificationCenter: React.FC<NotificationCenterProps> =
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-end p-4">
       <div className={`w-full max-w-md mt-16 rounded-lg shadow-xl ${
-        theme === 'dark' ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'
+        resolvedTheme === 'dark' ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'
       }`}>
         {/* ヘッダー */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -110,7 +110,7 @@ export const MonthlyGoalsNotificationCenter: React.FC<NotificationCenterProps> =
           <button
             onClick={onClose}
             className={`p-1 rounded-lg transition-colors ${
-              theme === 'dark' 
+              resolvedTheme === 'dark' 
                 ? 'hover:bg-gray-700 text-gray-400' 
                 : 'hover:bg-gray-100 text-gray-600'
             }`}
@@ -152,7 +152,7 @@ export const MonthlyGoalsNotificationCenter: React.FC<NotificationCenterProps> =
           {notifications.length === 0 ? (
             <div className="p-8 text-center">
               <CheckCircle size={32} className="mx-auto mb-2 text-green-500" />
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                 新しい通知はありません
               </p>
             </div>
@@ -176,7 +176,7 @@ export const MonthlyGoalsNotificationCenter: React.FC<NotificationCenterProps> =
                       {getNotificationIcon(notification.type)}
                       <div className="flex-1">
                         <p className={`text-sm ${
-                          theme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+                          resolvedTheme === 'dark' ? 'text-gray-200' : 'text-gray-800'
                         }`}>
                           {notification.message}
                         </p>
@@ -200,7 +200,7 @@ export const MonthlyGoalsNotificationCenter: React.FC<NotificationCenterProps> =
                     <button
                       onClick={() => clearNotification(index)}
                       className={`p-1 rounded transition-colors ${
-                        theme === 'dark' 
+                        resolvedTheme === 'dark' 
                           ? 'hover:bg-gray-600 text-gray-400' 
                           : 'hover:bg-gray-200 text-gray-600'
                       }`}
@@ -217,7 +217,7 @@ export const MonthlyGoalsNotificationCenter: React.FC<NotificationCenterProps> =
         {/* 設定フッター */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <button className={`w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm rounded-lg transition-colors ${
-            theme === 'dark' 
+            resolvedTheme === 'dark' 
               ? 'hover:bg-gray-700 text-gray-300' 
               : 'hover:bg-gray-100 text-gray-600'
           }`}>

@@ -54,7 +54,7 @@ export const OptimizedTimeline: React.FC<OptimizedTimelineProps> = ({
   onCollapseAll,
   onTaskUpdate
 }) => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   
   // ===== 統合状態管理 =====
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false)
@@ -263,7 +263,7 @@ export const OptimizedTimeline: React.FC<OptimizedTimelineProps> = ({
           dimensions={dimensions}
           dynamicFontSizes={dynamicFontSizes}
           viewUnit={state.viewUnit}
-          theme={theme as "dark" | "light"}
+          theme={resolvedTheme as "dark" | "light"}
           today={today}
           scrollLeft={state.scrollLeft}
         />

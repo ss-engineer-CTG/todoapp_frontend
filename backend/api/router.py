@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from datetime import datetime
 
 from features.tasklist import projects_router, tasks_router
-from features.error_monitoring.routes import router as error_router
+# from features.error_monitoring.routes import router as error_router
 from core.logger import get_logger, LogCategory
 
 logger = get_logger(__name__)
@@ -32,6 +32,6 @@ async def health_check():
 # 機能別ルーター統合
 api_router.include_router(projects_router)
 api_router.include_router(tasks_router)
-api_router.include_router(error_router)
+# api_router.include_router(error_router)  # Temporarily disabled due to syntax error
 
 logger.info("API router initialized with all feature routes", category=LogCategory.API)

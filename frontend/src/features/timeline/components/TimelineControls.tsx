@@ -22,7 +22,7 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
   onViewModeChange
 }) => {
   // 🔧 修正：ThemeProviderのテーマを使用
-  const { theme, setTheme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
 
   const handleZoom = (newLevel: number) => {
     const clampedLevel = Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max, newLevel))
@@ -41,12 +41,12 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
 
   // 🔧 修正：テーマ切り替え関数
   const handleThemeToggle = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark')
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
   }
 
   // テーマに基づくクラス
   const getControlClasses = () => {
-    return theme === 'dark' 
+    return resolvedTheme === 'dark' 
       ? {
           header: "bg-gray-900 border-gray-600",
           control: "bg-gray-800 hover:bg-gray-700 text-gray-100 border-gray-500",
@@ -124,9 +124,9 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
           <button 
             className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
             onClick={handleThemeToggle}
-            aria-label={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+            aria-label={resolvedTheme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
           >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            {resolvedTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </div>
       </header>

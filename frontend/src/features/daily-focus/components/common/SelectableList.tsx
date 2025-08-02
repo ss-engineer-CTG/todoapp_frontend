@@ -55,7 +55,7 @@ export const SelectableList: React.FC<SelectableListProps> = ({
   multiSelect = false,
   role = 'listbox'
 }) => {
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
   const [internalSelectedIndex, setInternalSelectedIndex] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const listId = useId()
@@ -80,9 +80,9 @@ export const SelectableList: React.FC<SelectableListProps> = ({
     }
   }
 
-  // 統一テーマシステムを使用
-  const neutralClasses = getNeutralClasses(theme as ThemeMode)
-  const themeMode = theme as ThemeMode
+  // 統一テーマシステムを使用 - resolvedThemeを直接使用
+  const themeMode = resolvedTheme as ThemeMode
+  const neutralClasses = getNeutralClasses(themeMode)
 
   // 選択状態のクラス（統一テーマシステム使用）
   const getItemSelectionClasses = (index: number, item: SelectableItem) => {
