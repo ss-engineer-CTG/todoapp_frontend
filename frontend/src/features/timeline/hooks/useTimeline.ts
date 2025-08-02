@@ -105,6 +105,11 @@ export const useTimeline = (
 
   // ズームレベル設定
   const setZoomLevel = useCallback((level: number) => {
+    if (typeof level !== 'number' || !isFinite(level)) {
+      logger.warn('Invalid zoom level provided', { level, type: typeof level })
+      return
+    }
+    
     const clampedLevel = Math.max(ZOOM_CONFIG.min, Math.min(ZOOM_CONFIG.max, level))
     setState(prev => ({ ...prev, zoomLevel: clampedLevel }))
   }, [])
@@ -116,6 +121,11 @@ export const useTimeline = (
 
   // スクロール位置設定
   const setScrollLeft = useCallback((left: number) => {
+    if (typeof left !== 'number' || !isFinite(left)) {
+      logger.warn('Invalid scroll position provided', { left, type: typeof left })
+      return
+    }
+    
     setState(prev => ({ ...prev, scrollLeft: Math.max(0, left) }))
   }, [])
 
@@ -136,10 +146,16 @@ export const useTimeline = (
 
   // 画面にフィット
   const fitToScreen = useCallback((containerWidth: number) => {
-    if (containerWidth <= 0) return
+    if (typeof containerWidth !== 'number' || !isFinite(containerWidth) || containerWidth <= 0) {
+      logger.warn('Invalid container width for fit to screen', { containerWidth })
+      return
+    }
     
-    const totalDates = visibleDates.length
-    if (totalDates === 0) return
+    const totalDates = visibleDates?.length || 0
+    if (totalDates === 0) {
+      logger.warn('No visible dates available for fit to screen')
+      return
+    }
     
     const requiredCellWidth = state.viewUnit === 'week' 
       ? containerWidth / (totalDates * 7) 

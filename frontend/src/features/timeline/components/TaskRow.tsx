@@ -7,8 +7,7 @@ import { Task, Project } from '@core/types'
 import { TaskWithChildren, DragMode, DragState } from '../types'
 import { DraggableTaskBar } from './DraggableTaskBar'
 import { 
-  getDatePosition,
-  isValidDate
+  getDatePosition
 } from '@core/utils'
 import '../styles/animations.css'
 

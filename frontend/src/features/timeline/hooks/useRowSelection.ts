@@ -234,6 +234,8 @@ export const useRowSelection = (): UseRowSelectionReturn => {
 
   // タスク選択
   const selectTask = useCallback((taskId: string, mode: RowSelectionMode = 'single') => {
+    if (!taskId) return;
+    
     setState(prev => {
       const newSelectedIds = new Set(prev.selectedTaskIds)
       
@@ -262,6 +264,8 @@ export const useRowSelection = (): UseRowSelectionReturn => {
 
   // タスク選択解除
   const deselectTask = useCallback((taskId: string) => {
+    if (!taskId) return;
+    
     setState(prev => {
       const newSelectedIds = new Set(prev.selectedTaskIds)
       newSelectedIds.delete(taskId)
@@ -283,6 +287,8 @@ export const useRowSelection = (): UseRowSelectionReturn => {
 
   // タスク選択状態トグル
   const toggleTaskSelection = useCallback((taskId: string, mode: RowSelectionMode = 'single') => {
+    if (!taskId) return;
+    
     setState(prev => {
       const isCurrentlySelected = prev.selectedTaskIds.has(taskId)
       
@@ -328,17 +334,20 @@ export const useRowSelection = (): UseRowSelectionReturn => {
 
   // 全選択
   const selectAll = useCallback((tasks: Task[]) => {
-    const allTaskIds = new Set(tasks.map(task => task.id))
+    if (!tasks || tasks.length === 0) return;
+    
+    const validTasks = tasks.filter(task => task?.id);
+    const allTaskIds = new Set(validTasks.map(task => task.id))
     
     logger.info('All tasks selected', { 
-      totalTasks: tasks.length,
+      totalTasks: validTasks.length,
       selectedCount: allTaskIds.size
     })
     
     setState(prev => ({
       ...prev,
       selectedTaskIds: allTaskIds,
-      lastSelectedTaskId: tasks.length > 0 ? tasks[tasks.length - 1].id : null,
+      lastSelectedTaskId: validTasks.length > 0 ? validTasks[validTasks.length - 1]?.id || null : null,
       selectionMode: 'multiple',
       isSelecting: allTaskIds.size > 0
     }))
@@ -638,7 +647,9 @@ export const useRowSelection = (): UseRowSelectionReturn => {
 
   // 選択されたタスクを取得
   const getSelectedTasks = useCallback((tasks: Task[]) => {
-    return tasks.filter(task => state.selectedTaskIds.has(task.id))
+    if (!tasks || tasks.length === 0) return [];
+    
+    return tasks.filter(task => task?.id && state.selectedTaskIds.has(task.id))
   }, [state.selectedTaskIds])
 
   // ドラッグ終了直後かどうかをチェック

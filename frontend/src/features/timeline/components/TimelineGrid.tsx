@@ -46,7 +46,7 @@ interface TimelineGridProps {
   dragSelectionCurrentY: number
   
   // レファレンス
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef?: React.RefObject<HTMLDivElement>
 }
 
 export const TimelineGrid: React.FC<TimelineGridProps> = React.memo(({
@@ -99,11 +99,11 @@ export const TimelineGrid: React.FC<TimelineGridProps> = React.memo(({
           onTaskUpdate={onTaskUpdate}
           isSelected={isTaskSelected(task.id)}
           isPreview={isTaskPreview(task.id)}
-          onClick={(e) => handleRowClick(e, task.id)}
-          onMouseDown={(e) => handleRowMouseDown(e, task.id)}
-          onDragStart={(e) => handleDragStart(e, task.id)}
-          registerElement={(element) => registerRowElement(task.id, element)}
-          updatePosition={(position) => updateTaskPosition(task.id, position)}
+          onClick={(e: React.MouseEvent) => handleRowClick(e, task.id)}
+          onMouseDown={(e: React.MouseEvent) => handleRowMouseDown(e, task.id)}
+          onDragStart={(e: React.DragEvent) => handleDragStart(e, task.id)}
+          registerElement={(element: HTMLElement | null) => registerRowElement(task.id, element)}
+          updatePosition={(position: { top: number; height: number }) => updateTaskPosition(task.id, position)}
         />
       )
     })
@@ -115,18 +115,22 @@ export const TimelineGrid: React.FC<TimelineGridProps> = React.memo(({
       {renderTaskRows()}
       
       {/* 選択境界線 */}
-      <SelectionBorder
-        selectedTaskIds={selectedTaskIds}
-        taskPositions={taskPositions}
-        containerRef={containerRef}
-      />
+      {containerRef && selectedTaskIds && taskPositions && (
+        <SelectionBorder
+          selectedTasks={Array.from(selectedTaskIds).map(id => tasks.find(t => t.id === id)).filter(Boolean) as Task[]}
+          taskPositions={taskPositions}
+          theme="light"
+          containerRef={containerRef}
+        />
+      )}
       
       {/* ドラッグ選択矩形 */}
       {isDragSelecting && (
         <DragSelectionRectangle
           startY={dragSelectionStartY}
           currentY={dragSelectionCurrentY}
-          containerRef={containerRef}
+          isVisible={true}
+          theme="light"
         />
       )}
     </div>

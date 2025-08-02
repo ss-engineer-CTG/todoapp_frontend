@@ -125,11 +125,13 @@ export const useTimelineKeyboard = (props: UseTimelineKeyboardProps) => {
             const selectedTasks = getSelectedTasks(tasks)
             if (selectedTasks.length > 0) {
               const firstTask = selectedTasks[0]
-              logger.info('Toggling multiple tasks completion via Space key', {
-                taskCount: selectedTasks.length,
-                referenceTaskId: firstTask.id,
-                newState: !firstTask.completed
-              })
+              if (firstTask) {
+                logger.info('Toggling multiple tasks completion via Space key', {
+                  taskCount: selectedTasks.length,
+                  referenceTaskId: firstTask.id,
+                  newState: !firstTask.completed
+                })
+              }
               
               // 全ての選択されたタスクに対して同じ完了状態を適用
               selectedTasks.forEach(task => {
@@ -220,6 +222,7 @@ export const useTimelineKeyboard = (props: UseTimelineKeyboardProps) => {
         document.removeEventListener('keydown', handleKeyDown)
       }
     }
+    return undefined
   }, [isTimelineActive, handleKeyDown])
 
   return {

@@ -29,7 +29,7 @@ export const SelectionBorder: React.FC<SelectionBorderProps> = ({
   selectedTasks,
   taskPositions,
   theme,
-  containerRef
+  containerRef: _containerRef
 }) => {
   
   // 選択されたタスクをグループ化し、境界を計算
@@ -52,15 +52,7 @@ export const SelectionBorder: React.FC<SelectionBorderProps> = ({
           // フォールバック：元のタスクIDでも試行
           const fallbackPos = positions.get(task.id)
           
-          console.warn('SelectionBorder: Position not found', {
-            taskId: task.id,
-            projectId: task.projectId,
-            uniqueKey,
-            hasUniqueKey: positions.has(uniqueKey),
-            hasFallbackKey: positions.has(task.id),
-            availableKeys: Array.from(positions.keys()),
-            foundFallback: !!fallbackPos
-          })
+          // Position not found for task
           
           if (!fallbackPos) return
           

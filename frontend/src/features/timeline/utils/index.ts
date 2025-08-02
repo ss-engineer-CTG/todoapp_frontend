@@ -90,7 +90,7 @@ export const generateVisibleDates = (startDate: Date, endDate: Date, viewUnit: '
 
 // ===== 境界判定 =====
 export const isFirstDayOfMonth = (date: Date, index: number, visibleDates: Date[]): boolean => {
-  return index === 0 || (index > 0 && visibleDates[index - 1].getMonth() !== date.getMonth())
+  return index === 0 || (index > 0 && visibleDates[index - 1]?.getMonth() !== date.getMonth())
 }
 
 export const isFirstDayOfWeek = (date: Date): boolean => {
@@ -183,8 +183,8 @@ export const calculateAllProjectsStats = (
         overdueTasks,
         completionRate: projectTasks.length > 0 ? 
           Math.round((completedTasks / projectTasks.length) * 100) : 0,
-        earliestStartDate: validStartDates.length > 0 ? validStartDates[0] : null,
-        latestDueDate: validDueDates.length > 0 ? validDueDates[validDueDates.length - 1] : null,
+        earliestStartDate: validStartDates.length > 0 ? validStartDates[0] || null : null,
+        latestDueDate: validDueDates.length > 0 ? validDueDates[validDueDates.length - 1] || null : null,
         averageTaskLevel
       }
 
@@ -261,8 +261,8 @@ export const calculateCrossProjectTimeRange = (
     const allStartDates = validTasks.map(task => task.startDate).sort((a, b) => a.getTime() - b.getTime())
     const allDueDates = validTasks.map(task => task.dueDate).sort((a, b) => a.getTime() - b.getTime())
 
-    const globalStartDate = allStartDates[0]
-    const globalEndDate = allDueDates[allDueDates.length - 1]
+    const globalStartDate = allStartDates[0] || new Date()
+    const globalEndDate = allDueDates[allDueDates.length - 1] || new Date()
 
     const projectDateRanges: { [projectId: string]: { start: Date; end: Date } } = {}
     
@@ -274,9 +274,13 @@ export const calculateCrossProjectTimeRange = (
       const projectDueDates = projectTasks.map(task => task.dueDate).sort((a, b) => a.getTime() - b.getTime())
       
       if (projectStartDates.length > 0 && projectDueDates.length > 0) {
-        projectDateRanges[projectId] = {
-          start: projectStartDates[0],
-          end: projectDueDates[projectDueDates.length - 1]
+        const startDate = projectStartDates[0]
+        const endDate = projectDueDates[projectDueDates.length - 1]
+        if (startDate && endDate) {
+          projectDateRanges[projectId] = {
+            start: startDate,
+            end: endDate
+          }
         }
       }
     })
@@ -288,18 +292,20 @@ export const calculateCrossProjectTimeRange = (
       },
       projectCount: Object.keys(projectDateRanges).length,
       projectRanges: Object.entries(projectDateRanges).reduce((acc, [projectId, range]) => {
-        acc[projectId] = {
-          start: range.start.toISOString().split('T')[0],
-          end: range.end.toISOString().split('T')[0],
-          durationDays: Math.ceil((range.end.getTime() - range.start.getTime()) / (1000 * 60 * 60 * 24))
+        if (range?.start && range?.end) {
+          acc[projectId] = {
+            start: range.start.toISOString().split('T')[0] || '',
+            end: range.end.toISOString().split('T')[0] || '',
+            durationDays: Math.ceil((range.end.getTime() - range.start.getTime()) / (1000 * 60 * 60 * 24))
+          }
         }
         return acc
       }, {} as { [key: string]: { start: string; end: string; durationDays: number } })
     })
 
     return {
-      globalStartDate,
-      globalEndDate,
+      globalStartDate: globalStartDate || new Date(),
+      globalEndDate: globalEndDate || new Date(),
       projectDateRanges
     }
   } catch (error) {
@@ -354,12 +360,15 @@ export const detectCrossProjectTaskConflicts = (
         const task1 = validTasks[i]
         const task2 = validTasks[j]
 
-        if (task1.projectId === task2.projectId) continue
+        if (task1?.projectId === task2?.projectId) continue
+        if (!task1 || !task2) continue
 
-        const task1Start = task1.startDate.getTime()
-        const task1End = task1.dueDate.getTime()
-        const task2Start = task2.startDate.getTime()
-        const task2End = task2.dueDate.getTime()
+        const task1Start = task1.startDate?.getTime()
+        const task1End = task1.dueDate?.getTime()
+        const task2Start = task2.startDate?.getTime()
+        const task2End = task2.dueDate?.getTime()
+
+        if (!task1Start || !task1End || !task2Start || !task2End) continue
 
         const hasDateOverlap = !(task1End < task2Start || task2End < task1Start)
         const sameAssignee = task1.assignee === task2.assignee

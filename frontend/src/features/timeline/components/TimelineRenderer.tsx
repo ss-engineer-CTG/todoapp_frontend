@@ -50,7 +50,6 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
   previewTaskIds,
   onRowClick,
   onRowMouseDown,
-  _onSelectionClear,
   registerRowElement,
   taskPositions,
   updateTaskPosition,

@@ -201,7 +201,7 @@ export const useMultipleSelection = (): UseMultipleSelectionReturn => {
     setState(prev => ({
       ...prev,
       selectedTaskIds: allTaskIds,
-      lastSelectedTaskId: tasks.length > 0 ? tasks[tasks.length - 1].id : null,
+      lastSelectedTaskId: tasks.length > 0 ? tasks[tasks.length - 1]?.id || null : null,
       selectionMode: 'multiple',
       isSelecting: allTaskIds.size > 0
     }))

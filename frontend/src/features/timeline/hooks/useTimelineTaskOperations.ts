@@ -334,7 +334,7 @@ export const useTimelineTaskOperations = (
       }
 
       // 最初のタスクの状態を基準にする
-      const newCompletionState = !validTasks[0].completed
+      const newCompletionState = !validTasks[0]?.completed
 
       logger.info('Batch toggling task completion in timeline', {
         taskIds: validTasks.map(t => t.id),

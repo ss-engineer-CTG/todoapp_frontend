@@ -131,7 +131,7 @@ export const useSelection = (): UseSelectionReturn => {
       return {
         ...prevState,
         selectedTaskIds: allTaskIds,
-        lastSelectedTaskId: tasks.length > 0 ? tasks[tasks.length - 1].id : null,
+        lastSelectedTaskId: tasks.length > 0 ? tasks[tasks.length - 1]?.id || null : null,
         selectionMode: 'multiple',
         isSelecting: allTaskIds.size > 0
       }

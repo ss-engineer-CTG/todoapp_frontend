@@ -46,13 +46,13 @@ export const TimelineHeader: React.FC<TimelineHeaderProps> = React.memo(({
       
       {/* 日付ヘッダー */}
       <div className="flex">
-        {visibleDates.map((date, _index) => {
+        {visibleDates.map((date, index) => {
           const dateStr = date.toISOString().split('T')[0]
           const isFirstOfWeek = isFirstDayOfWeek(date)
-          const isFirstOfMonth = isFirstDayOfMonth(date)
+          const isFirstOfMonth = isFirstDayOfMonth(date, index, visibleDates)
           const dayNumber = date.getDate()
-          const monthName = getMonthName(date)
-          const weekNumber = getWeekNumber(date)
+          const monthName = getMonthName(date.getMonth()) || ''
+          const weekNumber = getWeekNumber(date) || 0
           
           return (
             <div

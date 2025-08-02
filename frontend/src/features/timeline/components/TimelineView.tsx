@@ -91,15 +91,19 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   } = useRowSelection()
 
   // 🆕 プロジェクト選択状態（デフォルト値設定）
-  const currentSelectedProjectId = selectedProjectId || (projects.length > 0 ? projects[0].id : null)
+  const currentSelectedProjectId = selectedProjectId || (projects?.length > 0 ? projects[0]?.id : null)
   
   // 🆕 データ再読み込み関数（デフォルト実装）
   const handleRefreshTasks = useCallback(async () => {
-    if (refreshTasks) {
-      await refreshTasks()
-    } else {
-      // デフォルト実装：何もしない（親コンポーネントが管理）
-      logger.info('Tasks refresh requested but no refresh function provided')
+    try {
+      if (refreshTasks) {
+        await refreshTasks()
+      } else {
+        // デフォルト実装：何もしない（親コンポーネントが管理）
+        logger.info('Tasks refresh requested but no refresh function provided')
+      }
+    } catch (error) {
+      logger.error('Task refresh failed', { error })
     }
   }, [refreshTasks])
 
@@ -213,7 +217,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
         if (currentMonth !== null) {
           groups.push({
             month: currentMonth,
-            year: visibleDates[monthStart].getFullYear(),
+            year: visibleDates[monthStart]?.getFullYear() || new Date().getFullYear(),
             startIndex: monthStart,
             width: monthWidth * dimensions.cellWidth
           })
@@ -245,36 +249,41 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   }, [state.viewUnit, visibleDates, dimensions.cellWidth])
   
   const taskRelationMap = useMemo(() => {
+    const safeTasks = tasks || []
+    const safeProjects = projects || []
+    
     logger.info('Building task relation map for all projects', {
-      taskCount: tasks.length,
-      projectCount: projects.length,
+      taskCount: safeTasks.length,
+      projectCount: safeProjects.length,
       viewType: 'timeline_all_projects'
     })
     
-    return buildTaskRelationMap(tasks)
-  }, [tasks, projects.length])
+    return buildTaskRelationMap(safeTasks)
+  }, [tasks, projects])
 
   const projectTaskStats = useMemo(() => {
-    const stats = projects.map(project => {
-      const projectTasks = tasks.filter(task => task.projectId === project.id)
-      const completedTasks = projectTasks.filter(task => task.completed).length
-      const activeTasks = projectTasks.filter(task => !task.completed).length
+    const stats = projects?.map(project => {
+      if (!project?.id) return null;
+      
+      const projectTasks = tasks?.filter(task => task?.projectId === project.id) || []
+      const completedTasks = projectTasks.filter(task => task?.completed).length
+      const activeTasks = projectTasks.filter(task => !task?.completed).length
       
       return {
         projectId: project.id,
-        projectName: project.name,
+        projectName: project.name || 'Unnamed Project',
         totalTasks: projectTasks.length,
         completedTasks,
         activeTasks,
         completionRate: projectTasks.length > 0 ? Math.round((completedTasks / projectTasks.length) * 100) : 0
       }
-    })
+    }).filter(Boolean) || []
     
     logger.info('Timeline project statistics calculated', {
       projectCount: stats.length,
-      totalTasksAcrossProjects: stats.reduce((sum, stat) => sum + stat.totalTasks, 0),
+      totalTasksAcrossProjects: stats.reduce((sum, stat) => sum + (stat?.totalTasks || 0), 0),
       averageCompletionRate: stats.length > 0 ? 
-        Math.round(stats.reduce((sum, stat) => sum + stat.completionRate, 0) / stats.length) : 0
+        Math.round(stats.reduce((sum, stat) => sum + (stat?.completionRate || 0), 0) / stats.length) : 0
     })
     
     return stats
@@ -316,30 +325,32 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   }, [onToggleProject, projects.length])
 
   const handleToggleTaskLocal = useCallback((taskId: string) => {
-    const task = tasks.find(t => t.id === taskId)
+    if (!taskId) return;
+    
+    const task = tasks?.find(t => t?.id === taskId)
     logger.info('Toggling task in all projects timeline', { 
       taskId,
       taskProject: task?.projectId,
-      totalTasks: tasks.length
+      totalTasks: tasks?.length || 0
     })
     onToggleTask?.(taskId)
   }, [onToggleTask, tasks])
 
   const handleExpandAll = useCallback(() => {
     logger.info('Expanding all projects and tasks in timeline', {
-      projectCount: projects.length,
-      taskCount: tasks.length
+      projectCount: projects?.length || 0,
+      taskCount: tasks?.length || 0
     })
     onExpandAll?.()
-  }, [onExpandAll, projects.length, tasks.length])
+  }, [onExpandAll, projects, tasks])
 
   const handleCollapseAll = useCallback(() => {
     logger.info('Collapsing all projects and tasks in timeline', {
-      projectCount: projects.length,
-      taskCount: tasks.length
+      projectCount: projects?.length || 0,
+      taskCount: tasks?.length || 0
     })
     onCollapseAll?.()
-  }, [onCollapseAll, projects.length, tasks.length])
+  }, [onCollapseAll, projects, tasks])
 
   // 選択解除ハンドラー（空白部分クリック時）
   const handleSelectionClear = useCallback((event: React.MouseEvent) => {
@@ -382,8 +393,8 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   }, [])
 
   const handleDateShiftConfirm = useCallback(async (options: DateShiftOptions) => {
-    const selectedTasks = getSelectedTasks(tasks)
-    const taskIds = selectedTasks.map(task => task.id)
+    const selectedTasks = getSelectedTasks(tasks || [])
+    const taskIds = selectedTasks.map(task => task?.id).filter(Boolean)
     
     try {
       logger.info('Batch date shift requested', {
@@ -410,7 +421,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
         // 個別のタスクに対してonTaskUpdateを呼び出すのではなく、
         // バッチ処理が完了したことを通知
         await Promise.all(
-          selectedTasks.map(task => onTaskUpdate(task.id, {}))
+          selectedTasks.filter(task => task?.id).map(task => onTaskUpdate(task.id, {}))
         )
       }
       
@@ -464,10 +475,12 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
       keyboardShortcutsActive: keyboardState.isActive,
       selectedTasksCount: selectedCount,
       projectStats: projectTaskStats.reduce((summary, stat) => {
-        summary[stat.projectId] = {
-          name: stat.projectName,
-          tasks: stat.totalTasks,
-          completion: `${stat.completionRate}%`
+        if (stat) {
+          summary[stat.projectId] = {
+            name: stat.projectName,
+            tasks: stat.totalTasks,
+            completion: `${stat.completionRate}%`
+          }
         }
         return summary
       }, {} as { [key: string]: { name: string; tasks: number; completion: string } })
