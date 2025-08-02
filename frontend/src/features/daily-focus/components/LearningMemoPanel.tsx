@@ -368,7 +368,7 @@ Markdownをサポート:
               </div>
               
               <div className={isCompactMode ? "space-y-1" : "space-y-2"}>
-                {memo.goals.map((goal, index) => (
+                {memo.goals.map((goal: any, index: number) => (
                   <div 
                     key={index}
                     className={`flex items-center justify-between ${isCompactMode ? 'p-1' : 'p-2'} rounded border ${
@@ -426,7 +426,7 @@ Markdownをサポート:
               </div>
               
               <div className="space-y-2">
-                {memo.achievements.map((achievement, index) => (
+                {memo.achievements.map((achievement: any, index: number) => (
                   <div 
                     key={index}
                     className={`flex items-center justify-between p-2 rounded border ${
@@ -484,7 +484,7 @@ Markdownをサポート:
               </div>
               
               <div className="space-y-2">
-                {memo.challenges.map((challenge, index) => (
+                {memo.challenges.map((challenge: any, index: number) => (
                   <div 
                     key={index}
                     className={`flex items-center justify-between p-2 rounded border ${

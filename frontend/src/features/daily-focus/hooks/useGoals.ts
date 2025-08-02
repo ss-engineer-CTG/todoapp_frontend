@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Goal, ColorVariant, LearningCategory, getCurrentMonthString, getNextMonthString } from '../types'
+import { Goal, ColorVariant, LearningCategory, getCurrentMonthString } from '../types'
 import { goalStorage } from '../utils/storage'
 
 export const useGoals = () => {

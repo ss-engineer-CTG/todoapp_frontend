@@ -130,7 +130,11 @@ export const KeyboardNavigableModal: React.FC<KeyboardNavigableModalProps> = ({
             const focusableElement = modal.querySelector(
               'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
             ) as HTMLElement
-            focusableElement?.focus() || modal.focus()
+            if (focusableElement) {
+              focusableElement.focus()
+            } else {
+              modal.focus()
+            }
           }
         }
       }, 10)
@@ -144,6 +148,7 @@ export const KeyboardNavigableModal: React.FC<KeyboardNavigableModalProps> = ({
         document.body.style.overflow = ''
       }
     }
+    return undefined
   }, [isOpen, handleKeyDown, handleTabKey])
 
   // 背景クリック処理

@@ -3,7 +3,7 @@ import { Edit, X, Check } from 'lucide-react'
 import { useTheme } from '@core/components/ThemeProvider'
 import { useGoals } from '../../hooks/useGoals'
 import { useCustomTags } from '../../hooks/useCustomTags'
-import { Goal, CustomTag } from '../../types'
+import { CustomTag } from '../../types'
 import { KeyboardNavigableModal } from '../common/KeyboardNavigableModal'
 import { SelectableList, SelectableItem } from '../common/SelectableList'
 import { 
@@ -48,29 +48,14 @@ export const TagSelectionModal: React.FC<TagSelectionModalProps> = ({
   const [editingTagEmoji, setEditingTagEmoji] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
 
-  // SelectableItemsに変換
-  const selectableItems: SelectableItem[] = [
-    // 目標項目
-    ...goals.map(goal => ({
-      id: `goal-${goal.id}`,
-      label: `📚 ${goal.title}`,
-      description: goal.description,
-      color: goal.color,
-      metadata: { type: 'goal', originalItem: goal }
-    })),
-    // カスタムタグ項目
-    ...tags.map(tag => ({
-      id: `tag-${tag.id}`,
-      label: `${tag.emoji} ${tag.name}`,
-      color: tag.color,
-      metadata: { type: 'custom', originalItem: tag }
-    }))
-  ]
+  // SelectableItems removed - using filteredSelectableItems instead
 
   // アイテム選択処理
   const handleItemSelect = useCallback((item: SelectableItem) => {
-    const { type, originalItem } = item.metadata
-    onSelectTag(originalItem.id, type)
+    const { type, originalItem } = item.metadata || {}
+    if (type && originalItem) {
+      onSelectTag(originalItem.id, type)
+    }
   }, [onSelectTag])
 
   // 選択状態変更
@@ -141,7 +126,7 @@ export const TagSelectionModal: React.FC<TagSelectionModalProps> = ({
   }
 
   // 編集可能なアイテムを作成
-  const createEditableItem = (tag: CustomTag, index: number): React.ReactNode => {
+  const createEditableItem = (tag: CustomTag, _index: number): React.ReactNode => {
     const isEditing = editingTagId === tag.id
     
     if (!isEditing) return null
@@ -251,13 +236,7 @@ export const TagSelectionModal: React.FC<TagSelectionModalProps> = ({
   // デバッグ用：フィルター済みアイテムの確認
   console.log('filteredSelectableItems created:', filteredSelectableItems.length, filteredSelectableItems)
 
-  // カスタムレンダラー（編集中のアイテム用）
-  const renderCustomItem = (item: SelectableItem, index: number) => {
-    if (item.metadata?.customContent) {
-      return item.metadata.customContent
-    }
-    return null
-  }
+  // Custom renderer removed - not needed
 
   return (
     <KeyboardNavigableModal

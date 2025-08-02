@@ -86,12 +86,16 @@ export const useKeyboardNavigableList = <T extends NavigableItem>({
   // キーボードナビゲーション
   const navigateNext = useCallback(() => {
     const nextIndex = getNextValidIndex(selectedIndex, 'next')
-    updateSelection(nextIndex, true)
+    if (nextIndex !== undefined) {
+      updateSelection(nextIndex, true)
+    }
   }, [selectedIndex, getNextValidIndex, updateSelection])
 
   const navigatePrevious = useCallback(() => {
     const prevIndex = getNextValidIndex(selectedIndex, 'prev')
-    updateSelection(prevIndex, true)
+    if (prevIndex !== undefined) {
+      updateSelection(prevIndex, true)
+    }
   }, [selectedIndex, getNextValidIndex, updateSelection])
 
   const navigateToIndex = useCallback((index: number, isKeyboard = false) => {
@@ -117,7 +121,10 @@ export const useKeyboardNavigableList = <T extends NavigableItem>({
   const navigateToFirst = useCallback(() => {
     const validIndices = getValidIndices()
     if (validIndices.length > 0) {
-      updateSelection(validIndices[0], true)
+      const firstIndex = validIndices[0]
+      if (firstIndex !== undefined) {
+        updateSelection(firstIndex, true)
+      }
     }
   }, [getValidIndices, updateSelection])
 
@@ -125,7 +132,10 @@ export const useKeyboardNavigableList = <T extends NavigableItem>({
   const navigateToLast = useCallback(() => {
     const validIndices = getValidIndices()
     if (validIndices.length > 0) {
-      updateSelection(validIndices[validIndices.length - 1], true)
+      const lastIndex = validIndices[validIndices.length - 1]
+      if (lastIndex !== undefined) {
+        updateSelection(lastIndex, true)
+      }
     }
   }, [getValidIndices, updateSelection])
 
@@ -158,6 +168,9 @@ export const useKeyboardNavigableList = <T extends NavigableItem>({
       case ' ':
         event.preventDefault()
         selectCurrent()
+        break
+      
+      default:
         break
     }
   }, [orientation, navigateNext, navigatePrevious, navigateToFirst, navigateToLast, selectCurrent])
@@ -209,6 +222,7 @@ export const useKeyboardNavigableList = <T extends NavigableItem>({
       }, 500)
       return () => clearTimeout(timer)
     }
+    return undefined
   }, [isNavigating, selectedIndex])
 
   return {

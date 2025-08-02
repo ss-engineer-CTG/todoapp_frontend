@@ -106,12 +106,20 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
         const dateStr = currentDate.toISOString().split('T')[0]
         const data = heatmapData.find(d => d.date === dateStr)
         
-        if (currentDate <= today && currentDate >= oneYearAgo) {
+        if (currentDate <= today && currentDate >= oneYearAgo && dateStr) {
           week.push(data || {
             date: dateStr,
             totalMinutes: 0,
             intensity: 0,
-            categoryBreakdown: {},
+            categoryBreakdown: {
+              programming: 0,
+              english: 0,
+              health: 0,
+              reading: 0,
+              exercise: 0,
+              other: 0,
+              'monthly-goals': 0
+            },
             sessionsCount: 0
           })
         } else {

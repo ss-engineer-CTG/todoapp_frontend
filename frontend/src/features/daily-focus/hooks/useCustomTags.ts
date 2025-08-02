@@ -205,7 +205,8 @@ export const useCustomTags = () => {
       health: 0,
       reading: 0,
       exercise: 0,
-      other: 0
+      other: 0,
+      'monthly-goals': 0
     }
 
     tags.forEach(tag => {

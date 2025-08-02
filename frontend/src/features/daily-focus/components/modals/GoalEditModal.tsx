@@ -24,7 +24,7 @@ export const GoalEditModal: React.FC<GoalEditModalProps> = ({
   mode
 }) => {
   const { resolvedTheme } = useTheme()
-  const { getCategoryTags, getAllTags, getTagById } = useCustomTags()
+  const { getCategoryTags } = useCustomTags()
   
   const [formData, setFormData] = useState({
     title: '',

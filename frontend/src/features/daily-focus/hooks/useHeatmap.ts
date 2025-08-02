@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { DailyStats, LearningCategory } from '../types'
+import { LearningCategory } from '../types'
 import { statsStorage } from '../utils/storage'
 
 export interface HeatmapData {
@@ -7,6 +7,7 @@ export interface HeatmapData {
   totalMinutes: number
   categoryBreakdown: Record<LearningCategory, number>
   intensity: number // 0-4 (0=なし, 1=低, 2=中, 3=高, 4=最高)
+  sessionsCount?: number // セッション数（オプショナル）
 }
 
 export interface HeatmapConfig {
@@ -33,7 +34,10 @@ export const useHeatmap = () => {
     const current = new Date(start)
     
     while (current <= end) {
-      dates.push(current.toISOString().split('T')[0])
+      const dateString = current.toISOString().split('T')[0]
+      if (dateString) {
+        dates.push(dateString)
+      }
       current.setDate(current.getDate() + 1)
     }
     
@@ -118,7 +122,8 @@ export const useHeatmap = () => {
       health: 0,
       reading: 0,
       exercise: 0,
-      other: 0
+      other: 0,
+      'monthly-goals': 0
     }
 
     heatmapData.forEach(data => {
@@ -182,7 +187,7 @@ export const useHeatmap = () => {
     let longestStreakStart = ''
     let longestStreakEnd = ''
 
-    heatmapData.forEach((data, index) => {
+    heatmapData.forEach((data, _index) => {
       if (data.totalMinutes > 0) {
         if (currentStreak === 0) {
           currentStreakStart = data.date
@@ -214,7 +219,7 @@ export const useHeatmap = () => {
     // 最新の日付から逆順でチェック
     for (let i = heatmapData.length - 1; i >= 0; i--) {
       const data = heatmapData[i]
-      if (data.totalMinutes > 0) {
+      if (data && data.totalMinutes > 0) {
         if (streak === 0) {
           startDate = data.date
         }
@@ -238,15 +243,16 @@ export const useHeatmap = () => {
       health: '#f59e0b', // orange
       reading: '#8b5cf6', // purple
       exercise: '#ef4444', // red
-      other: '#6b7280' // gray
+      other: '#6b7280', // gray
+      'monthly-goals': '#f43f5e' // rose
     }
-    return colors[category]
+    return colors[category] || colors.other
   }, [])
 
   // 強度別の色を取得
   const getIntensityColor = useCallback((intensity: number): string => {
     const colors = ['#f3f4f6', '#dbeafe', '#93c5fd', '#3b82f6', '#1e40af']
-    return colors[intensity] || colors[0]
+    return colors[intensity] || colors[0] || '#f3f4f6'
   }, [])
 
   // 初期化

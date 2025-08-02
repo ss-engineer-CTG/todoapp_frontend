@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
-import { X, Save, Plus, Edit, Trash2 } from 'lucide-react'
+import { X, Save, Plus, Trash2 } from 'lucide-react'
 import { useCustomTags } from '../../hooks/useCustomTags'
-import { CustomTag, ColorVariant, COLOR_VARIANTS } from '../../types'
+import { ColorVariant, COLOR_VARIANTS } from '../../types'
 
 interface TagEditModalProps {
   isOpen: boolean
@@ -67,7 +67,7 @@ export const TagEditModal: React.FC<TagEditModalProps> = ({
       [tagId]: {
         ...prev[tagId],
         [field]: value
-      }
+      } as any
     }))
     
     // エラーをクリア

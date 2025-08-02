@@ -200,6 +200,7 @@ export const SelectableList: React.FC<SelectableListProps> = ({
       document.addEventListener('keydown', handleKeyDown)
       return () => document.removeEventListener('keydown', handleKeyDown)
     }
+    return undefined
   }, [allowKeyboardNavigation, handleKeyDown])
 
   return (

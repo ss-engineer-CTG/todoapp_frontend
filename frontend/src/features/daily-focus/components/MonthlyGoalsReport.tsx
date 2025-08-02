@@ -24,8 +24,11 @@ export const MonthlyGoalsReport: React.FC = () => {
   const currentMonthStats = getMonthlyStatistics(selectedMonth)
   const previousMonth = (() => {
     const [year, month] = selectedMonth.split('-').map(Number)
-    const prevDate = new Date(year, month - 2, 1) // month-2 because months are 0-indexed
-    return `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`
+    if (year && month) {
+      const prevDate = new Date(year, month - 2, 1) // month-2 because months are 0-indexed
+      return `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`
+    }
+    return ''
   })()
   const previousMonthStats = getMonthlyStatistics(previousMonth)
 
