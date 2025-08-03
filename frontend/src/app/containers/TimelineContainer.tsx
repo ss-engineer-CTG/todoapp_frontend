@@ -4,6 +4,7 @@
 import React, { useCallback } from 'react'
 import { AppViewMode, Task, Project } from '@core/types'
 import { logger } from '@core/utils'
+import { buildTaskRelationMap, collapseAllParentTasks } from '@tasklist/utils/task'
 
 export interface TimelineContainerProps {
   viewMode: AppViewMode
@@ -17,6 +18,7 @@ export interface TimelineContainerProps {
   onToggleTask: (taskId: string) => Promise<void>
   onExpandAll: () => Promise<void>
   onCollapseAll: () => Promise<void>
+  onCollapseAllParents: (taskIds: string[]) => Promise<void>  // 🆕 追加
   onTaskUpdateViaDrag: (taskId: string, updates: Partial<Task>) => Promise<void>
   refreshTasks: () => Promise<void>
   setTimelineScrollToToday: (fn: (() => void) | null) => void
@@ -38,6 +40,7 @@ export interface TimelineContainerReturn {
   handleToggleTask: (taskId: string) => Promise<void>
   handleExpandAll: () => Promise<void>
   handleCollapseAll: () => Promise<void>
+  handleCollapseAllParents: () => Promise<void>  // 🆕 追加
   handleTaskUpdateViaDrag: (taskId: string, updates: Partial<Task>) => Promise<void>
   
   // タイムライン状態
@@ -50,6 +53,7 @@ export interface TimelineContainerReturn {
     onToggleTask: (taskId: string) => Promise<void>
     onExpandAll: () => Promise<void>
     onCollapseAll: () => Promise<void>
+    onCollapseAllParents: () => Promise<void>  // 🆕 追加
     onTaskUpdate: (taskId: string, updates: Partial<Task>) => Promise<void>
     // 🆕 楽観的更新機能
     optimisticUpdate?: {
@@ -73,6 +77,7 @@ export const useTimelineContainer = (props: TimelineContainerProps): TimelineCon
     onToggleTask,
     onExpandAll,
     onCollapseAll,
+    onCollapseAllParents,
     onTaskUpdateViaDrag,
     refreshTasks,
     setTimelineScrollToToday,
@@ -149,6 +154,36 @@ export const useTimelineContainer = (props: TimelineContainerProps): TimelineCon
     await onCollapseAll()
   }, [projects.length, allTasksWithDrafts.length, onCollapseAll])
 
+  // ===== 子タスク持ちタスク一括折りたたみ（新機能） =====
+  const handleCollapseAllParents = useCallback(async () => {
+    try {
+      logger.info('Timeline collapse all parent tasks requested', { 
+        projectCount: projects.length,
+        taskCount: allTasksWithDrafts.length,
+        source: 'timeline_container'
+      })
+      
+      // タスクの関係マップを構築
+      const relationMap = buildTaskRelationMap(allTasksWithDrafts)
+      
+      // 子タスクを持つタスクのIDを取得
+      const parentTaskIds = collapseAllParentTasks(allTasksWithDrafts, relationMap)
+      
+      if (parentTaskIds.length > 0) {
+        logger.info('Collapsing parent tasks', {
+          parentTaskCount: parentTaskIds.length,
+          parentTaskIds
+        })
+        
+        await onCollapseAllParents(parentTaskIds)
+      } else {
+        logger.info('No parent tasks found to collapse')
+      }
+    } catch (error) {
+      logger.error('Timeline collapse all parents failed', { error })
+    }
+  }, [projects.length, allTasksWithDrafts, onCollapseAllParents])
+
   // ===== タスクドラッグ更新（タイムライン専用） =====
   const handleTaskUpdateViaDrag = useCallback(async (taskId: string, updates: Partial<Task>) => {
     logger.info('Timeline drag update requested', { 
@@ -193,6 +228,7 @@ export const useTimelineContainer = (props: TimelineContainerProps): TimelineCon
     onToggleTask: handleToggleTask,
     onExpandAll: handleExpandAll,
     onCollapseAll: handleCollapseAll,
+    onCollapseAllParents: handleCollapseAllParents,  // 🆕 追加
     onTaskUpdate: handleTaskUpdateViaDrag,
     // 🆕 楽観的更新機能
     optimisticUpdate
@@ -208,6 +244,7 @@ export const useTimelineContainer = (props: TimelineContainerProps): TimelineCon
     handleToggleTask,
     handleExpandAll,
     handleCollapseAll,
+    handleCollapseAllParents,  // 🆕 追加
     handleTaskUpdateViaDrag,
     
     // タイムライン状態

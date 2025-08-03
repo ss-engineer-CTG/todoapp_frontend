@@ -597,3 +597,104 @@ export const countVisibleTasksInProject = (
     return 0
   }
 }
+
+// ===== 一括折りたたみ機能 =====
+
+/**
+ * 子タスクを持つすべてのタスクを一括で折りたたむ
+ */
+export const collapseAllParentTasks = (
+  tasks: Task[],
+  relationMap: TaskRelationMap
+): string[] => {
+  try {
+    const parentTaskIds: string[] = []
+    
+    // 子タスクを持つタスクを特定
+    tasks.forEach(task => {
+      const hasChildren = relationMap.childrenMap[task.id] && relationMap.childrenMap[task.id].length > 0
+      if (hasChildren && !task.collapsed) {
+        parentTaskIds.push(task.id)
+      }
+    })
+    
+    logger.info('Collapsing all parent tasks', {
+      totalTasks: tasks.length,
+      parentTasksToCollapse: parentTaskIds.length,
+      parentTaskIds
+    })
+    
+    return parentTaskIds
+    
+  } catch (error) {
+    logger.error('Collapse all parent tasks failed', { error })
+    return []
+  }
+}
+
+/**
+ * 特定の親タスクとその全ての子孫タスクを再帰的に折りたたむ
+ */
+export const collapseTaskAndAllDescendants = (
+  parentTaskId: string,
+  tasks: Task[],
+  relationMap: TaskRelationMap
+): string[] => {
+  try {
+    const tasksToCollapse: string[] = []
+    
+    const collapseRecursively = (taskId: string) => {
+      const task = tasks.find(t => t.id === taskId)
+      if (!task || task.collapsed) return
+      
+      const children = relationMap.childrenMap[taskId] || []
+      if (children.length > 0) {
+        tasksToCollapse.push(taskId)
+        
+        // 子タスクも再帰的に折りたたみ
+        children.forEach(childId => {
+          collapseRecursively(childId)
+        })
+      }
+    }
+    
+    collapseRecursively(parentTaskId)
+    
+    logger.info('Collapsing task and all descendants', {
+      parentTaskId,
+      totalTasksToCollapse: tasksToCollapse.length,
+      taskIds: tasksToCollapse
+    })
+    
+    return tasksToCollapse
+    
+  } catch (error) {
+    logger.error('Collapse task and descendants failed', { parentTaskId, error })
+    return []
+  }
+}
+
+/**
+ * 子タスクを持つタスクの数を数える
+ */
+export const countParentTasks = (
+  tasks: Task[],
+  relationMap: TaskRelationMap
+): number => {
+  try {
+    let parentCount = 0
+    
+    tasks.forEach(task => {
+      const hasChildren = relationMap.childrenMap[task.id] && relationMap.childrenMap[task.id].length > 0
+      if (hasChildren) {
+        parentCount++
+      }
+    })
+    
+    return parentCount
+    
+  } catch (error) {
+    logger.error('Count parent tasks failed', { error })
+    return 0
+  }
+}

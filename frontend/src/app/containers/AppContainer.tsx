@@ -319,6 +319,32 @@ export const AppContainer: React.FC = () => {
     }
   }, [managedProjects, managedTasks, updateProject, updateTaskOptimistic, updateTask])
 
+  // ===== 子タスク持ちタスク一括折りたたみ =====
+  const handleCollapseAllParents = useCallback(async (taskIds: string[]) => {
+    try {
+      logger.info('Collapsing all parent tasks', {
+        parentTaskCount: taskIds.length,
+        taskIds
+      })
+      
+      // 楽観的更新を活用して並列処理
+      const taskPromises = taskIds.map(taskId => 
+        updateTaskOptimistic 
+          ? updateTaskOptimistic(taskId, { collapsed: true })
+          : updateTask(taskId, { collapsed: true })
+      )
+
+      await Promise.all(taskPromises)
+      
+      logger.info('Collapse all parent tasks completed', {
+        collapsedTaskCount: taskIds.length
+      })
+    } catch (error) {
+      logger.error('Collapse all parent tasks failed', { error, taskIds })
+      handleError(error, '子タスク持ちタスクの一括折りたたみに失敗しました')
+    }
+  }, [updateTaskOptimistic, updateTask])
+
   // ===== ビューモード制御 =====
   const handleViewModeChange = async (newMode: AppViewMode) => {
     logger.info('View mode changing', { from: viewMode, to: newMode })
@@ -460,6 +486,7 @@ export const AppContainer: React.FC = () => {
     onToggleTask: handleToggleTask,
     onExpandAll: handleExpandAll,
     onCollapseAll: handleCollapseAll,
+    onCollapseAllParents: handleCollapseAllParents,  // 🆕 追加
     onTaskUpdateViaDrag: handleTaskUpdateViaDrag,
     refreshTasks: async () => { await loadTasks(); },
     setTimelineScrollToToday,

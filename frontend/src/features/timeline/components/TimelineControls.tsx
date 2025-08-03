@@ -4,7 +4,7 @@
 import React from 'react'
 import {
   ZoomIn, ZoomOut, RotateCw, Maximize2, ChevronLeft, ChevronRight,
-  Sun, Moon, Minimize2, ArrowLeft, Calendar, Focus
+  Sun, Moon, Minimize2, ArrowLeft, Calendar, Focus, FolderMinus
 } from 'lucide-react'
 import { TimelineControlsProps } from '../types'
 import { useTheme } from '@core/components/ThemeProvider'
@@ -19,6 +19,7 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
   onFitToScreen,
   onExpandAll,
   onCollapseAll,
+  onCollapseAllParents,
   onViewModeChange
 }) => {
   // 🔧 修正：ThemeProviderのテーマを使用
@@ -118,6 +119,16 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
             >
               <Minimize2 size={18} />
             </button>
+            {onCollapseAllParents && (
+              <button 
+                className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                onClick={onCollapseAllParents}
+                title="子タスク持ちタスクを一括折り畳み"
+                aria-label="子タスク持ちタスクを一括折り畳み"
+              >
+                <FolderMinus size={18} />
+              </button>
+            )}
           </div>
 
           {/* テーマ切替 */}

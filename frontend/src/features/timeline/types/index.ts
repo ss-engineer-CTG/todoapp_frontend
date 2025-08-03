@@ -86,6 +86,7 @@ export interface TimelineViewProps {
   onToggleTask?: (taskId: string) => void
   onExpandAll?: () => void
   onCollapseAll?: () => void
+  onCollapseAllParents?: () => void  // 🆕 追加：子タスク持ちタスク一括折りたたみ
   onTaskUpdate?: (taskId: string, updates: Partial<Task>) => Promise<void>
 }
 
@@ -99,6 +100,7 @@ export interface TimelineControlsProps {
   onFitToScreen: () => void
   onExpandAll: () => void
   onCollapseAll: () => void
+  onCollapseAllParents?: () => void  // 🆕 追加：子タスク持ちタスク一括折りたたみ
   onViewModeChange?: (mode: AppViewMode) => void
 }
 

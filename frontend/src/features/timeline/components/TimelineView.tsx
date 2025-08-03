@@ -42,6 +42,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
   onToggleTask,
   onExpandAll,
   onCollapseAll,
+  onCollapseAllParents, // 🆕 追加
   onTaskUpdate, // 🆕 追加
   selectedProjectId, // 🆕 追加
   refreshTasks // 🆕 追加
@@ -352,6 +353,14 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     onCollapseAll?.()
   }, [onCollapseAll, projects, tasks])
 
+  const handleCollapseAllParents = useCallback(() => {
+    logger.info('Collapsing all parent tasks in timeline', {
+      projectCount: projects?.length || 0,
+      taskCount: tasks?.length || 0
+    })
+    onCollapseAllParents?.()
+  }, [onCollapseAllParents, projects, tasks])
+
   // 選択解除ハンドラー（空白部分クリック時）
   const handleSelectionClear = useCallback((event: React.MouseEvent) => {
     // ドラッグ選択中または直後の場合はクリアを防ぐ
@@ -502,6 +511,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
         onFitToScreen={handleFitToScreen}
         onExpandAll={handleExpandAll}
         onCollapseAll={handleCollapseAll}
+        onCollapseAllParents={handleCollapseAllParents}
         onViewModeChange={onViewModeChange}
       />
       
