@@ -3,7 +3,6 @@ import { useTheme } from '@core/components/ThemeProvider'
 import { Calendar, TrendingUp, Target, Clock, Filter } from 'lucide-react'
 import { useHeatmap, HeatmapData } from '../hooks/useHeatmap'
 import { LearningCategory, LEARNING_CATEGORIES } from '../types'
-import { useCustomTags } from '../hooks/useCustomTags'
 
 interface HeatmapCalendarProps {
   onDateSelect?: (date: string, data: HeatmapData) => void
@@ -11,7 +10,6 @@ interface HeatmapCalendarProps {
 
 export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }) => {
   const { resolvedTheme } = useTheme()
-  const { getCategoryTags } = useCustomTags()
   const { 
     heatmapData, 
     config, 
@@ -117,8 +115,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
               health: 0,
               reading: 0,
               exercise: 0,
-              other: 0,
-              'monthly-goals': 0
+              other: 0
             },
             sessionsCount: 0
           })
@@ -140,11 +137,6 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
     updateConfig({ selectedCategory: category })
   }, [updateConfig])
   
-  // タグフィルターの変更（新しいタグシステム）
-  const handleTagFilter = useCallback((_tagId: string | 'all') => {
-    // TODO: タグベースのフィルタリングを実装
-    // 将来的にタグフィルタリング機能を実装
-  }, [])
 
   // 期間の変更
   const handlePeriodChange = useCallback((period: 'week' | 'month' | 'quarter') => {
@@ -279,23 +271,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
             ))}
           </select>
           
-          {/* タグフィルター（新しいタグシステム） */}
-          <select
-            onChange={(e) => handleTagFilter(e.target.value)}
-            className={`text-xs px-2 py-1 border rounded ${
-              resolvedTheme === 'dark' 
-                ? 'border-gray-600 bg-gray-800 text-gray-200' 
-                : 'border-gray-300 bg-white text-gray-900'
-            }`}
-            disabled={true} // 一時的に無効
-          >
-            <option value="all">タグ：すべて</option>
-            {getCategoryTags().map(tag => (
-              <option key={tag.id} value={tag.id}>
-                {tag.emoji} {tag.name}
-              </option>
-            ))}
-          </select>
+          {/* タグフィルターは目標機能削除により一時的に無効化 */}
         </div>
       </div>
 

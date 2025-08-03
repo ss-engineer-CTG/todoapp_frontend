@@ -1,24 +1,13 @@
 // Daily Focus View ローカルストレージ管理
 
 import { 
-  Goal, 
-  CustomTag, 
-  FocusTodo, 
   LearningSession, 
   DailyStats, 
-  DEFAULT_GOALS, 
-  DEFAULT_CUSTOM_TAGS,
-  LearningHeatmapData,
-  createCategoryTags,
-  getCurrentMonthString,
-  isMonthlyGoalExpired
+  LearningHeatmapData
 } from '../types'
 
 // ローカルストレージのキー定義
 const STORAGE_KEYS = {
-  GOALS: 'daily-focus-goals',
-  CUSTOM_TAGS: 'daily-focus-custom-tags',
-  FOCUS_TODOS: 'daily-focus-todos',
   LEARNING_SESSIONS: 'daily-focus-sessions',
   DAILY_STATS: 'daily-focus-daily-stats',
   LEARNING_MEMO: 'daily-focus-learning-memo',
@@ -30,7 +19,6 @@ const STORAGE_KEYS = {
 const safeJSONParse = <T>(item: string | null, defaultValue: T): T => {
   if (!item) return defaultValue
   try {
-    const _parsed = JSON.parse(item)
     // 日付文字列をDateオブジェクトに変換
     return JSON.parse(item, (key, value) => {
       if (key.endsWith('At') || key.endsWith('Time')) {
@@ -53,189 +41,6 @@ const safeJSONStringify = (value: any): string => {
   }
 }
 
-// 目標管理
-export const goalStorage = {
-  getAll: (): Goal[] => {
-    const stored = localStorage.getItem(STORAGE_KEYS.GOALS)
-    console.log('goalStorage.getAll: stored data:', stored)
-    const result = safeJSONParse(stored, DEFAULT_GOALS)
-    console.log('goalStorage.getAll: parsed result:', result)
-    return result
-  },
-
-  save: (goals: Goal[]): void => {
-    localStorage.setItem(STORAGE_KEYS.GOALS, safeJSONStringify(goals))
-  },
-
-  add: (goal: Goal): Goal[] => {
-    const goals = goalStorage.getAll()
-    const newGoals = [...goals, goal]
-    goalStorage.save(newGoals)
-    return newGoals
-  },
-
-  update: (goalId: string, updates: Partial<Goal>): Goal[] => {
-    const goals = goalStorage.getAll()
-    const updatedGoals = goals.map(goal => 
-      goal.id === goalId 
-        ? { ...goal, ...updates, updatedAt: new Date() }
-        : goal
-    )
-    goalStorage.save(updatedGoals)
-    return updatedGoals
-  },
-
-  delete: (goalId: string): Goal[] => {
-    const goals = goalStorage.getAll()
-    const filteredGoals = goals.filter(goal => goal.id !== goalId)
-    goalStorage.save(filteredGoals)
-    return filteredGoals
-  },
-
-  getById: (goalId: string): Goal | null => {
-    const goals = goalStorage.getAll()
-    return goals.find(goal => goal.id === goalId) || null
-  },
-
-  // 月次目標関連関数
-  getMonthlyGoals: (targetMonth?: string): Goal[] => {
-    const goals = goalStorage.getAll()
-    const month = targetMonth || getCurrentMonthString()
-    return goals.filter(goal => 
-      goal.isMonthlyGoal && 
-      goal.monthlyTargetDate === month
-    )
-  },
-
-  getCurrentMonthGoals: (): Goal[] => {
-    return goalStorage.getMonthlyGoals(getCurrentMonthString())
-  },
-
-  getExpiredMonthlyGoals: (): Goal[] => {
-    const goals = goalStorage.getAll()
-    return goals.filter(goal => goal.isMonthlyGoal && isMonthlyGoalExpired(goal))
-  },
-
-  archiveExpiredGoals: (): { archived: Goal[], remaining: Goal[] } => {
-    const goals = goalStorage.getAll()
-    const expired = goals.filter(goal => goal.isMonthlyGoal && isMonthlyGoalExpired(goal))
-    const remaining = goals.filter(goal => !goal.isMonthlyGoal || !isMonthlyGoalExpired(goal))
-    
-    // 期限切れ目標を自動完了に設定
-    const archivedGoals = expired.map(goal => ({
-      ...goal,
-      isCompleted: true,
-      completedAt: new Date(),
-      updatedAt: new Date()
-    }))
-    
-    const allGoals = [...remaining, ...archivedGoals]
-    goalStorage.save(allGoals)
-    
-    return { archived: archivedGoals, remaining }
-  },
-
-  updateMonthlyProgress: (goalId: string, progress: number): Goal[] => {
-    const clampedProgress = Math.max(0, Math.min(100, progress))
-    return goalStorage.update(goalId, { 
-      monthlyProgress: clampedProgress,
-      isCompleted: clampedProgress >= 100,
-      completedAt: clampedProgress >= 100 ? new Date() : undefined
-    })
-  }
-}
-
-// カスタムタグ管理
-export const tagStorage = {
-  getAll: (): CustomTag[] => {
-    const stored = localStorage.getItem(STORAGE_KEYS.CUSTOM_TAGS)
-    console.log('tagStorage.getAll: stored data:', stored)
-    const result = safeJSONParse(stored, DEFAULT_CUSTOM_TAGS)
-    console.log('tagStorage.getAll: parsed result:', result)
-    return result
-  },
-
-  save: (tags: CustomTag[]): void => {
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_TAGS, safeJSONStringify(tags))
-  },
-
-  add: (tag: CustomTag): CustomTag[] => {
-    const tags = tagStorage.getAll()
-    const newTags = [...tags, tag]
-    tagStorage.save(newTags)
-    return newTags
-  },
-
-  update: (tagId: string, updates: Partial<CustomTag>): CustomTag[] => {
-    const tags = tagStorage.getAll()
-    const updatedTags = tags.map(tag => 
-      tag.id === tagId 
-        ? { ...tag, ...updates, updatedAt: new Date() }
-        : tag
-    )
-    tagStorage.save(updatedTags)
-    return updatedTags
-  },
-
-  delete: (tagId: string): CustomTag[] => {
-    const tags = tagStorage.getAll()
-    const filteredTags = tags.filter(tag => tag.id !== tagId)
-    tagStorage.save(filteredTags)
-    return filteredTags
-  },
-
-  getById: (tagId: string): CustomTag | null => {
-    const tags = tagStorage.getAll()
-    return tags.find(tag => tag.id === tagId) || null
-  }
-}
-
-// ToDo管理
-export const todoStorage = {
-  getAll: (): FocusTodo[] => {
-    const stored = localStorage.getItem(STORAGE_KEYS.FOCUS_TODOS)
-    return safeJSONParse(stored, [])
-  },
-
-  save: (todos: FocusTodo[]): void => {
-    localStorage.setItem(STORAGE_KEYS.FOCUS_TODOS, safeJSONStringify(todos))
-  },
-
-  add: (todo: FocusTodo): FocusTodo[] => {
-    const todos = todoStorage.getAll()
-    const newTodos = [...todos, todo]
-    todoStorage.save(newTodos)
-    return newTodos
-  },
-
-  update: (todoId: string, updates: Partial<FocusTodo>): FocusTodo[] => {
-    const todos = todoStorage.getAll()
-    const updatedTodos = todos.map(todo => 
-      todo.id === todoId 
-        ? { ...todo, ...updates, updatedAt: new Date() }
-        : todo
-    )
-    todoStorage.save(updatedTodos)
-    return updatedTodos
-  },
-
-  delete: (todoId: string): FocusTodo[] => {
-    const todos = todoStorage.getAll()
-    const filteredTodos = todos.filter(todo => todo.id !== todoId)
-    todoStorage.save(filteredTodos)
-    return filteredTodos
-  },
-
-  getById: (todoId: string): FocusTodo | null => {
-    const todos = todoStorage.getAll()
-    return todos.find(todo => todo.id === todoId) || null
-  },
-
-  getByGoalId: (goalId: string): FocusTodo[] => {
-    const todos = todoStorage.getAll()
-    return todos.filter(todo => todo.goalId === goalId)
-  }
-}
 
 // 学習セッション管理
 export const sessionStorage = {
@@ -309,19 +114,28 @@ export const statsStorage = {
     const stats = statsStorage.getAll()
     const existingIndex = stats.findIndex(stat => stat.date === date)
     
-    if (existingIndex >= 0) {
+    if (existingIndex >= 0 && stats[existingIndex]) {
       // 既存の統計を更新
-      stats[existingIndex] = { ...stats[existingIndex], ...updates }
+      const existingStat = stats[existingIndex]
+      stats[existingIndex] = {
+        date: existingStat.date,
+        totalTime: updates.totalTime ?? existingStat.totalTime,
+        categoryTimes: updates.categoryTimes ?? existingStat.categoryTimes,
+        completedTodos: updates.completedTodos ?? existingStat.completedTodos,
+        totalTodos: updates.totalTodos ?? existingStat.totalTodos,
+        sessionsCount: updates.sessionsCount ?? existingStat.sessionsCount,
+        notes: updates.notes ?? existingStat.notes
+      }
     } else {
       // 新しい統計を作成
       const newStat: DailyStats = {
         date,
-        totalTime: 0,
-        categoryTimes: {},
-        completedTodos: 0,
-        totalTodos: 0,
-        sessionsCount: 0,
-        ...updates
+        totalTime: updates.totalTime ?? 0,
+        categoryTimes: updates.categoryTimes ?? {},
+        completedTodos: updates.completedTodos ?? 0,
+        totalTodos: updates.totalTodos ?? 0,
+        sessionsCount: updates.sessionsCount ?? 0,
+        notes: updates.notes
       }
       stats.push(newStat)
     }
@@ -379,7 +193,7 @@ export const generateHeatmapData = (stats: DailyStats[]): LearningHeatmapData[] 
   for (let i = 364; i >= 0; i--) {
     const date = new Date(today)
     date.setDate(date.getDate() - i)
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = date.toISOString().split('T')[0] || ''
     
     const stat = stats.find(s => s.date === dateStr)
     const hours = stat ? Math.floor(stat.totalTime / (1000 * 60 * 60)) : 0
@@ -389,7 +203,9 @@ export const generateHeatmapData = (stats: DailyStats[]): LearningHeatmapData[] 
       hours,
       intensity: Math.min(6, Math.floor(hours / 1)),
       sessions: stat?.sessionsCount || 0,
-      categories: stat ? Object.keys(stat.categoryTimes).filter(cat => stat.categoryTimes[cat] > 0) : []
+      categories: stat?.categoryTimes ? Object.keys(stat.categoryTimes).filter(cat => {
+        return stat?.categoryTimes?.[cat] && stat.categoryTimes[cat] > 0
+      }) : []
     })
   }
   
@@ -399,28 +215,6 @@ export const generateHeatmapData = (stats: DailyStats[]): LearningHeatmapData[] 
 // データ初期化
 export const initializeStorage = (): void => {
   console.log('initializeStorage: Starting initialization...')
-  
-  // 初回起動時にデフォルトデータを設定
-  if (!localStorage.getItem(STORAGE_KEYS.GOALS)) {
-    console.log('initializeStorage: Initializing goals with default data')
-    goalStorage.save(DEFAULT_GOALS)
-  } else {
-    console.log('initializeStorage: Goals already exist')
-  }
-  
-  if (!localStorage.getItem(STORAGE_KEYS.CUSTOM_TAGS)) {
-    console.log('initializeStorage: Initializing tags with default data')
-    tagStorage.save(DEFAULT_CUSTOM_TAGS)
-  } else {
-    console.log('initializeStorage: Tags already exist')
-  }
-  
-  if (!localStorage.getItem(STORAGE_KEYS.FOCUS_TODOS)) {
-    console.log('initializeStorage: Initializing todos')
-    todoStorage.save([])
-  } else {
-    console.log('initializeStorage: Todos already exist')
-  }
   
   if (!localStorage.getItem(STORAGE_KEYS.LEARNING_SESSIONS)) {
     console.log('initializeStorage: Initializing sessions')
@@ -437,146 +231,8 @@ export const initializeStorage = (): void => {
   }
   
   console.log('initializeStorage: Initialization complete')
-  
-  // データ移行の実行
-  migrateCategoryToTags()
 }
 
-// カテゴリからタグへのデータ移行
-export const migrateCategoryToTags = (): void => {
-  console.log('migrateCategoryToTags: Starting migration...')
-  
-  try {
-    // 既存のタグデータを取得
-    const existingTags = tagStorage.getAll()
-    const categoryTags = createCategoryTags()
-    
-    // カテゴリタグが既に存在するかチェック
-    const hasCategoryTags = existingTags.some(tag => tag.isCategory)
-    
-    if (!hasCategoryTags) {
-      console.log('migrateCategoryToTags: Adding category tags...')
-      
-      // カテゴリタグを追加
-      const updatedTags = [...existingTags, ...categoryTags]
-      tagStorage.save(updatedTags)
-      
-      console.log('migrateCategoryToTags: Category tags added successfully')
-    } else {
-      console.log('migrateCategoryToTags: Category tags already exist')
-    }
-    
-    // 既存データの移行
-    migrateExistingData()
-    
-  } catch (error) {
-    console.error('migrateCategoryToTags: Migration failed:', error)
-  }
-}
-
-// 既存データ（Goals, Todos, Sessions）のカテゴリをタグに移行
-const migrateExistingData = (): void => {
-  console.log('migrateExistingData: Starting data migration...')
-  
-  try {
-    const categoryTags = tagStorage.getAll().filter(tag => tag.isCategory)
-    const categoryToTagMap = new Map<string, string>()
-    
-    // カテゴリ値からタグIDへのマッピングを作成
-    categoryTags.forEach(tag => {
-      if (tag.aliases && tag.aliases.length > 0) {
-        tag.aliases.forEach(alias => {
-          categoryToTagMap.set(alias, tag.id)
-        })
-      }
-    })
-    
-    // Goals の移行
-    migrateGoalsData(categoryToTagMap)
-    
-    // Todos の移行
-    migrateTodosData(categoryToTagMap)
-    
-    // Sessions の移行（実装は後で）
-    // migrateSessionsData(categoryToTagMap)
-    
-    console.log('migrateExistingData: Data migration completed')
-  } catch (error) {
-    console.error('migrateExistingData: Migration failed:', error)
-  }
-}
-
-// Goals データの移行
-const migrateGoalsData = (categoryToTagMap: Map<string, string>): void => {
-  try {
-    const goals = goalStorage.getAll()
-    let hasChanges = false
-    
-    const migratedGoals = goals.map(goal => {
-      // 既にtagIdsがある場合はスキップ
-      if (goal.tagIds && goal.tagIds.length > 0) {
-        return goal
-      }
-      
-      // categoryからtagIdsに移行
-      if (goal.category && categoryToTagMap.has(goal.category)) {
-        hasChanges = true
-        return {
-          ...goal,
-          tagIds: [categoryToTagMap.get(goal.category)!],
-          // categoryフィールドは互換性のため残す
-        }
-      }
-      
-      return goal
-    })
-    
-    if (hasChanges) {
-      goalStorage.save(migratedGoals)
-      console.log('migrateGoalsData: Goals migrated successfully')
-    } else {
-      console.log('migrateGoalsData: No goals to migrate')
-    }
-  } catch (error) {
-    console.error('migrateGoalsData: Failed to migrate goals:', error)
-  }
-}
-
-// Todos データの移行
-const migrateTodosData = (categoryToTagMap: Map<string, string>): void => {
-  try {
-    const todos = todoStorage.getAll()
-    let hasChanges = false
-    
-    const migratedTodos = todos.map(todo => {
-      // 既にtagIdsがある場合はスキップ
-      if (todo.tagIds && todo.tagIds.length > 0) {
-        return todo
-      }
-      
-      // categoryからtagIdsに移行
-      if (todo.category && categoryToTagMap.has(todo.category)) {
-        hasChanges = true
-        return {
-          ...todo,
-          tagIds: [categoryToTagMap.get(todo.category)!],
-          // categoryフィールドは互換性のため残す
-        }
-      }
-      
-      return todo
-    })
-    
-    if (hasChanges) {
-      todoStorage.save(migratedTodos)
-      console.log('migrateTodosData: Todos migrated successfully')
-    } else {
-      console.log('migrateTodosData: No todos to migrate')
-    }
-  } catch (error) {
-    console.error('migrateTodosData: Failed to migrate todos:', error)
-  }
-}
 
 // データクリア（デバッグ用）
 export const clearAllStorage = (): void => {

@@ -122,8 +122,7 @@ export const useHeatmap = () => {
       health: 0,
       reading: 0,
       exercise: 0,
-      other: 0,
-      'monthly-goals': 0
+      other: 0
     }
 
     heatmapData.forEach(data => {
@@ -243,8 +242,7 @@ export const useHeatmap = () => {
       health: '#f59e0b', // orange
       reading: '#8b5cf6', // purple
       exercise: '#ef4444', // red
-      other: '#6b7280', // gray
-      'monthly-goals': '#f43f5e' // rose
+      other: '#6b7280' // gray
     }
     return colors[category] || colors.other
   }, [])

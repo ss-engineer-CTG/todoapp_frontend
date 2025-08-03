@@ -170,6 +170,10 @@ export const usePanelResize = () => {
         document.body.style.userSelect = ''
       }
     }
+    
+    return () => {
+      // クリーンアップ（resizing=falseの場合）
+    }
   }, [resizeHandle.isResizing, handleResize, stopResize])
 
   // リサイズハンドルのプロパティを取得

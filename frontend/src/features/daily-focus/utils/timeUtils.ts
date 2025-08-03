@@ -33,7 +33,7 @@ export const formatHours = (milliseconds: number): string => {
 }
 
 export const getTodayDateString = (): string => {
-  return new Date().toISOString().split('T')[0]
+  return new Date().toISOString().split('T')[0] || ''
 }
 
 export const formatDateString = (date: Date): string => {
@@ -127,7 +127,7 @@ export const calculateTotalTimeToday = (sessions: Array<{
   
   return sessions
     .filter(session => {
-      const sessionDate = new Date(session.startTime).toISOString().split('T')[0]
+      const sessionDate = new Date(session.startTime).toISOString().split('T')[0] || ''
       return sessionDate === today
     })
     .reduce((total, session) => total + session.totalTime, 0)
@@ -138,21 +138,22 @@ export const calculateCategoryTimes = (sessions: Array<{
   endTime?: Date
   pausedTime: number
   totalTime: number
-  category: string
+  category?: string
 }>): Record<string, number> => {
   const today = getTodayDateString()
   const categoryTimes: Record<string, number> = {}
   
   sessions
     .filter(session => {
-      const sessionDate = new Date(session.startTime).toISOString().split('T')[0]
+      const sessionDate = new Date(session.startTime).toISOString().split('T')[0] || ''
       return sessionDate === today
     })
     .forEach(session => {
-      if (!categoryTimes[session.category]) {
-        categoryTimes[session.category] = 0
+      const categoryKey = session.category || 'other'
+      if (!categoryTimes[categoryKey]) {
+        categoryTimes[categoryKey] = 0
       }
-      categoryTimes[session.category] += session.totalTime
+      categoryTimes[categoryKey] += session.totalTime
     })
   
   return categoryTimes
@@ -245,7 +246,8 @@ export const getHeatmapColor = (intensity: number, theme: 'light' | 'dark'): str
   ]
   
   const colors = theme === 'dark' ? darkColors : lightColors
-  return colors[Math.min(intensity, colors.length - 1)]
+  const index = Math.min(intensity, colors.length - 1)
+  return colors[index] || 'bg-gray-100'
 }
 
 // 統計計算のユーティリティ
