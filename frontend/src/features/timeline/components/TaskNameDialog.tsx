@@ -13,7 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@core/components/ui/dialog'
+import { Factory } from 'lucide-react'
 import { logger } from '@core/utils'
+import { Project } from '@core/types'
 
 export interface TaskNameDialogProps {
   isOpen: boolean
@@ -21,6 +23,8 @@ export interface TaskNameDialogProps {
   onConfirm: (taskName: string) => Promise<void>
   taskType: 'task' | 'subtask'
   parentTaskName?: string
+  // 🆕 プロジェクト情報
+  targetProject?: Project | null
 }
 
 export const TaskNameDialog: React.FC<TaskNameDialogProps> = ({
@@ -28,7 +32,8 @@ export const TaskNameDialog: React.FC<TaskNameDialogProps> = ({
   onClose,
   onConfirm,
   taskType,
-  parentTaskName
+  parentTaskName,
+  targetProject
 }) => {
   const [taskName, setTaskName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -144,6 +149,34 @@ export const TaskNameDialog: React.FC<TaskNameDialogProps> = ({
               : '新しいタスクを作成します'
             }
           </DialogDescription>
+          
+          {/* 🆕 プロジェクト情報表示 */}
+          {targetProject && (
+            <div className="flex items-center gap-2 mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+              <Factory size={16} style={{ color: targetProject.color }} />
+              <span className="text-sm font-medium">作成先プロジェクト:</span>
+              <span 
+                className="text-sm font-bold"
+                style={{ color: targetProject.color }}
+              >
+                {targetProject.name}
+              </span>
+            </div>
+          )}
+          
+          {!targetProject && (
+            <div className="flex items-center gap-2 mt-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-400 to-purple-500" />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  🎯 自動選択モード
+                </div>
+                <div className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                  選択行からプロジェクトを自動判定します
+                </div>
+              </div>
+            </div>
+          )}
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
