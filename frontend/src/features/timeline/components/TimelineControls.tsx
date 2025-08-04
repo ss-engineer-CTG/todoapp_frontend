@@ -4,11 +4,21 @@
 import React from 'react'
 import {
   ZoomIn, ZoomOut, RotateCw, Maximize2, ChevronLeft, ChevronRight,
-  Sun, Moon, Minimize2, ArrowLeft, Calendar, Focus, FolderMinus
+  Sun, Moon, Minimize2, ArrowLeft, Calendar, Focus, FolderMinus,
+  ChevronDown, Factory
 } from 'lucide-react'
 import { TimelineControlsProps } from '../types'
 import { useTheme } from '@core/components/ThemeProvider'
 import { ZOOM_CONFIG } from '../utils'
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@core/components/ui/dropdown-menu'
+import { Button } from '@core/components/ui/button'
 
 export const TimelineControls: React.FC<TimelineControlsProps> = ({
   zoomLevel,
@@ -20,7 +30,11 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
   onExpandAll,
   onCollapseAll,
   onCollapseAllParents,
-  onViewModeChange
+  onViewModeChange,
+  // 🆕 プロジェクト選択機能
+  projects = [],
+  activeProjectId = null,
+  onActiveProjectChange
 }) => {
   // 🔧 修正：ThemeProviderのテーマを使用
   const { resolvedTheme, setTheme } = useTheme()
@@ -34,11 +48,18 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
   const zoomOut = () => handleZoom(zoomLevel - ZOOM_CONFIG.step)
   const resetZoom = () => handleZoom(ZOOM_CONFIG.default)
 
-  const _handleBackToList = () => {
-    if (onViewModeChange) {
-      onViewModeChange('tasklist')
+
+  // 🆕 プロジェクト選択ハンドラー
+  const handleProjectSelect = (projectId: string | null) => {
+    if (onActiveProjectChange) {
+      onActiveProjectChange(projectId)
     }
   }
+
+  // アクティブプロジェクトの情報を取得
+  const activeProject = activeProjectId ? projects.find(p => p.id === activeProjectId) : null
+  const hasProjects = projects.length > 0
+  const hasActiveProject = activeProject !== null
 
   // 🔧 修正：テーマ切り替え関数
   const handleThemeToggle = () => {
@@ -100,9 +121,77 @@ export const TimelineControls: React.FC<TimelineControlsProps> = ({
           </div>
         </div>
         
-        <div className="flex items-center space-x-2 flex-shrink-0 ml-4">
+        <div className="flex items-center space-x-4 flex-shrink-0 ml-4">
+          {/* 🆕 プロジェクト選択ドロップダウン */}
+          {hasProjects && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={`h-8 min-w-0 ${hasActiveProject ? 'border-blue-300 bg-blue-50 dark:bg-blue-950 dark:border-blue-700' : ''}`}
+                >
+                  <Factory 
+                    size={14} 
+                    className="mr-1"
+                    style={{ color: activeProject?.color || '#6b7280' }}
+                  />
+                  <span className="hidden sm:inline mr-1">作成対象:</span>
+                  <span 
+                    className="max-w-24 truncate text-xs sm:text-sm font-medium"
+                    style={{ color: activeProject?.color || undefined }}
+                  >
+                    {activeProject ? activeProject.name : '自動選択'}
+                  </span>
+                  <ChevronDown size={12} className="ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>タスク作成対象プロジェクト</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem 
+                  onClick={() => handleProjectSelect(null)}
+                  className={`flex items-center gap-2 cursor-pointer ${
+                    !activeProjectId ? 'bg-blue-50 dark:bg-blue-950' : ''
+                  }`}
+                >
+                  <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-400 to-purple-500" />
+                  <div className="flex-1">
+                    <span>自動選択モード</span>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      選択行からプロジェクトを判定
+                    </div>
+                  </div>
+                  {!activeProjectId && <span className="ml-auto text-xs text-blue-600">✓</span>}
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                {projects.map(project => (
+                  <DropdownMenuItem 
+                    key={project.id}
+                    onClick={() => handleProjectSelect(project.id)}
+                    className={`flex items-center gap-2 cursor-pointer ${
+                      activeProjectId === project.id ? 'bg-blue-50 dark:bg-blue-950' : ''
+                    }`}
+                  >
+                    <div 
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: project.color }}
+                    />
+                    <span className="truncate">{project.name}</span>
+                    {activeProjectId === project.id && (
+                      <span className="ml-auto text-xs text-blue-600">✓</span>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {/* 一括展開・折り畳みボタン */}
-          <div className="hidden sm:flex items-center space-x-1 mr-4">
+          <div className="hidden sm:flex items-center space-x-1">
             <button 
               className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               onClick={onExpandAll}
