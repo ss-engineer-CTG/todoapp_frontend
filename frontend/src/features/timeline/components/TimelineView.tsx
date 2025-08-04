@@ -12,6 +12,7 @@ import { useTimeline } from '../hooks/useTimeline'
 import { useRowSelection } from '../hooks/useRowSelection'
 import { useTimelineKeyboard } from '../hooks/useTimelineKeyboard'
 import { useTimelineTaskOperations } from '../hooks/useTimelineTaskOperations'
+import { useSmartProjectSelection } from '../hooks/useSmartProjectSelection'
 import { buildTaskRelationMap } from '@tasklist/utils/task'
 import { useTheme } from '@core/components/ThemeProvider'
 import { Task } from '@core/types'
@@ -91,8 +92,33 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     isRecentDragEnd
   } = useRowSelection()
 
-  // 🆕 プロジェクト選択状態（デフォルト値設定）
-  const currentSelectedProjectId = selectedProjectId || (projects?.length > 0 ? projects[0]?.id : null)
+  // 🆕 スマートプロジェクト選択機能
+  const smartProjectSelection = useSmartProjectSelection({
+    selectedTaskIds,
+    tasks,
+    projects,
+    initialActiveProjectId: selectedProjectId,
+    onActiveProjectChange: (projectId) => {
+      logger.info('Smart project selection changed', { projectId })
+    }
+  })
+
+  // 🆕 プロジェクト選択状態管理（スマート選択と手動選択の統合）
+  const currentSelectedProjectId = smartProjectSelection.state.activeProjectId || 
+                                   selectedProjectId || 
+                                   (projects?.length > 0 ? projects[0]?.id : null)
+  
+  // 🆕 アクティブプロジェクト変更ハンドラー（スマート選択との統合）
+  const handleActiveProjectChange = useCallback((projectId: string | null) => {
+    // スマート選択機能を使用して手動設定
+    smartProjectSelection.setActiveProject(projectId, 'manual')
+    
+    logger.info('Active project changed manually', {
+      previousProjectId: smartProjectSelection.state.activeProjectId,
+      newProjectId: projectId,
+      projectName: projectId ? projects.find(p => p.id === projectId)?.name : 'All Projects'
+    })
+  }, [smartProjectSelection, projects])
   
   // 🆕 データ再読み込み関数（デフォルト実装）
   const handleRefreshTasks = useCallback(async () => {
@@ -513,6 +539,10 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
         onCollapseAll={handleCollapseAll}
         onCollapseAllParents={handleCollapseAllParents}
         onViewModeChange={onViewModeChange}
+        // 🆕 プロジェクト選択機能（スマート選択統合）
+        projects={projects}
+        activeProjectId={smartProjectSelection.state.activeProjectId}
+        onActiveProjectChange={handleActiveProjectChange}
       />
       
       {/* プロジェクトがない場合の表示 */}
@@ -754,13 +784,14 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
         onConfirm={handleDateShiftConfirm}
       />
       
-      {/* タスク名入力ダイアログ */}
+      {/* タスク名入力ダイアログ（スマート選択統合） */}
       <TaskNameDialog
         isOpen={isTaskNameDialogOpen}
         onClose={handleTaskNameDialogClose}
         onConfirm={handleTaskNameDialogConfirm}
         taskType={taskDialogType}
         parentTaskName={taskDialogParentTask?.name}
+        targetProject={smartProjectSelection.state.activeProject}
       />
     </div>
   )
