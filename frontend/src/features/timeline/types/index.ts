@@ -102,6 +102,10 @@ export interface TimelineControlsProps {
   onCollapseAll: () => void
   onCollapseAllParents?: () => void  // 🆕 追加：子タスク持ちタスク一括折りたたみ
   onViewModeChange?: (mode: AppViewMode) => void
+  // 🆕 プロジェクト選択機能
+  projects?: Project[]
+  activeProjectId?: string | null
+  onActiveProjectChange?: (projectId: string | null) => void
 }
 
 // 複数選択関連の型定義
