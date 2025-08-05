@@ -97,6 +97,7 @@ class EnterpriseErrorHandler {
   }
 
   setNotificationCallback(callback: (error: ErrorReport) => void): void {
+    // エラーレポーティングが無効化されている場合はコールバックを設定しない
     this.notificationCallback = callback
   }
 

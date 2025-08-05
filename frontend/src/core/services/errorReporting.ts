@@ -1,6 +1,6 @@
 /**
- * エラーレポーティングサービス
- * フロントエンドエラーをバックエンドに送信
+ * エラーレポーティングサービス（無効化版）
+ * 理想形アプリケーションのため、エラーレポーティング機能を無効化
  */
 import { errorHandler, ErrorReport } from '@core/utils/errorHandler'
 import { logger } from '@core/utils/logger'
@@ -10,18 +10,28 @@ class ErrorReportingService {
   private reportQueue: ErrorReport[] = []
   private isReporting = false
   private readonly maxQueueSize = 50
+  private readonly isEnabled = false // エラーレポーティングを無効化
 
   constructor() {
+    if (!this.isEnabled) {
+      logger.info('Error reporting service is disabled')
+      return
+    }
+    
     // エラーハンドラーにコールバックを設定
-    errorHandler.setNotificationCallback(this.queueErrorReport.bind(this))
+    // errorHandler.setNotificationCallback(this.queueErrorReport.bind(this))
     
     // 定期的にキューを処理
-    setInterval(() => {
-      this.processQueue()
-    }, 10000) // 10秒ごと
+    // setInterval(() => {
+    //   this.processQueue()
+    // }, 10000) // 10秒ごと
   }
 
   private queueErrorReport(error: ErrorReport): void {
+    if (!this.isEnabled) {
+      return // 無効化時は何もしない
+    }
+    
     // キューサイズ制限
     if (this.reportQueue.length >= this.maxQueueSize) {
       this.reportQueue.shift() // 古いエラーを削除
@@ -32,7 +42,7 @@ class ErrorReportingService {
   }
 
   private async processQueue(): Promise<void> {
-    if (this.isReporting || this.reportQueue.length === 0) {
+    if (!this.isEnabled || this.isReporting || this.reportQueue.length === 0) {
       return
     }
 
@@ -110,6 +120,11 @@ class ErrorReportingService {
     severity: string = 'medium',
     context?: any
   ): Promise<void> {
+    if (!this.isEnabled) {
+      logger.debug('Error reporting is disabled, skipping manual report', { message, category, severity })
+      return
+    }
+    
     try {
       const response = await fetch(this.endpoint, {
         method: 'POST',
