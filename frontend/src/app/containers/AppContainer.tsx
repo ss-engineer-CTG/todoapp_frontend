@@ -377,11 +377,8 @@ export const AppContainer: React.FC = () => {
 
       await updateTask(taskId, updates)
       
-      // ドラッグ操作後は両方の状態を更新してビュー間の整合性を保つ
-      await loadTasks() // 全タスク（タイムラインビュー用）
-      if (selectedProjectId) {
-        await loadTasks(selectedProjectId) // 選択プロジェクトのタスク（リストビュー用）
-      }
+      // ドラッグ操作後は全タスクを再読み込み（タイムラインビューでは全プロジェクトが必要）
+      await loadTasks() // 全タスク再読み込み
       
       logger.info('Task update via drag completed', { taskId })
     } catch (error) {
