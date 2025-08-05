@@ -1,7 +1,7 @@
 // システムプロンプト準拠：Timeline描画統合コンポーネント（ドラッグ機能統合版）
 // 🔧 修正内容：DraggableTaskBarの統合、ドラッグ状態管理の追加
 
-import React, { useMemo, useCallback, useEffect } from 'react'
+import React, { useMemo, useCallback, useEffect, useState } from 'react'
 import { 
   ChevronDown, ChevronRight, Factory
 } from 'lucide-react'
@@ -62,6 +62,24 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
   const today = new Date()
   const dimensions = useMemo(() => calculateDynamicSizes(zoomLevel, viewUnit), [zoomLevel, viewUnit])
 
+  // 🆕 ホバー状態の一元管理
+  const [activeHoverTaskId, setActiveHoverTaskId] = useState<string | null>(null)
+  
+  // 🆕 クリック時のホバー状態管理
+  const [clickedTaskId, setClickedTaskId] = useState<string | null>(null)
+  
+  // 🆕 クリック状態設定時の排他制御
+  const handleSetClickedTask = useCallback((taskId: string | null) => {
+    // 新しいタスクがクリックされた場合、他のタスクのクリック状態をリセット
+    if (taskId && taskId !== clickedTaskId) {
+      setActiveHoverTaskId(taskId) // 新しいタスクをホバー状態にも設定
+    } else if (!taskId && clickedTaskId) {
+      setActiveHoverTaskId(null) // クリック解除時はホバー状態もリセット
+    }
+    setClickedTaskId(taskId)
+  }, [clickedTaskId])
+  
+
   // 🆕 追加：ドラッグ機能の統合
   const {
     dragState,
@@ -88,11 +106,15 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
 
     const handleGlobalMouseUp = () => {
       handleDragEnd()
+      // 🆕 ドラッグ終了時にクリック状態をリセット
+      handleSetClickedTask(null)
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         handleDragCancel()
+        // 🆕 ドラッグキャンセル時にクリック状態をリセット
+        handleSetClickedTask(null)
       }
     }
 
@@ -105,7 +127,7 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
       document.removeEventListener('mouseup', handleGlobalMouseUp)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isDragging, handleDragMove, handleDragEnd, handleDragCancel])
+  }, [isDragging, handleDragMove, handleDragEnd, handleDragCancel, handleSetClickedTask])
 
   const taskChildrenMap = useMemo(() => {
     logger.info('Building task children map for all projects', {
@@ -357,6 +379,11 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
         updateTaskPosition={updateTaskPosition}
         getTaskStatusStyle={getTaskStatusStyle}
         calculateIndent={calculateIndent}
+        // 🆕 ホバー状態管理
+        activeHoverTaskId={activeHoverTaskId}
+        onSetActiveHoverTask={setActiveHoverTaskId}
+        clickedTaskId={clickedTaskId}
+        onSetClickedTask={handleSetClickedTask}
       />
     )
   }, [
@@ -376,7 +403,10 @@ export const TimelineRenderer: React.FC<ExtendedTimelineRendererProps> = ({
     registerRowElement,
     updateTaskPosition,
     getTaskStatusStyle,
-    calculateIndent
+    calculateIndent,
+    activeHoverTaskId,
+    clickedTaskId,
+    handleSetClickedTask
   ])
 
   // プロジェクトタスクデータのメモ化（パフォーマンス改善）

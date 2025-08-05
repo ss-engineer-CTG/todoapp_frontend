@@ -53,6 +53,12 @@ interface TaskRowProps {
     textColor: string
   }
   calculateIndent: (level: number) => number
+  
+  // 🆕 ホバー状態管理
+  activeHoverTaskId?: string | null
+  onSetActiveHoverTask?: (taskId: string | null) => void
+  clickedTaskId?: string | null
+  onSetClickedTask?: (taskId: string | null) => void
 }
 
 export const TaskRow: React.FC<TaskRowProps> = ({
@@ -87,7 +93,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
   const barWidth = Math.max(endPos - startPos, 50) // 最小幅50px
   const barHeight = dimensions.taskBarHeight
   const statusStyle = getTaskStatusStyle(task)
-  const isCurrentlyDragging = isDragging
+  const isCurrentlyDragging = isDragging && dragState.originalTask?.id === task.id
   
   // React Hooksを早期リターンより前に置く
   // 行の視覚的スタイル
@@ -245,47 +251,11 @@ export const TaskRow: React.FC<TaskRowProps> = ({
         onTaskClick={onToggleTask}
         onDragStart={onDragStart}
         isDragging={isCurrentlyDragging}
-        isPreview={false}
-        previewStartDate={dragState.previewStartDate}
-        previewDueDate={dragState.previewDueDate}
-        isSelected={false} // 行レベル選択に変更したため無効化
-        onTaskSelect={undefined} // 行レベル選択に変更したため無効化
+        dragState={dragState}
+        timeRange={timeRange}
+        viewUnit={viewUnit}
       />
 
-      {/* ドラッグ中のプレビュー表示 */}
-      {isCurrentlyDragging && dragState.previewStartDate && dragState.previewDueDate && (
-        <DraggableTaskBar
-          taskWithChildren={{
-            ...taskWithChildren,
-            task: {
-              ...task,
-              startDate: dragState.previewStartDate,
-              dueDate: dragState.previewDueDate
-            }
-          }}
-          project={project}
-          startPos={getDatePosition(dragState.previewStartDate, timeRange.startDate, dimensions.cellWidth, viewUnit)}
-          barWidth={Math.max(80, 
-            getDatePosition(dragState.previewDueDate, timeRange.startDate, dimensions.cellWidth, viewUnit) - 
-            getDatePosition(dragState.previewStartDate, timeRange.startDate, dimensions.cellWidth, viewUnit) + 
-            dimensions.cellWidth
-          )}
-          barHeight={barHeight}
-          statusStyle={{
-            ...statusStyle,
-            background: statusStyle.background.replace(/[\d.]+\)/, '0.5)'),
-            backgroundColor: statusStyle.backgroundColor
-          }}
-          dimensions={dimensions}
-          zoomLevel={zoomLevel}
-          theme={theme}
-          onDragStart={() => {}}
-          isDragging={false}
-          isPreview={true}
-          previewStartDate={dragState.previewStartDate}
-          previewDueDate={dragState.previewDueDate}
-        />
-      )}
     </div>
   )
 }
