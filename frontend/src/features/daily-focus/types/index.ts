@@ -1,12 +1,22 @@
 // Daily Focus View データ型定義
 
-// 学習カテゴリタイプ
+// 学習カテゴリタイプ（廃止予定：タグシステムに移行）
 export type LearningCategory = 'programming' | 'english' | 'health' | 'reading' | 'exercise' | 'other'
+
+// タグシステム
+export interface Tag {
+  id: string
+  name: string
+  color: ColorVariant
+  emoji?: string
+  createdAt: Date
+  usageCount: number
+}
 
 export interface LearningSession {
   id: string
-  category?: LearningCategory
-  tagIds?: string[] // タグシステム対応
+  category?: LearningCategory // 廃止予定：後方互換性のため残存
+  tagIds?: string[] // タグシステム（新システム）
   goalId?: string // 目標関連（削除済み機能の残存フィールド）
   startTime: Date
   endTime?: Date
