@@ -1,17 +1,23 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
 import { LeftPanel } from './LeftPanel'
 import { CenterPanel } from './CenterPanel'
 import { RightPanel } from './RightPanel'
 import { NotificationToast } from './NotificationToast'
+import { dailyMemoStorage } from '../utils/storage'
 
 export const DailyFocusView: React.FC = () => {
   const { resolvedTheme } = useTheme()
   
-  // パネル幅の管理
+  // 選択された日付の管理
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0] || ''
+  })
+  
+  // パネル幅の管理（レスポンシブ対応）
   const [leftPanelWidth, setLeftPanelWidth] = useState(25) // 25%
   const [centerPanelWidth, setCenterPanelWidth] = useState(50) // 50%
-  const [rightPanelWidth, setRightPanelWidth] = useState(25) // 25%
+  // const [rightPanelWidth, setRightPanelWidth] = useState(25) // 25% - 右パネルはflex-1で自動調整
   
   // リサイズ状態
   const [isResizing, setIsResizing] = useState(false)
@@ -37,21 +43,18 @@ export const DailyFocusView: React.FC = () => {
     if (activeResizer === 'left') {
       // 左パネルのリサイズ
       const newLeftWidth = (mouseX / containerWidth) * 100
-      const newRightWidth = 100 - newLeftWidth - centerPanelWidth
       
-      if (newLeftWidth >= 15 && newLeftWidth <= 60 && newRightWidth >= 15) {
+      if (newLeftWidth >= 15 && newLeftWidth <= 60) {
         setLeftPanelWidth(newLeftWidth)
-        setRightPanelWidth(newRightWidth)
+        // 右パネルはflex-1で自動的に残りの空間を占有
       }
     } else if (activeResizer === 'right') {
-      // 右パネルのリサイズ
-      const rightEdgeX = containerWidth - mouseX
-      const newRightWidth = (rightEdgeX / containerWidth) * 100
-      const newCenterWidth = 100 - leftPanelWidth - newRightWidth
+      // 右パネルのリサイズ（中央パネルの幅を調整）
+      const newCenterWidth = (mouseX / containerWidth) * 100 - leftPanelWidth
       
-      if (newCenterWidth >= 20 && newRightWidth >= 15 && newRightWidth <= 60) {
+      if (newCenterWidth >= 20 && newCenterWidth <= 60) {
         setCenterPanelWidth(newCenterWidth)
-        setRightPanelWidth(newRightWidth)
+        // 右パネルはflex-1で自動的に残りの空間を占有
       }
     }
   }, [isResizing, activeResizer, centerPanelWidth, leftPanelWidth])
@@ -78,17 +81,40 @@ export const DailyFocusView: React.FC = () => {
     }
     return undefined
   }, [isResizing, handleMouseMove, handleMouseUp])
+
+  // 日付選択ハンドラー
+  const handleDateSelect = useCallback((date: string) => {
+    setSelectedDate(date)
+  }, [])
+
+  // 今日に戻るハンドラー
+  const handleBackToToday = useCallback(() => {
+    const today = new Date().toISOString().split('T')[0] || ''
+    setSelectedDate(today)
+  }, [])
+
+  // 初回マウント時の移行処理
+  useEffect(() => {
+    // アプリ起動時に既存のグローバルメモを今日のメモに移行
+    const migrated = dailyMemoStorage.migrateFromGlobalMemo()
+    if (migrated) {
+      console.log('学習メモの移行が完了しました')
+    }
+  }, [])
   
   return (
     <>
       <div 
         ref={containerRef}
-        className={`flex h-screen ${resolvedTheme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} pt-16 overflow-hidden`}
+        className={`flex h-screen w-full ${resolvedTheme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} overflow-hidden`}
       >
-        {/* 左パネル: 目標管理・学習時間トラッキング */}
+        {/* 左パネル: 学習時間トラッキング */}
         <div 
-          className={`${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-white'} border-r ${resolvedTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-4 overflow-y-auto`}
-          style={{ width: `${leftPanelWidth}%` }}
+          className={`${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-white'} border-r ${resolvedTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-4 overflow-y-auto flex-shrink-0`}
+          style={{ 
+            width: `${leftPanelWidth}%`,
+            minWidth: '280px'
+          }}
         >
           <LeftPanel />
         </div>
@@ -101,12 +127,18 @@ export const DailyFocusView: React.FC = () => {
           onMouseDown={handleResizerMouseDown('left')}
         />
         
-        {/* 中央パネル: ToDoリスト */}
+        {/* 中央パネル: 学習メモ */}
         <div 
-          className={`${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-white'} border-r ${resolvedTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-4 overflow-y-auto`}
-          style={{ width: `${centerPanelWidth}%` }}
+          className={`${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-white'} border-r ${resolvedTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-4 overflow-y-auto flex-shrink-0`}
+          style={{ 
+            width: `${centerPanelWidth}%`,
+            minWidth: '400px'
+          }}
         >
-          <CenterPanel />
+          <CenterPanel 
+            selectedDate={selectedDate}
+            onBackToToday={handleBackToToday}
+          />
         </div>
         
         {/* リサイズハンドル2 */}
@@ -117,12 +149,14 @@ export const DailyFocusView: React.FC = () => {
           onMouseDown={handleResizerMouseDown('right')}
         />
         
-        {/* 右パネル: アウトプットメモ・成長可視化 */}
+        {/* 右パネル: 成長可視化 */}
         <div 
-          className={`${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-white'} p-4 overflow-y-auto`}
-          style={{ width: `${rightPanelWidth}%` }}
+          className={`${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-white'} p-4 overflow-y-auto flex-1`}
+          style={{ 
+            minWidth: '320px'
+          }}
         >
-          <RightPanel />
+          <RightPanel onDateSelect={handleDateSelect} />
         </div>
       </div>
       

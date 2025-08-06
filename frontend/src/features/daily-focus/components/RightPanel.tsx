@@ -2,16 +2,16 @@ import React from 'react'
 import { useTheme } from '@core/components/ThemeProvider'
 import { BarChart3 } from 'lucide-react'
 import { HeatmapCalendar } from './HeatmapCalendar'
-import { LearningMemoPanel } from './LearningMemoPanel'
 
-export const RightPanel: React.FC = () => {
+interface RightPanelProps {
+  onDateSelect: (date: string) => void
+}
+
+export const RightPanel: React.FC<RightPanelProps> = ({ onDateSelect }) => {
   const { resolvedTheme } = useTheme()
   
   return (
     <div className="space-y-6">
-      {/* アウトプットメモ */}
-      <LearningMemoPanel />
-      
       {/* 成長可視化ダッシュボード */}
       <div className="mb-6">
         <h3 className={`text-md font-semibold mb-3 flex items-center ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
@@ -20,7 +20,7 @@ export const RightPanel: React.FC = () => {
         </h3>
         
         {/* 活動ヒートマップ */}
-        <HeatmapCalendar />
+        <HeatmapCalendar onDateSelect={onDateSelect} />
       </div>
     </div>
   )
