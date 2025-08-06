@@ -159,6 +159,42 @@ export const calculateCategoryTimes = (sessions: Array<{
   return categoryTimes
 }
 
+export const calculateTagTimes = (sessions: Array<{
+  startTime: Date
+  endTime?: Date
+  pausedTime: number
+  totalTime: number
+  tagIds?: string[]
+}>): Record<string, number> => {
+  const today = getTodayDateString()
+  const tagTimes: Record<string, number> = {}
+  
+  sessions
+    .filter(session => {
+      const sessionDate = new Date(session.startTime).toISOString().split('T')[0] || ''
+      return sessionDate === today
+    })
+    .forEach(session => {
+      if (session.tagIds && session.tagIds.length > 0) {
+        session.tagIds.forEach(tagId => {
+          if (!tagTimes[tagId]) {
+            tagTimes[tagId] = 0
+          }
+          // セッション時間を関連するタグ数で等分
+          tagTimes[tagId] += session.totalTime / session.tagIds!.length
+        })
+      } else {
+        // タグが設定されていないセッションは 'untagged' として分類
+        if (!tagTimes['untagged']) {
+          tagTimes['untagged'] = 0
+        }
+        tagTimes['untagged'] += session.totalTime
+      }
+    })
+  
+  return tagTimes
+}
+
 // タイマー関連のユーティリティ
 export const createTimer = (
   callback: () => void,

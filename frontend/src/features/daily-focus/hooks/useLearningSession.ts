@@ -6,6 +6,7 @@ import {
   getTodayDateString, 
   calculateTotalTimeToday, 
   calculateCategoryTimes,
+  calculateTagTimes,
   createTimer,
   createVisibilityHandler
 } from '../utils/timeUtils'
@@ -369,11 +370,18 @@ export const useLearningSession = () => {
 
   // フォーマット済みの時間を取得
   const getFormattedTimes = useCallback(() => {
+    const sessions = sessionStorage.getTodaySessions()
+    const tagTimes = calculateTagTimes(sessions)
+    
     return {
       currentSession: formatTime(sessionState.elapsedTime),
       todayTotal: formatTime(sessionState.todayTotal),
       categoryTotals: Object.entries(sessionState.categoryTotals).reduce((acc, [category, time]) => {
         acc[category] = formatTime(time)
+        return acc
+      }, {} as Record<string, string>),
+      tagTotals: Object.entries(tagTimes).reduce((acc, [tagId, time]) => {
+        acc[tagId] = formatTime(time)
         return acc
       }, {} as Record<string, string>)
     }
