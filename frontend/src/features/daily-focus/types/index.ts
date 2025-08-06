@@ -35,6 +35,14 @@ export interface LearningHeatmapData {
   categories: string[]
 }
 
+export interface DailyMemo {
+  date: string        // "2025-01-15" (YYYY-MM-DD)
+  content: string     // その日の学習メモ内容
+  createdAt: Date     // 初回作成日時
+  updatedAt: Date     // 最終更新日時
+  wordCount: number   // 文字数（統計用）
+}
+
 
 export interface PanelDimensions {
   leftWidth: number

@@ -3,7 +3,8 @@
 import { 
   LearningSession, 
   DailyStats, 
-  LearningHeatmapData
+  LearningHeatmapData,
+  DailyMemo
 } from '../types'
 
 // ローカルストレージのキー定義
@@ -12,7 +13,8 @@ const STORAGE_KEYS = {
   DAILY_STATS: 'daily-focus-daily-stats',
   LEARNING_MEMO: 'daily-focus-learning-memo',
   PANEL_DIMENSIONS: 'daily-focus-panel-dimensions',
-  CURRENT_SESSION: 'daily-focus-current-session'
+  CURRENT_SESSION: 'daily-focus-current-session',
+  DAILY_MEMOS: 'daily-focus-daily-memos'
 } as const
 
 // ユーティリティ関数
@@ -210,6 +212,91 @@ export const generateHeatmapData = (stats: DailyStats[]): LearningHeatmapData[] 
   }
   
   return heatmapData
+}
+
+// 日付別メモ管理
+export const dailyMemoStorage = {
+  getAll: (): Record<string, DailyMemo> => {
+    const stored = localStorage.getItem(STORAGE_KEYS.DAILY_MEMOS)
+    return safeJSONParse(stored, {})
+  },
+
+  save: (memos: Record<string, DailyMemo>): void => {
+    localStorage.setItem(STORAGE_KEYS.DAILY_MEMOS, safeJSONStringify(memos))
+  },
+
+  getByDate: (date: string): DailyMemo | null => {
+    const memos = dailyMemoStorage.getAll()
+    return memos[date] || null
+  },
+
+  saveByDate: (date: string, memo: DailyMemo): void => {
+    const memos = dailyMemoStorage.getAll()
+    memos[date] = memo
+    dailyMemoStorage.save(memos)
+  },
+
+  updateByDate: (date: string, content: string): DailyMemo => {
+    const memos = dailyMemoStorage.getAll()
+    const existing = memos[date]
+    const now = new Date()
+    
+    const updatedMemo: DailyMemo = {
+      date,
+      content,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+      wordCount: content.length
+    }
+    
+    memos[date] = updatedMemo
+    dailyMemoStorage.save(memos)
+    return updatedMemo
+  },
+
+  // 既存グローバルメモからの移行処理
+  migrateFromGlobalMemo: (): boolean => {
+    try {
+      const globalMemo = localStorage.getItem(STORAGE_KEYS.LEARNING_MEMO)
+      if (!globalMemo || globalMemo.trim() === '') {
+        return false // 移行するメモがない
+      }
+      
+      const today = new Date().toISOString().split('T')[0]
+      if (!today) return false
+      
+      // 今日の日付でメモが既に存在するかチェック
+      const existingMemo = dailyMemoStorage.getByDate(today)
+      if (existingMemo) {
+        return false // 既に今日のメモが存在
+      }
+      
+      // グローバルメモを今日のメモとして移行
+      const now = new Date()
+      const migratedMemo: DailyMemo = {
+        date: today,
+        content: globalMemo.trim(),
+        createdAt: now,
+        updatedAt: now,
+        wordCount: globalMemo.trim().length
+      }
+      
+      dailyMemoStorage.saveByDate(today, migratedMemo)
+      
+      // グローバルメモを削除
+      localStorage.removeItem(STORAGE_KEYS.LEARNING_MEMO)
+      
+      console.log(`学習メモを移行しました: ${globalMemo.length}文字 → ${today}`)
+      return true
+    } catch (error) {
+      console.error('メモ移行に失敗:', error)
+      return false
+    }
+  },
+
+  clear: (): void => {
+    localStorage.removeItem(STORAGE_KEYS.DAILY_MEMOS)
+  }
 }
 
 // データ初期化
