@@ -5,7 +5,7 @@ import { useHeatmap, HeatmapData } from '../hooks/useHeatmap'
 import { LearningCategory, LEARNING_CATEGORIES } from '../types'
 
 interface HeatmapCalendarProps {
-  onDateSelect?: (date: string, data: HeatmapData) => void
+  onDateSelect?: (date: string, data?: HeatmapData) => void
 }
 
 export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }) => {
@@ -20,7 +20,8 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
     getCurrentStreak,
     getLongestStreak,
     getIntensityColor,
-    getCategoryColor
+    getCategoryColor,
+    getFirstLearningDate
   } = useHeatmap()
   
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
@@ -87,11 +88,22 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
   // 週単位ヒートマップデータの生成
   const generateWeeklyHeatmapData = useCallback((): (HeatmapData | null)[][] => {
     const today = new Date()
-    const oneYearAgo = new Date(today)
-    oneYearAgo.setFullYear(today.getFullYear() - 1)
+    const firstLearningDate = getFirstLearningDate()
+    
+    // 学習履歴がない場合は空の配列を返す
+    if (!firstLearningDate) {
+      return []
+    }
+    
+    // 5年制限を適用
+    const fiveYearsAgo = new Date(today)
+    fiveYearsAgo.setFullYear(today.getFullYear() - 5)
+    
+    // 開始日を決定（最初の学習日 vs 5年前の新しい方）
+    const actualStartDate = firstLearningDate > fiveYearsAgo ? firstLearningDate : fiveYearsAgo
     
     // 開始日を日曜日に調整
-    const startDate = new Date(oneYearAgo)
+    const startDate = new Date(actualStartDate)
     startDate.setDate(startDate.getDate() - startDate.getDay())
     
     const weeks: (HeatmapData | null)[][] = []
@@ -104,7 +116,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
         const dateStr = currentDate.toISOString().split('T')[0]
         const data = heatmapData.find(d => d.date === dateStr)
         
-        if (currentDate <= today && currentDate >= oneYearAgo && dateStr) {
+        if (currentDate <= today && currentDate >= actualStartDate && dateStr) {
           week.push(data || {
             date: dateStr,
             totalMinutes: 0,
@@ -130,7 +142,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
     }
     
     return weeks
-  }, [heatmapData])
+  }, [heatmapData, getFirstLearningDate])
 
   // カテゴリフィルターの変更（タグベースに移行予定）
   const handleCategoryFilter = useCallback((category: LearningCategory | 'all') => {
@@ -360,7 +372,11 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
       </div>
 
       {/* ヒートマップグリッド（GitHub風） */}
-      <div className="space-y-2">
+      <div className={`p-4 rounded-lg border space-y-2 ${
+        resolvedTheme === 'dark' 
+          ? 'bg-gray-800/50 border-gray-700' 
+          : 'bg-gray-50/50 border-gray-200'
+      }`}>
         {/* 月ラベル（スクロール可能・動的生成） */}
         <div className="flex">
           <div className="w-8"></div>
@@ -443,7 +459,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
                         }`}
                         style={{ 
                           backgroundColor: config.selectedCategory === 'all' 
-                            ? getIntensityColor(intensity)
+                            ? getIntensityColor(intensity, resolvedTheme === 'dark')
                             : getCategoryColor(config.selectedCategory)
                         }}
                         onClick={() => handleDateClick(data.date, data)}
@@ -469,7 +485,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({ onDateSelect }
             <div
               key={level}
               className="w-3 h-3 rounded"
-              style={{ backgroundColor: getIntensityColor(level) }}
+              style={{ backgroundColor: getIntensityColor(level, resolvedTheme === 'dark') }}
             />
           ))}
         </div>

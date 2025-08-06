@@ -67,7 +67,7 @@ export const ViewSwitcher: React.FC<ViewSwitcherProps> = ({
             : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
         }`}
         onClick={() => onViewModeChange('daily-focus')}
-        title="Daily Focus View (Ctrl+F)"
+        title="スタディビュー (Ctrl+F)"
       >
         <Focus size={16} />
       </button>

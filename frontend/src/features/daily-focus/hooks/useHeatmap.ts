@@ -247,16 +247,42 @@ export const useHeatmap = () => {
     return colors[category] || colors.other
   }, [])
 
-  // 強度別の色を取得
-  const getIntensityColor = useCallback((intensity: number): string => {
-    const colors = ['#f3f4f6', '#dbeafe', '#93c5fd', '#3b82f6', '#1e40af']
-    return colors[intensity] || colors[0] || '#f3f4f6'
+  // 強度別の色を取得（テーマ対応）
+  const getIntensityColor = useCallback((intensity: number, isDark: boolean = false): string => {
+    if (isDark) {
+      // ダークテーマ用の色（学習時間が少ない→暗い、多い→明るい）
+      const darkColors = ['#1f2937', '#374151', '#4b5563', '#6b7280', '#9ca3af']
+      return darkColors[intensity] || darkColors[0] || '#1f2937'
+    } else {
+      // ライトテーマ用の色（学習時間が少ない→暗い、多い→明るい）
+      const lightColors = ['#e5e7eb', '#bfdbfe', '#93c5fd', '#3b82f6', '#1d4ed8']
+      return lightColors[intensity] || lightColors[0] || '#e5e7eb'
+    }
   }, [])
 
   // 初期化
   useEffect(() => {
     generateHeatmapData()
   }, [generateHeatmapData])
+
+  // 最初の学習日を取得
+  const getFirstLearningDate = useCallback((): Date | null => {
+    try {
+      const allStats = statsStorage.getAll()
+      if (allStats.length === 0) return null
+      
+      // 学習時間が0より大きい日のみを対象とする
+      const learningDays = allStats.filter(stat => stat.totalTime > 0)
+      if (learningDays.length === 0) return null
+      
+      // 日付順にソートして最初の日を取得
+      const sortedDays = learningDays.sort((a, b) => a.date.localeCompare(b.date))
+      return new Date(sortedDays[0]?.date || '')
+    } catch (err) {
+      console.error('Failed to get first learning date:', err)
+      return null
+    }
+  }, [])
 
   // データの更新（外部から呼び出し可能）
   const refreshData = useCallback(() => {
@@ -279,6 +305,7 @@ export const useHeatmap = () => {
     getWeeklyStats,
     getLongestStreak,
     getCurrentStreak,
+    getFirstLearningDate,
     
     // ユーティリティ
     getCategoryColor,

@@ -70,7 +70,7 @@ export const TimelineView: React.FC<ExtendedTimelineViewProps> = ({
     fitToScreen,
     scrollToToday,
     timelineRef
-  } = useTimeline(100, 'week')
+  } = useTimeline(100, 'day')
 
   // 行レベル選択機能
   const {

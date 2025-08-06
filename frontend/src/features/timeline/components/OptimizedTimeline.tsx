@@ -73,7 +73,7 @@ export const OptimizedTimeline: React.FC<OptimizedTimelineProps> = ({
     fitToScreen,
     scrollToToday,
     timelineRef
-  } = useTimeline(100, 'week')
+  } = useTimeline(100, 'day')
 
   // 行選択機能
   const rowSelection = useRowSelection()

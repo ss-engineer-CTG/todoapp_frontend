@@ -44,7 +44,7 @@ interface UseTimelineReturn {
 
 export const useTimeline = (
   initialZoomLevel = ZOOM_CONFIG.default,
-  initialViewUnit: 'day' | 'week' = 'week'
+  initialViewUnit: 'day' | 'week' = 'day'
 ): UseTimelineReturn => {
 
   // 🔧 修正：テーマ状態を除去したシンプルな状態管理
